@@ -1,0 +1,30 @@
+From 269e29571bc259d8e092ae2583c42a2b0377332b Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Fri, 8 Apr 2016 15:37:31 +0900
+Subject: [PATCH] Fix python path
+
+config.status doesn't work on some build system such as Yocto due
+to the limit of shebang length. Althought the max length of shebang
+is 128 on Linux, such build systems generate a longer one than it.
+
+To avoid it, use host's python instead.
+---
+ build/autoconf/config.status.m4 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build/autoconf/config.status.m4 b/build/autoconf/config.status.m4
+index 05f402a..c57d3bb 100644
+--- a/build/autoconf/config.status.m4
++++ b/build/autoconf/config.status.m4
+@@ -114,7 +114,7 @@ echo creating $CONFIG_STATUS
+ extra_python_path=${COMM_BUILD:+"'mozilla', "}
+ 
+ cat > $CONFIG_STATUS <<EOF
+-#!${PYTHON}
++#!/usr/bin/python
+ # coding=$encoding
+ 
+ import os
+-- 
+1.9.1
+

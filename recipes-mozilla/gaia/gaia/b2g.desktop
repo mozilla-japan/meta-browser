@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=B2G
+Comment=Boot to Gecko
+Exec=b2g
+Terminal=false
+MultipleArgs=false
+Type=Application
+Icon=b2g.png
+Categories=Application;Internet;Network;
+SingleInstance=true
+
