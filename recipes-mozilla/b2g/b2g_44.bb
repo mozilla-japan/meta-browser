@@ -12,6 +12,8 @@ LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a
 SRCREV = "df9367456ebfe9ed1ce3501886416e2046029f52"
 SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=b2g44_v2_5 \
            file://fix-python-path.patch \
+           file://0001-Fix-a-broken-build-option-with-gl-provider.patch \
+           file://0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            "
 
 MOZ_APP_BASE_VERSION = "44.0"
