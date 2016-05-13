@@ -4,7 +4,7 @@
 
 DESCRIPTION ?= "Boot to Gecko aims to create a complete, standalone operating system for the open web."
 DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
-            virtual/libgl nspr pulseaudio yasm-native icu"
+            virtual/libgl pulseaudio yasm-native icu"
 
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a6dca6a06efe93d70f711c0e"
