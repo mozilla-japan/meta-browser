@@ -16,6 +16,7 @@ PACKAGES = "${PN}"
 EXTRA_OEMAKE += "SHELL=/bin/sh"
 
 export GAIA_DEVICE_TYPE = "phone"
+export GAIA_APP_TARGET = "production"
 export NOFTU = "1"
 export NO_LOCK_SCREEN = "1"
 export SCREEN_TIMEOUT = "0"
