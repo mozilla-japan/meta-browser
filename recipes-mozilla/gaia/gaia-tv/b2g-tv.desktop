@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=B2G TV
+Comment=TV UI for B2G
+Exec=b2g-tv
+Terminal=false
+MultipleArgs=false
+Type=Application
+Icon=b2g-tv.png
+Categories=Application;Internet;Network;
+SingleInstance=true
+
