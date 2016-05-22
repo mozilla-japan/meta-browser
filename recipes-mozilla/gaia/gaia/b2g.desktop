@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=B2G
-Comment=Boot to Gecko
+Name=B2G Phone
+Comment=Phone UI for B2G
 Exec=b2g
 Terminal=false
 MultipleArgs=false
