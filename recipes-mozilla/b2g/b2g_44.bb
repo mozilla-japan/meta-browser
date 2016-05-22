@@ -14,8 +14,10 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=b2g44_v2_5 \
            file://fix-python-path.patch \
            file://0001-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
+           file://0003-Fix-an-issue-that-fullscreen-properties-aren-t-initi.patch \
            "
 
+PR = "r1"
 MOZ_APP_BASE_VERSION = "44.0"
 
 S = "${WORKDIR}/git"

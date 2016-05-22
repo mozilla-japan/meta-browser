@@ -1,0 +1,58 @@
+From 587900e23a9eec5fde28afae1d934f30248b31c6 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Sun, 22 May 2016 18:49:53 +0900
+Subject: [PATCH 3/3] Fix an issue that fullscreen properties aren't
+ initialized on B2G simulator
+
+It causes various problems, for example:
+
+* Wallpapares never be shown on fullscreen mode
+* TV profile is run on portrait mode
+
+Note that the patch isn't proper solution yet. To resolve it
+properly, we should also fix some other issues concerned with
+the orientation feature of B2G simulator...
+---
+ b2g/chrome/content/screen.js | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/b2g/chrome/content/screen.js b/b2g/chrome/content/screen.js
+index a893e88..62dcd6a 100644
+--- a/b2g/chrome/content/screen.js
++++ b/b2g/chrome/content/screen.js
+@@ -99,6 +99,32 @@ function onStart() {
+   
+   // Special case --screen=full goes into fullscreen mode
+   if (screenarg === 'full') {
++    let fullScreenOrientation;
++
++    window.onresize = function() {
++      let controls = document.getElementById('controls');
++      let controlsHeight = controls ? controls.getBoundingClientRect().height : 0;
++      let width = window.innerWidth;
++      let height = window.innerHeight + controlsHeight;
++
++      GlobalSimulatorScreen.width = width;
++      GlobalSimulatorScreen.height = height;
++
++      if (!fullScreenOrientation && width > 1 && height > 1) {
++        // default screen orientation has been determined
++        fullScreenOrientation = width < height ? 'portrait' : 'landscape';
++        GlobalSimulatorScreen.screenOrientation = fullScreenOrientation;
++        if (!GlobalSimulatorScreen.mozOrientationLocked) {
++          GlobalSimulatorScreen.mozOrientation = fullScreenOrientation;
++        } else {
++          // Hack for avoiding undesired rotation on B2G simulator
++          // TODO: Should flip the screen as same as windowed mode?
++          fullScreenOrientation = GlobalSimulatorScreen.mozOrientation;
++          GlobalSimulatorScreen.screenOrientation = fullScreenOrientation;
++        }
++      }
++    };
++
+     shell.setAttribute('sizemode', 'fullscreen');
+     return;
+   } 
+-- 
+1.9.1
+
