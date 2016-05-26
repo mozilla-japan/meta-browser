@@ -3,9 +3,9 @@
 set -e
 
 B2G_PATH="/usr/lib/b2g/b2g"
-PROFILE_PACKAGE_PATH="/usr/share/gaia/profile.tar.gz"
+PROFILE_PACKAGE_PATH="/usr/share/gaia/profile-phone.tar.gz"
 PROFILE_BASE_DIR="${HOME}/.mozilla/b2g"
-PROFILE_DIR="${PROFILE_BASE_DIR}/profile"
+PROFILE_DIR="${PROFILE_BASE_DIR}/profile-phone"
 
 if [ ! -d "${PROFILE_DIR}" ]; then
     echo "Initializing the b2g profile..."
