@@ -21,6 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "396ed2538d6855a03c316940ecc0d239"
 SRC_URI[archive.sha256sum] = "0f46f6c2e6b4f7efea2cd688c27b154a2f000cf5a7e5cb676def8a6dbf3839a0"
 
+PR = "r1"
 S = "${WORKDIR}/firefox-45.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.0"
