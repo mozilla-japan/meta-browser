@@ -17,7 +17,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=b2g44_v2_5 \
            file://0003-Fix-an-issue-that-fullscreen-properties-aren-t-initi.patch \
            "
 
-PR = "r1"
+PR = "r2"
 MOZ_APP_BASE_VERSION = "44.0"
 
 S = "${WORKDIR}/git"
