@@ -30,7 +30,7 @@ inherit mozilla
 
 export MOZCONFIG = "${WORKDIR}/mozconfig-45esr"
 
-EXTRA_OEMAKE += "installdir=${libdir}/${PN}"
+EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
 
