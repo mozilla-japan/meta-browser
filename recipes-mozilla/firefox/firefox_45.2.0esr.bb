@@ -18,13 +18,13 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozconfig-45esr \
            "
 
-SRC_URI[archive.md5sum] = "396ed2538d6855a03c316940ecc0d239"
-SRC_URI[archive.sha256sum] = "0f46f6c2e6b4f7efea2cd688c27b154a2f000cf5a7e5cb676def8a6dbf3839a0"
+SRC_URI[archive.md5sum] = "709f3b0936e78c16e5e913ba518190da"
+SRC_URI[archive.sha256sum] = "1a729774034231c919dc5a556e17d3342792d5347c755d8d0a4f67a07374804b"
 
-PR = "r1"
-S = "${WORKDIR}/firefox-45.0esr"
+PR = "r0"
+S = "${WORKDIR}/firefox-45.2.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
-MOZ_APP_BASE_VERSION = "45.0"
+MOZ_APP_BASE_VERSION = "45.2.0"
 
 inherit mozilla
 

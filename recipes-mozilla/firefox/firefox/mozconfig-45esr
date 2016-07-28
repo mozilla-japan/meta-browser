@@ -41,4 +41,3 @@ ac_add_options --disable-crashreporter
 ac_add_options --disable-updater
 ac_add_options --disable-installer
 ac_add_options --disable-debug-symbols
-ac_add_options --disable-webrtc
