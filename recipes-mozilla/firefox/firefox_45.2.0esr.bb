@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "709f3b0936e78c16e5e913ba518190da"
 SRC_URI[archive.sha256sum] = "1a729774034231c919dc5a556e17d3342792d5347c755d8d0a4f67a07374804b"
 
-PR = "r0"
+PR = "r1"
 S = "${WORKDIR}/firefox-45.2.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.2.0"
@@ -33,6 +33,24 @@ export MOZCONFIG = "${WORKDIR}/mozconfig-45esr"
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
+
+MOZ_ENABLE_WAYLAND ??= "${@base_contains('DISTRO_FEATURES', 'wayland', '1', '0', d)}"
+EXTRA_OECONF += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
+             '--enable-default-toolkit=cairo-gtk3 --with-gl-provider=EGL', \
+             '--enable-default-toolkit=cairo-gtk2', \
+             d)}"
+DEPENDS += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', 'gtk+3', '', d)}"
+SRC_URI += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
+           'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
+            file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
+            file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
+            file://wayland-patches/0004-Install-popup_take_focus_filter-to-actual-GdkWindow.patch \
+            file://wayland-patches/0005-Fixed-nsWindow-GetLastUserInputTime.patch \
+            file://wayland-patches/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland-patches/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch', \
+           '', d)}"
 
 do_install_append() {
     install -d ${D}${datadir}/applications
@@ -71,7 +89,9 @@ PRIVATE_LIBS = "libmozjs.so \
                 libxul.so \
                 libmozalloc.so \
                 libplc4.so \
-                libplds4.so"
+                libplds4.so \
+                liblgpllibs.so \
+                libmozgtk.so"
 
 # mark libraries also provided by nss as private too
 PRIVATE_LIBS += " \

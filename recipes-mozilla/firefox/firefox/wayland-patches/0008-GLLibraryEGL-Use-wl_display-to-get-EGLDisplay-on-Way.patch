@@ -1,0 +1,81 @@
+From 109766aa316cc3b2261bd7eac81efc823af1da82 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Tue, 14 Jun 2016 11:38:26 +0900
+Subject: [PATCH 08/10] GLLibraryEGL: Use wl_display to get EGLDisplay on
+ Wayland
+
+Because some drivers doesn't support EGL_DEFAULT_DISPLAY.
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ config/system-headers      |  1 +
+ gfx/gl/GLLibraryEGL.cpp    | 20 +++++++++++++++++++-
+ widget/gtk/mozgtk/mozgtk.c |  2 ++
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/config/system-headers b/config/system-headers
+index 403fa8d..84c04e0 100644
+--- a/config/system-headers
++++ b/config/system-headers
+@@ -495,6 +495,7 @@ gdk/gdkkeysyms.h
+ gdk/gdkprivate.h
+ gdk/gdkx.h
+ gdk/gdkdirectfb.h
++gdk/gdkwayland.h
+ gdk-pixbuf/gdk-pixbuf.h
+ Gestalt.h
+ getopt.h
+diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
+index 811923a..d9445f0 100644
+--- a/gfx/gl/GLLibraryEGL.cpp
++++ b/gfx/gl/GLLibraryEGL.cpp
+@@ -21,6 +21,12 @@
+ #include "GLContextProvider.h"
+ #include "gfxPrefs.h"
+ #include "ScopedGLHelpers.h"
++#ifdef MOZ_WIDGET_GTK
++#include <gdk/gdk.h>
++#ifdef GDK_WINDOWING_WAYLAND
++#include <gdk/gdkwayland.h>
++#endif
++#endif
+ 
+ namespace mozilla {
+ namespace gl {
+@@ -404,7 +410,19 @@ GLLibraryEGL::EnsureInitialized(bool forceAccel)
+             chosenDisplay = GetAndInitDisplayForAccelANGLE(*this);
+         }
+     } else {
+-        chosenDisplay = GetAndInitDisplay(*this, EGL_DEFAULT_DISPLAY);
++        void *nativeDisplay = EGL_DEFAULT_DISPLAY;
++#ifdef GDK_WINDOWING_WAYLAND
++        // Some drivers doesn't support EGL_DEFAULT_DISPLAY
++        GdkDisplay *gdkDisplay = gdk_display_get_default();
++        if (GDK_IS_WAYLAND_DISPLAY(gdkDisplay)) {
++            nativeDisplay = gdk_wayland_display_get_wl_display(gdkDisplay);
++            if (!nativeDisplay) {
++              NS_WARNING("Failed to get wl_display.");
++              return false;
++            }
++        }
++#endif
++        chosenDisplay = GetAndInitDisplay(*this, nativeDisplay);
+     }
+ 
+     if (!chosenDisplay) {
+diff --git a/widget/gtk/mozgtk/mozgtk.c b/widget/gtk/mozgtk/mozgtk.c
+index c512912..3ed0f50 100644
+--- a/widget/gtk/mozgtk/mozgtk.c
++++ b/widget/gtk/mozgtk/mozgtk.c
+@@ -581,6 +581,8 @@ STUB(gdk_screen_get_monitor_workarea)
+ STUB(gdk_screen_get_primary_monitor)
+ STUB(gtk_drawing_area_new)
+ STUB(gdk_window_set_transient_for)
++STUB(gdk_wayland_display_get_type)
++STUB(gdk_wayland_display_get_wl_display)
+ #endif
+ 
+ #ifdef GTK2_SYMBOLS
+-- 
+1.9.1
+
