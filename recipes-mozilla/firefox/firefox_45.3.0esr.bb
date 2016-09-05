@@ -49,7 +49,9 @@ SRC_URI += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
             file://wayland-patches/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
             file://wayland-patches/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
             file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch', \
+            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
+            file://wayland-patches/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
+           ', \
            '', d)}"
 
 do_install_append() {
