@@ -1,0 +1,33 @@
+From 00156708d37c5bff0929d4607dfe8d282b58eb70 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Tue, 6 Sep 2016 13:49:06 +0900
+Subject: [PATCH 13/15] Wayland: Resize wl_egl_window when the nsWindow is
+ resized
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ widget/gtk/nsWindow.cpp | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 06df44b..56290a2 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -2526,6 +2526,14 @@ nsWindow::OnSizeAllocate(GtkAllocation *aAllocation)
+     if (mBounds.Size() == size)
+         return;
+ 
++#ifdef MOZ_WAYLAND_EGL
++    if (mWlEglWindow) {
++        wl_egl_window_resize(mWlEglWindow,
++                             size.width, size.height,
++                             0, 0);
++    }
++#endif /* MOZ_WAYLAND_EGL */
++
+     // Invalidate the new part of the window now for the pending paint to
+     // minimize background flashes (GDK does not do this for external resizes
+     // of toplevels.)
+-- 
+2.7.4
+

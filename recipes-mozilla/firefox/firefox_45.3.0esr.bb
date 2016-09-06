@@ -51,6 +51,7 @@ SRC_URI += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
             file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
             file://wayland-patches/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
+            file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
            ', \
            '', d)}"
 
