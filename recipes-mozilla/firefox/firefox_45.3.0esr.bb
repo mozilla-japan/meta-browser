@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "616b65d9a6c053f6380d68655eb97c48"
 SRC_URI[archive.sha256sum] = "922233c65c0aabd05371974c289495119c28d72fc7f8b06a22b58c5f70f8b8f7"
 
-PR = "r1"
+PR = "r2"
 S = "${WORKDIR}/firefox-45.3.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.3.0"
@@ -35,8 +35,11 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 ARM_INSTRUCTION_SET = "arm"
 
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
-PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3 --with-gl-provider=EGL,--enable-default-toolkit=cairo-gtk2,gtk+3,"
-SRC_URI += "${@base_contains('PACKAGECONFIG', 'wayland', \
+PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
+PACKAGECONFIG[glx] = ",,,"
+PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
             file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
             file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
@@ -50,6 +53,13 @@ SRC_URI += "${@base_contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
            ', \
            '', d)}"
+SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', 'file://gpu.js', '', d)}"
+
+python do_check_variables() {
+    if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
+        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
+}
+addtask check_variables before do_configure
 
 do_install_append() {
     install -d ${D}${datadir}/applications
@@ -58,6 +68,9 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
     install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    fi
 
     # Fix ownership of files
     chown root:root -R ${D}${datadir}
