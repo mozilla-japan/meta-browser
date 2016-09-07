@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "616b65d9a6c053f6380d68655eb97c48"
 SRC_URI[archive.sha256sum] = "922233c65c0aabd05371974c289495119c28d72fc7f8b06a22b58c5f70f8b8f7"
 
-PR = "r0"
+PR = "r1"
 S = "${WORKDIR}/firefox-45.3.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.3.0"
@@ -34,13 +34,9 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
 
-MOZ_ENABLE_WAYLAND ??= "${@base_contains('DISTRO_FEATURES', 'wayland', '1', '0', d)}"
-EXTRA_OECONF += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
-             '--enable-default-toolkit=cairo-gtk3 --with-gl-provider=EGL', \
-             '--enable-default-toolkit=cairo-gtk2', \
-             d)}"
-DEPENDS += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', 'gtk+3', '', d)}"
-SRC_URI += "${@base_conditional('MOZ_ENABLE_WAYLAND', '1', \
+PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
+PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3 --with-gl-provider=EGL,--enable-default-toolkit=cairo-gtk2,gtk+3,"
+SRC_URI += "${@base_contains('PACKAGECONFIG', 'wayland', \
            'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
             file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
             file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
