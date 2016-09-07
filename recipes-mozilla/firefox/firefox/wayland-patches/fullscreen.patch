@@ -1,0 +1,30 @@
+From dff56c59502b44fdb714653bce1bf76682853a27 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Wed, 7 Sep 2016 18:01:13 +0900
+Subject: [PATCH] Use fullscreen mode by default
+
+The current EGL patch for Wayland doesn't work well with windowed
+mode. Until the issue is resolved, we use fullscreen mode by
+default.
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ browser/base/content/browser.xul | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
+index 9f0d550..1dc5e66 100644
+--- a/browser/base/content/browser.xul
++++ b/browser/base/content/browser.xul
+@@ -57,7 +57,7 @@
+         macanimationtype="document"
+         screenX="4" screenY="4"
+         fullscreenbutton="true"
+-        sizemode="normal"
++        sizemode="fullscreen"
+         retargetdocumentfocus="urlbar"
+         persist="screenX screenY width height sizemode">
+ 
+-- 
+2.7.4
+

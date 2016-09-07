@@ -53,7 +53,15 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
            ', \
            '', d)}"
-SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', 'file://gpu.js', '', d)}"
+
+# Add a config file to enable GPU acceleration by default.
+SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
+           'file://gpu.js', '', d)}"
+
+# Current EGL patch for Wayland doesn't work well on windowed mode.
+# To avoid this issue, force use fullscreen mode by default.
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
+           'file://wayland-patches/fullscreen.patch', '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
