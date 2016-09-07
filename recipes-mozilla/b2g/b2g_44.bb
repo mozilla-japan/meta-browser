@@ -11,13 +11,14 @@ LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a
 
 SRCREV = "df9367456ebfe9ed1ce3501886416e2046029f52"
 SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=b2g44_v2_5 \
+           ${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', 'file://gpu.js', '', d)} \
            file://fix-python-path.patch \
            file://0001-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            file://0003-Fix-an-issue-that-fullscreen-properties-aren-t-initi.patch \
            "
 
-PR = "r2"
+PR = "r3"
 MOZ_APP_BASE_VERSION = "44.0"
 
 S = "${WORKDIR}/git"
@@ -28,10 +29,22 @@ PACKAGES = "${PN}-dbg ${PN}"
 
 ARM_INSTRUCTION_SET = "arm"
 
+PACKAGECONFIG[glx] = ",,,"
+PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+
+python do_check_variables() {
+    if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
+        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
+}
+addtask check_variables before do_configure
+
 do_install() {
     oe_runmake -f client.mk package
     install -d ${D}${libdir}
     tar xvfj ${MOZ_OBJDIR}/dist/${PN}-${MOZ_APP_BASE_VERSION}.en-US.linux-gnueabi-arm.tar.bz2 -C ${D}${libdir}
+    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}/defaults/pref/
+    fi
 }
 
 FILES_${PN} = "${libdir}/${PN}/"
