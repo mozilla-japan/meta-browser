@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "616b65d9a6c053f6380d68655eb97c48"
 SRC_URI[archive.sha256sum] = "922233c65c0aabd05371974c289495119c28d72fc7f8b06a22b58c5f70f8b8f7"
 
-PR = "r2"
+PR = "r3"
 S = "${WORKDIR}/firefox-45.3.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.3.0"
@@ -38,6 +38,7 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland",
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+PACKAGECONFIG[gstreamer1.0] = "--enable-gstreamer=1.0,--disable-gstreamer,gstreamer1.0,libgstvideo-1.0 gstreamer1.0-plugins-base-app"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
