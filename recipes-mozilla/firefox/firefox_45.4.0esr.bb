@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "20358acfbb9e11782940c180fd2b1528"
 SRC_URI[archive.sha256sum] = "cfd90096b9e1019b9de4fe061ece8c65f668b8a24bcbb657ce6b3c940ef83ad0"
 
-PR = "r0"
+PR = "r1"
 S = "${WORKDIR}/firefox-45.4.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.4.0"
@@ -62,7 +62,7 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 # Current EGL patch for Wayland doesn't work well on windowed mode.
 # To avoid this issue, force use fullscreen mode by default.
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           'file://wayland-patches/fullscreen.patch', '', d)}"
+           'file://wayland-patches/frameless.patch', '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
