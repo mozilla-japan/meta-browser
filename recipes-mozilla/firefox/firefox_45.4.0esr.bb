@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "20358acfbb9e11782940c180fd2b1528"
 SRC_URI[archive.sha256sum] = "cfd90096b9e1019b9de4fe061ece8c65f668b8a24bcbb657ce6b3c940ef83ad0"
 
-PR = "r1"
+PR = "r2"
 S = "${WORKDIR}/firefox-45.4.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.4.0"
@@ -39,6 +39,7 @@ PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-t
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[gstreamer1.0] = "--enable-gstreamer=1.0,--disable-gstreamer,gstreamer1.0,libgstvideo-1.0 gstreamer1.0-plugins-base-app"
+PACKAGECONFIG[openmax] = ",,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
@@ -64,6 +65,14 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            'file://wayland-patches/frameless.patch', '', d)}"
 
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
+           'file://openmax/0001-Update-dom-media-platforms-omx-to-support-video-deco.patch \
+            file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
+            file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
+            file://openmax/openmax.js \
+           ', \
+           '', d)}"
+
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
         bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
@@ -79,6 +88,9 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    fi
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
     fi
 
     # Fix ownership of files
