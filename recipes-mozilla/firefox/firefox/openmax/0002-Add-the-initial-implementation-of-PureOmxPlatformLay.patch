@@ -1,6 +1,6 @@
-From e63f091a89a5593a65c29c69ccf74a6c8426f965 Mon Sep 17 00:00:00 2001
+From 1c17ca112a40a702c4a21540fbc73af0034e2540 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
-Date: Fri, 28 Oct 2016 17:38:01 +0900
+Date: Fri, 11 Nov 2016 16:10:57 +0900
 Subject: [PATCH 2/3] Add the initial implementation of PureOmxPlatformLayer
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
@@ -13,16 +13,16 @@ Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
  dom/media/platforms/PDMFactory.cpp               |  20 +-
  dom/media/platforms/PDMFactory.h                 |   3 +
  dom/media/platforms/moz.build                    |   8 +
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 112 +++++++
- dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 +++
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 112 ++++++
+ dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
  dom/media/platforms/omx/OmxDecoderModule.cpp     |  24 ++
  dom/media/platforms/omx/OmxDecoderModule.h       |   6 +
  dom/media/platforms/omx/OmxFunctionList.h        |  13 +
  dom/media/platforms/omx/OmxPlatformLayer.cpp     |  22 ++
- dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 387 +++++++++++++++++++++++
- dom/media/platforms/omx/PureOmxPlatformLayer.h   | 112 +++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 435 +++++++++++++++++++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
  dom/media/platforms/omx/moz.build                |   5 +
- 12 files changed, 749 insertions(+), 1 deletion(-)
+ 12 files changed, 800 insertions(+), 1 deletion(-)
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
  create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
@@ -241,7 +241,7 @@ index 0000000..6bf33c9
 +} // namespace mozilla
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.h b/dom/media/platforms/omx/OmxCoreLibLinker.h
 new file mode 100644
-index 0000000..250e182
+index 0000000..389a156
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.h
 @@ -0,0 +1,38 @@
@@ -282,7 +282,7 @@ index 0000000..250e182
 +
 +}
 +
-+#endif // __FFmpegRuntimeLinker_h__
++#endif // __OmxCoreLibLinker_h__
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
 index 1d17b88..638ac02 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
@@ -400,10 +400,10 @@ index 9ededd8..5b0cea2 100644
  bool
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 0000000..edac67b
+index 0000000..7874634
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,387 @@
+@@ -0,0 +1,435 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -422,6 +422,7 @@ index 0000000..edac67b
 +extern mozilla::LogModule* GetPDMLog();
 +
 +#define LOG(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxPlatformLayer(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
++#define LOG_BUF(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxBufferData(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
 +
 +namespace mozilla {
 +
@@ -435,26 +436,55 @@ index 0000000..edac67b
 +  , mPlatformLayer(aPlatformLayer)
 +  , mPortDef(aPortDef)
 +{
-+  OMX_ERRORTYPE err = OMX_AllocateBuffer(mPlatformLayer.GetComponent(),
-+                                         &mBuffer,
-+                                         mPortDef.nPortIndex,
-+                                         this,
-+                                         mPortDef.nBufferSize);
++  LOG_BUF("");
++
++  if (ShouldUseEGLImage()) {
++    LOG_BUF("OMX_UseEGLImage() seems available but using it isn't implemented yet.");
++  } else {
++    // Renesas RZ/G doesn't support it
++  }
++
++  OMX_ERRORTYPE err;
++  err = OMX_AllocateBuffer(mPlatformLayer.GetComponent(),
++                           &mBuffer,
++                           mPortDef.nPortIndex,
++                           this,
++                           mPortDef.nBufferSize);
 +  if (err != OMX_ErrorNone) {
-+    LOG("Failed to allocate the buffer!: 0x%08x", err);
++    LOG_BUF("Failed to allocate the buffer!: 0x%08x", err);
 +  }
 +}
 +
 +PureOmxBufferData::~PureOmxBufferData()
 +{
++  LOG_BUF("");
++  ReleaseBuffer();
++}
++
++void PureOmxBufferData::ReleaseBuffer()
++{
++  LOG_BUF("");
++
 +  if (mBuffer) {
 +    OMX_ERRORTYPE err = OMX_FreeBuffer(mPlatformLayer.GetComponent(),
 +                                       mPortDef.nPortIndex,
 +                                       mBuffer);
 +    if (err != OMX_ErrorNone) {
-+      LOG("Failed to free the buffer!: 0x%08x", err);
++      LOG_BUF("Failed to free the buffer!: 0x%08x", err);
 +    }
++    mBuffer = nullptr;
 +  }
++}
++
++bool PureOmxBufferData::ShouldUseEGLImage()
++{
++  OMX_ERRORTYPE err;
++  err = OMX_UseEGLImage(mPlatformLayer.GetComponent(),
++                        nullptr,
++                        mPortDef.nPortIndex,
++                        nullptr,
++                        nullptr);
++  return (err != OMX_ErrorNotImplemented);
 +}
 +
 +/* static */ bool
@@ -583,12 +613,18 @@ index 0000000..edac67b
 +PureOmxPlatformLayer::ReleaseOmxBuffer(OMX_DIRTYPE aType,
 +                                       BUFFERLIST* aBufferList)
 +{
-+  LOG("aType: 0x%08x");
++  LOG("aType: 0x%08x", aType);
 +
 +  uint32_t len = aBufferList->Length();
 +  for (uint32_t i = 0; i < len; i++) {
 +    PureOmxBufferData* buffer =
 +      static_cast<PureOmxBufferData*>(aBufferList->ElementAt(i).get());
++
++    // Although the ref count of the buffer may not be 0 at this moment, we need
++    // to force release all OpenMAX buffers to flush OMX_CommandStateSet for
++    // switching the state to OMX_StateLoaded.
++    // See OmxDataDecoder::DoAsyncShutdown() for more detail.
++    buffer->ReleaseBuffer();
 +  }
 +  aBufferList->Clear();
 +
@@ -652,7 +688,11 @@ index 0000000..edac67b
 +                                   OMX_PTR pEventData)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  return self->EventHandler(eEventType, nData1, nData2, pEventData);
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, eEventType, nData1, nData2, pEventData] () {
++      self->EventHandler(eEventType, nData1, nData2, pEventData);
++    });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
 +}
 +
 +/* static */ OMX_ERRORTYPE
@@ -661,7 +701,11 @@ index 0000000..edac67b
 +                                      OMX_IN OMX_BUFFERHEADERTYPE* pBuffer)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  return self->EmptyBufferDone(pBuffer);
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
++      self->EmptyBufferDone(pBuffer);
++    });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
 +}
 +
 +/* static */ OMX_ERRORTYPE
@@ -670,7 +714,11 @@ index 0000000..edac67b
 +                                     OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  return self->FillBufferDone(pBuffer);
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
++      self->FillBufferDone(pBuffer);
++    });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
 +}
 +
 +OMX_ERRORTYPE
@@ -793,10 +841,10 @@ index 0000000..edac67b
 +}
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.h b/dom/media/platforms/omx/PureOmxPlatformLayer.h
 new file mode 100644
-index 0000000..5581ce1
+index 0000000..2c68d07
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.h
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,115 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -820,9 +868,12 @@ index 0000000..5581ce1
 +  PureOmxBufferData(const PureOmxPlatformLayer& aPlatformLayer,
 +                    const OMX_PARAM_PORTDEFINITIONTYPE& aPortDef);
 +
++  void ReleaseBuffer();
 +  OMX_DIRTYPE GetPortDirection() const { return mPortDef.eDir; };
 +
 +protected:
++  bool ShouldUseEGLImage();
++
 +  const PureOmxPlatformLayer& mPlatformLayer;
 +  const OMX_PARAM_PORTDEFINITIONTYPE mPortDef;
 +};

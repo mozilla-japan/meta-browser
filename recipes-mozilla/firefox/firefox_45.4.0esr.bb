@@ -21,7 +21,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
 SRC_URI[archive.md5sum] = "20358acfbb9e11782940c180fd2b1528"
 SRC_URI[archive.sha256sum] = "cfd90096b9e1019b9de4fe061ece8c65f668b8a24bcbb657ce6b3c940ef83ad0"
 
-PR = "r2"
+PR = "r3"
 S = "${WORKDIR}/firefox-45.4.0esr"
 # MOZ_APP_BASE_VERSION should be incremented after a release
 MOZ_APP_BASE_VERSION = "45.4.0"
@@ -66,7 +66,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            'file://wayland-patches/frameless.patch', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
-           'file://openmax/0001-Update-dom-media-platforms-omx-to-support-video-deco.patch \
+           'file://openmax/0001-Backport-dom-media-platforms-omx-from-mozilla-centra.patch \
             file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
             file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
             file://openmax/openmax.js \
