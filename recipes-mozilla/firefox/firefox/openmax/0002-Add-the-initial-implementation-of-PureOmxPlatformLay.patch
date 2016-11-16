@@ -1,4 +1,4 @@
-From 1c17ca112a40a702c4a21540fbc73af0034e2540 Mon Sep 17 00:00:00 2001
+From d7723be5600969ce9fc86680abaa04662e328247 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Fri, 11 Nov 2016 16:10:57 +0900
 Subject: [PATCH 2/3] Add the initial implementation of PureOmxPlatformLayer
@@ -19,10 +19,10 @@ Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
  dom/media/platforms/omx/OmxDecoderModule.h       |   6 +
  dom/media/platforms/omx/OmxFunctionList.h        |  13 +
  dom/media/platforms/omx/OmxPlatformLayer.cpp     |  22 ++
- dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 435 +++++++++++++++++++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 440 +++++++++++++++++++++++
  dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
  dom/media/platforms/omx/moz.build                |   5 +
- 12 files changed, 800 insertions(+), 1 deletion(-)
+ 12 files changed, 805 insertions(+), 1 deletion(-)
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
  create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
@@ -400,10 +400,10 @@ index 9ededd8..5b0cea2 100644
  bool
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 0000000..7874634
+index 0000000..ae3d75f
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,435 @@
+@@ -0,0 +1,440 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -466,9 +466,10 @@ index 0000000..7874634
 +  LOG_BUF("");
 +
 +  if (mBuffer) {
-+    OMX_ERRORTYPE err = OMX_FreeBuffer(mPlatformLayer.GetComponent(),
-+                                       mPortDef.nPortIndex,
-+                                       mBuffer);
++    OMX_ERRORTYPE err;
++    err = OMX_FreeBuffer(mPlatformLayer.GetComponent(),
++                         mPortDef.nPortIndex,
++                         mBuffer);
 +    if (err != OMX_ErrorNone) {
 +      LOG_BUF("Failed to free the buffer!: 0x%08x", err);
 +    }
@@ -574,9 +575,10 @@ index 0000000..7874634
 +    InitOmxParameter(&portDef);
 +    portDef.nPortIndex = idx;
 +
-+    OMX_ERRORTYPE err = GetParameter(OMX_IndexParamPortDefinition,
-+                                     &portDef,
-+                                     sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
++    OMX_ERRORTYPE err;
++    err = GetParameter(OMX_IndexParamPortDefinition,
++                       &portDef,
++                       sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
 +    if (err != OMX_ErrorNone) {
 +      return NS_ERROR_FAILURE;
 +    } else if (portDef.eDir == aType) {
@@ -688,7 +690,8 @@ index 0000000..7874634
 +                                   OMX_PTR pEventData)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, eEventType, nData1, nData2, pEventData] () {
++  nsCOMPtr<nsIRunnable> r =
++    NS_NewRunnableFunction([self, eEventType, nData1, nData2, pEventData] () {
 +      self->EventHandler(eEventType, nData1, nData2, pEventData);
 +    });
 +  self->mTaskQueue->Dispatch(r.forget());
@@ -702,8 +705,8 @@ index 0000000..7874634
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
 +  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
-+      self->EmptyBufferDone(pBuffer);
-+    });
++    self->EmptyBufferDone(pBuffer);
++  });
 +  self->mTaskQueue->Dispatch(r.forget());
 +  return OMX_ErrorNone;
 +}
@@ -715,8 +718,8 @@ index 0000000..7874634
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
 +  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
-+      self->FillBufferDone(pBuffer);
-+    });
++    self->FillBufferDone(pBuffer);
++  });
 +  self->mTaskQueue->Dispatch(r.forget());
 +  return OMX_ErrorNone;
 +}
@@ -767,7 +770,9 @@ index 0000000..7874634
 +      aMimeType.EqualsLiteral("video/mp4v-es")) {
 +    aRole.Assign("video_decoder.avc");
 +    return true;
-+  } else if (aMimeType.EqualsLiteral("audio/aac")) {
++  } else if (aMimeType.EqualsLiteral("audio/mp4a-latm") ||
++             aMimeType.EqualsLiteral("audio/mp4") ||
++             aMimeType.EqualsLiteral("audio/aac")) {
 +    aRole.Assign("audio_decoder.aac");
 +    return true;
 +  }
