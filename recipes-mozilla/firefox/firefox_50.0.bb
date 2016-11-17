@@ -15,19 +15,18 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://fix-python-path.patch \
            file://0001-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
-           file://mozconfig-45esr \
+           file://firefox-50-fix-build-error-without-glx.patch \
+           file://mozconfig \
            "
 
-SRC_URI[archive.md5sum] = "20358acfbb9e11782940c180fd2b1528"
-SRC_URI[archive.sha256sum] = "cfd90096b9e1019b9de4fe061ece8c65f668b8a24bcbb657ce6b3c940ef83ad0"
+SRC_URI[archive.md5sum] = "743aeb5d71eb6a8f227aad954f8a663a"
+SRC_URI[archive.sha256sum] = "5da027350aee148dc62cc1ca897db30510be87ca8eab5e67a7adc7a2479b8616"
 
-PR = "r3"
+PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
-
-export MOZCONFIG = "${WORKDIR}/mozconfig-45esr"
 
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
@@ -37,23 +36,23 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland",
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
-PACKAGECONFIG[gstreamer1.0] = "--enable-gstreamer=1.0,--disable-gstreamer,gstreamer1.0,libgstvideo-1.0 gstreamer1.0-plugins-base-app"
 PACKAGECONFIG[openmax] = ",,,"
 
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
-           'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
-            file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
-            file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
-            file://wayland-patches/0004-Install-popup_take_focus_filter-to-actual-GdkWindow.patch \
-            file://wayland-patches/0005-Fixed-nsWindow-GetLastUserInputTime.patch \
-            file://wayland-patches/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland-patches/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
-            file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
-            file://wayland-patches/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
-            file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
-           ', \
-           '', d)}"
+# TODO: Port to 50.0
+#SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
+#           'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
+#            file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
+#            file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
+#            file://wayland-patches/0004-Install-popup_take_focus_filter-to-actual-GdkWindow.patch \
+#            file://wayland-patches/0005-Fixed-nsWindow-GetLastUserInputTime.patch \
+#            file://wayland-patches/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+#            file://wayland-patches/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+#            file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
+#            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
+#            file://wayland-patches/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
+#            file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
+#           ', \
+#           '', d)}"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
@@ -64,13 +63,14 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            'file://wayland-patches/frameless.patch', '', d)}"
 
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
-           'file://openmax/0001-Backport-dom-media-platforms-omx-from-mozilla-centra.patch \
-            file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
-            file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
-            file://openmax/openmax.js \
-           ', \
-           '', d)}"
+# TODO: Port to 50.0
+#SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
+#           'file://openmax/0001-Backport-dom-media-platforms-omx-from-mozilla-centra.patch \
+#            file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
+#            file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
+#            file://openmax/openmax.js \
+#           ', \
+#           '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):

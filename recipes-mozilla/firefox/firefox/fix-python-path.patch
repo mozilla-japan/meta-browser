@@ -1,26 +1,12 @@
-Upstream-Status: Inappropriate [configuration]
-
-Subject: [PATCH] fix python path
-
-Python path provided by configure doesn't work, use the host instead.
-
-Signed-off-by: Fabio Berton <fabio.berton@ossystems.com.br>
----
- js/src/configure | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/js/src/configure b/js/src/configure
-index cce5430..780d201 100755
---- a/js/src/configure
-+++ b/js/src/configure
-@@ -15933,7 +15933,7 @@ echo creating $CONFIG_STATUS
- extra_python_path=${COMM_BUILD:+"'mozilla', "}
- 
- cat > $CONFIG_STATUS <<EOF
--#!${PYTHON}
-+#!/usr/bin/python
- # coding=$encoding
- 
- import os
--- 
-2.1.4
+diff -Nur firefox-48.0-bak/configure.py firefox-48.0/configure.py
+--- firefox-48.0-bak/configure.py	2016-08-17 17:06:29.349136156 +0900
++++ firefox-48.0/configure.py	2016-08-17 17:15:03.073156160 +0900
+@@ -57,7 +57,7 @@
+     print("Creating config.status", file=sys.stderr)
+     encoding = 'mbcs' if sys.platform == 'win32' else 'utf-8'
+     with codecs.open('config.status', 'w', encoding) as fh:
+-        fh.write('#!%s\n' % config['PYTHON'])
++        fh.write('#!%s\n' % "/usr/bin/python")
+         fh.write('# coding=%s\n' % encoding)
+         # Because we're serializing as JSON but reading as python, the values
+         # for True, False and None are true, false and null, which don't exist.
