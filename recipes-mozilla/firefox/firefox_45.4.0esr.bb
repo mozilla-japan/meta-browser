@@ -22,9 +22,8 @@ SRC_URI[archive.md5sum] = "20358acfbb9e11782940c180fd2b1528"
 SRC_URI[archive.sha256sum] = "cfd90096b9e1019b9de4fe061ece8c65f668b8a24bcbb657ce6b3c940ef83ad0"
 
 PR = "r3"
-S = "${WORKDIR}/firefox-45.4.0esr"
-# MOZ_APP_BASE_VERSION should be incremented after a release
-MOZ_APP_BASE_VERSION = "45.4.0"
+S = "${WORKDIR}/firefox-${PV}"
+MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
 
