@@ -64,14 +64,11 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            'file://wayland-patches/frameless.patch', '', d)}"
 
-# TODO: Port to 50.0
-#SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
-#           'file://openmax/0001-Backport-dom-media-platforms-omx-from-mozilla-centra.patch \
-#            file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
-#            file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
-#            file://openmax/openmax.js \
-#           ', \
-#           '', d)}"
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
+           'file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
+            file://openmax/openmax.js \
+           ', \
+           '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):

@@ -1,39 +1,52 @@
-From d7723be5600969ce9fc86680abaa04662e328247 Mon Sep 17 00:00:00 2001
+From 8bcde12af975eeb736acb95266bb790c43e839b2 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
-Date: Fri, 11 Nov 2016 16:10:57 +0900
-Subject: [PATCH 2/3] Add the initial implementation of PureOmxPlatformLayer
+Date: Wed, 30 Nov 2016 17:29:52 +0900
+Subject: [PATCH] Add initial implementation of PureOmxPlatformLayer
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
 libraries directly.
-Although it's not stable yet, I confirmed it works on Renesas's RZ/G
-and reduce CPU usage than FFmpeg.
 
 Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
 ---
- dom/media/platforms/PDMFactory.cpp               |  20 +-
- dom/media/platforms/PDMFactory.h                 |   3 +
- dom/media/platforms/moz.build                    |   8 +
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 112 ++++++
+ dom/media/MediaPrefs.h                           |   3 +
+ dom/media/platforms/PDMFactory.cpp               |  12 +
+ dom/media/platforms/moz.build                    |  12 +-
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 110 ++++++
  dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
  dom/media/platforms/omx/OmxDecoderModule.cpp     |  24 ++
  dom/media/platforms/omx/OmxDecoderModule.h       |   6 +
  dom/media/platforms/omx/OmxFunctionList.h        |  13 +
  dom/media/platforms/omx/OmxPlatformLayer.cpp     |  22 ++
- dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 440 +++++++++++++++++++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 438 +++++++++++++++++++++++
  dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
- dom/media/platforms/omx/moz.build                |   5 +
- 12 files changed, 805 insertions(+), 1 deletion(-)
+ dom/media/platforms/omx/moz.build                |   9 +-
+ modules/libpref/init/all.js                      |   1 +
+ 13 files changed, 801 insertions(+), 2 deletions(-)
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
  create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
  create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.cpp
  create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.h
 
+diff --git a/dom/media/MediaPrefs.h b/dom/media/MediaPrefs.h
+index 62b8fc4..67dc517 100644
+--- a/dom/media/MediaPrefs.h
++++ b/dom/media/MediaPrefs.h
+@@ -113,6 +113,9 @@ private:
+   DECL_MEDIA_PREF("media.android-media-codec.preferred",      PDMAndroidMediaCodecPreferred, bool, false);
+   DECL_MEDIA_PREF("media.android-remote-codec.enabled",       PDMAndroidRemoteCodecEnabled, bool, false);
+ #endif
++#ifdef MOZ_WIDGET_GTK
++  DECL_MEDIA_PREF("media.pdm-omx.enabled",                    PDMOmxEnabled, bool, false);
++#endif
+ #ifdef MOZ_FFMPEG
+   DECL_MEDIA_PREF("media.ffmpeg.enabled",                     PDMFFmpegEnabled, bool, true);
+   DECL_MEDIA_PREF("media.libavcodec.allow-obsolete",          LibavcodecAllowObsolete, bool, false);
 diff --git a/dom/media/platforms/PDMFactory.cpp b/dom/media/platforms/PDMFactory.cpp
-index cf6bddc..1750e50 100644
+index 598f947..962842a 100644
 --- a/dom/media/platforms/PDMFactory.cpp
 +++ b/dom/media/platforms/PDMFactory.cpp
-@@ -21,6 +21,9 @@
+@@ -24,6 +24,9 @@
  #ifdef MOZ_WIDGET_ANDROID
  #include "AndroidDecoderModule.h"
  #endif
@@ -42,75 +55,48 @@ index cf6bddc..1750e50 100644
 +#endif
  #include "GMPDecoderModule.h"
  
- #include "mozilla/Preferences.h"
-@@ -59,6 +62,9 @@ bool PDMFactory::sFFmpegDecoderEnabled = false;
- #ifdef XP_WIN
- bool PDMFactory::sWMFDecoderEnabled = false;
+ #include "mozilla/CDMProxy.h"
+@@ -69,6 +72,9 @@ public:
+ #ifdef MOZ_APPLEMEDIA
+     AppleDecoderModule::Init();
  #endif
 +#ifdef MOZ_WIDGET_GTK
-+bool PDMFactory::sOmxDecoderEnabled = false;
++    OmxDecoderModule::Init();
 +#endif
- 
- bool PDMFactory::sEnableFuzzingWrapper = false;
- uint32_t PDMFactory::sVideoOutputMinimumInterval_ms = 0;
-@@ -90,6 +96,10 @@ PDMFactory::Init()
- 
-   Preferences::AddBoolVarCache(&sGMPDecoderEnabled,
-                                "media.gmp.decoder.enabled", false);
-+#ifdef MOZ_WIDGET_GTK
-+  Preferences::AddBoolVarCache(&sOmxDecoderEnabled,
-+                               "media.pdm-omx.enabled", false);
-+#endif
- #ifdef MOZ_FFMPEG
-   Preferences::AddBoolVarCache(&sFFmpegDecoderEnabled,
-                                "media.ffmpeg.enabled", false);
-@@ -115,7 +125,9 @@ PDMFactory::Init()
- #ifdef MOZ_FFMPEG
-   FFmpegRuntimeLinker::Link();
+ #ifdef MOZ_FFVPX
+     FFVPXRuntimeLinker::Init();
  #endif
--  GMPDecoderModule::Init();
-+#ifdef MOZ_WIDGET_GTK
-+  OmxDecoderModule::Init();
-+#endif
- }
- 
- PDMFactory::PDMFactory()
-@@ -262,6 +274,12 @@ PDMFactory::CreatePDMs()
-     StartupPDM(m);
+@@ -381,6 +387,12 @@ PDMFactory::CreatePDMs()
+     mWMFFailedToLoad = MediaPrefs::DecoderDoctorWMFDisabledIsFailure();
    }
  #endif
 +#ifdef MOZ_WIDGET_GTK
-+  if (sOmxDecoderEnabled) {
++  if (MediaPrefs::PDMOmxEnabled()) {
 +    m = OmxDecoderModule::Create();
 +    StartupPDM(m);
 +  }
 +#endif
- #ifdef MOZ_FFMPEG
-   if (sFFmpegDecoderEnabled) {
-     m = FFmpegRuntimeLinker::CreateDecoderModule();
-diff --git a/dom/media/platforms/PDMFactory.h b/dom/media/platforms/PDMFactory.h
-index f85bd2c..3c51922 100644
---- a/dom/media/platforms/PDMFactory.h
-+++ b/dom/media/platforms/PDMFactory.h
-@@ -79,6 +79,9 @@ private:
- #ifdef XP_WIN
-   static bool sWMFDecoderEnabled;
- #endif
-+#ifdef MOZ_WIDGET_GTK
-+  static bool sOmxDecoderEnabled;
-+#endif
-   static bool sEnableFuzzingWrapper;
-   static uint32_t sVideoOutputMinimumInterval_ms;
-   static bool sDontDelayInputExhausted;
+ #ifdef MOZ_FFVPX
+   if (MediaPrefs::PDMFFVPXEnabled()) {
+     m = FFVPXRuntimeLinker::CreateDecoderModule();
 diff --git a/dom/media/platforms/moz.build b/dom/media/platforms/moz.build
-index 6388492..dcb5705 100644
+index 310820c..3b38515 100644
 --- a/dom/media/platforms/moz.build
 +++ b/dom/media/platforms/moz.build
-@@ -55,6 +55,14 @@ if CONFIG['MOZ_FFMPEG']:
+@@ -4,6 +4,8 @@
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
++toolkit = CONFIG['MOZ_WIDGET_TOOLKIT']
++
+ EXPORTS += [
+     'agnostic/AgnosticDecoderModule.h',
+     'agnostic/OpusDecoder.h',
+@@ -55,6 +57,14 @@ if CONFIG['MOZ_FFMPEG']:
          'ffmpeg',
      ]
  
-+if CONFIG['MOZ_WIDGET_GTK']:
++if toolkit == 'gtk2' or toolkit == 'gtk3':
 +    EXPORTS += [
 +        'omx/OmxCoreLibLinker.h',
 +    ]
@@ -121,12 +107,21 @@ index 6388492..dcb5705 100644
  if CONFIG['MOZ_APPLEMEDIA']:
    EXPORTS += [
        'apple/AppleDecoderModule.h',
+@@ -76,7 +86,7 @@ if CONFIG['MOZ_GONK_MEDIACODEC']:
+ 
+ include('/ipc/chromium/chromium-config.mozbuild')
+ 
+-if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'android':
++if toolkit == 'android':
+     EXPORTS += [
+         'android/AndroidDecoderModule.h',
+     ]
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 new file mode 100644
-index 0000000..6bf33c9
+index 0000000..44f9094
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,110 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -143,9 +138,7 @@ index 0000000..6bf33c9
 +#undef LOG
 +#endif
 +
-+extern mozilla::LogModule* GetPDMLog();
-+
-+#define LOG(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("OmxCoreLibLinker::%s: " arg, __func__, ##__VA_ARGS__))
++#define LOG(arg, ...) MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("OmxCoreLibLinker::%s: " arg, __func__, ##__VA_ARGS__))
 +
 +namespace mozilla
 +{
@@ -284,7 +277,7 @@ index 0000000..389a156
 +
 +#endif // __OmxCoreLibLinker_h__
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 1d17b88..638ac02 100644
+index 9a3c2f9..16cb3bf 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
 @@ -9,8 +9,32 @@
@@ -318,10 +311,10 @@ index 1d17b88..638ac02 100644
 +}
 +
  already_AddRefed<MediaDataDecoder>
- OmxDecoderModule::CreateVideoDecoder(const VideoInfo& aConfig,
-                                      mozilla::layers::LayersBackend aLayersBackend,
+ OmxDecoderModule::CreateVideoDecoder(const CreateDecoderParams& aParams)
+ {
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.h b/dom/media/platforms/omx/OmxDecoderModule.h
-index 35aab95..6840b00 100644
+index 432368a..f62f522 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.h
 +++ b/dom/media/platforms/omx/OmxDecoderModule.h
 @@ -11,8 +11,14 @@
@@ -337,8 +330,8 @@ index 35aab95..6840b00 100644
 +  static OmxDecoderModule* Create();
 +
    already_AddRefed<MediaDataDecoder>
-   CreateVideoDecoder(const VideoInfo& aConfig,
-                      mozilla::layers::LayersBackend aLayersBackend,
+   CreateVideoDecoder(const CreateDecoderParams& aParams) override;
+ 
 diff --git a/dom/media/platforms/omx/OmxFunctionList.h b/dom/media/platforms/omx/OmxFunctionList.h
 new file mode 100644
 index 0000000..e1e92bf
@@ -359,22 +352,22 @@ index 0000000..e1e92bf
 +OMX_FUNC(OMX_SetupTunnel)
 +OMX_FUNC(OMX_GetContentPipe)
 diff --git a/dom/media/platforms/omx/OmxPlatformLayer.cpp b/dom/media/platforms/omx/OmxPlatformLayer.cpp
-index 9ededd8..5b0cea2 100644
+index d1f4314..248b292 100644
 --- a/dom/media/platforms/omx/OmxPlatformLayer.cpp
 +++ b/dom/media/platforms/omx/OmxPlatformLayer.cpp
-@@ -13,6 +13,11 @@
- #include "GonkOmxPlatformLayer.h"
- #endif
+@@ -8,6 +8,11 @@
+ 
+ #include "OMX_VideoExt.h" // For VP8.
  
 +#ifdef MOZ_WIDGET_GTK
 +#define OMX_PLATFORM_PURE
 +#include "PureOmxPlatformLayer.h"
 +#endif
 +
- #include "VPXDecoder.h"
- 
- #ifdef LOG
-@@ -307,6 +312,23 @@ OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
+ #if defined(MOZ_WIDGET_GONK) && (ANDROID_VERSION == 20 || ANDROID_VERSION == 19)
+ #define OMX_PLATFORM_GONK
+ #include "GonkOmxPlatformLayer.h"
+@@ -305,6 +310,23 @@ OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
    return new GonkOmxPlatformLayer(aDataDecoder, aPromiseLayer, aTaskQueue, aImageContainer);
  }
  
@@ -400,10 +393,10 @@ index 9ededd8..5b0cea2 100644
  bool
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 0000000..ae3d75f
+index 0000000..35f7aeb
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,440 @@
+@@ -0,0 +1,438 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -419,10 +412,8 @@ index 0000000..ae3d75f
 +#undef LOG
 +#endif
 +
-+extern mozilla::LogModule* GetPDMLog();
-+
-+#define LOG(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxPlatformLayer(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
-+#define LOG_BUF(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxBufferData(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
++#define LOG(arg, ...) MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("PureOmxPlatformLayer(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
++#define LOG_BUF(arg, ...) MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("PureOmxBufferData(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
 +
 +namespace mozilla {
 +
@@ -496,7 +487,7 @@ index 0000000..ae3d75f
 +
 +  OMX_ERRORTYPE err = OMX_Init();
 +  if (err != OMX_ErrorNone) {
-+    MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug,
++    MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug,
 +            ("PureOmxPlatformLayer::%s: Failed to initialize OMXCore: 0x%08x",
 +             __func__, err));
 +    return false;
@@ -805,7 +796,7 @@ index 0000000..ae3d75f
 +  err = OMX_GetComponentsOfRole(const_cast<OMX_STRING>(role.Data()),
 +                                &nComponents, componentNames);
 +  if (err == OMX_ErrorNone) {
-+    MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug,
++    MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug,
 +            ("PureOmxPlatformLayer::%s: A component has been found for %s: %s",
 +             __func__, aMimeType.Data(), componentNames[0]));
 +    aComponentName->Assign(reinterpret_cast<char*>(componentNames[0]));
@@ -966,14 +957,32 @@ index 0000000..2c68d07
 +
 +#endif // PureOmxPlatformLayer_h_
 diff --git a/dom/media/platforms/omx/moz.build b/dom/media/platforms/omx/moz.build
-index 9ad0833e..b3d40f8 100644
+index 9f641d9..59f4c50 100644
 --- a/dom/media/platforms/omx/moz.build
 +++ b/dom/media/platforms/omx/moz.build
-@@ -44,6 +44,11 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk' and (CONFIG['ANDROID_VERSION'] == '19'
+@@ -4,6 +4,8 @@
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
++toolkit = CONFIG['MOZ_WIDGET_TOOLKIT']
++
+ EXPORTS += [
+     'OmxDecoderModule.h',
+ ]
+@@ -21,7 +23,7 @@ LOCAL_INCLUDES += [
+ 
+ include('/ipc/chromium/chromium-config.mozbuild')
+ 
+-if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk' and (CONFIG['ANDROID_VERSION'] == '19' or CONFIG['ANDROID_VERSION'] == '20'):
++if toolkit == 'gonk' and (CONFIG['ANDROID_VERSION'] == '19' or CONFIG['ANDROID_VERSION'] == '20'):
+     # Suppress some GCC/clang warnings being treated as errors:
+     #  - about attributes on forward declarations for types that are already
+     #    defined, which complains about an important MOZ_EXPORT for android::AString
+@@ -44,6 +46,11 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk' and (CONFIG['ANDROID_VERSION'] == '19'
          '-libbinder',
      ]
  
-+if CONFIG['MOZ_WIDGET_GTK']:
++if toolkit == 'gtk2' or toolkit == 'gtk3':
 +    UNIFIED_SOURCES += [
 +        'PureOmxPlatformLayer.cpp',
 +    ]
@@ -981,6 +990,18 @@ index 9ad0833e..b3d40f8 100644
  FINAL_LIBRARY = 'xul'
  
  if CONFIG['GNU_CXX']:
+diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
+index aadd877..3a08856 100644
+--- a/modules/libpref/init/all.js
++++ b/modules/libpref/init/all.js
+@@ -362,6 +362,7 @@ pref("media.windows-media-foundation.allow-d3d11-dxva", true);
+ pref("media.wmf.disable-d3d11-for-dlls", "igd10iumd32.dll: 20.19.15.4444, 20.19.15.4424, 20.19.15.4409, 20.19.15.4390, 20.19.15.4380, 20.19.15.4360, 10.18.10.4358, 20.19.15.4331, 20.19.15.4312, 20.19.15.4300, 10.18.15.4281, 10.18.15.4279, 10.18.10.4276, 10.18.15.4268, 10.18.15.4256, 10.18.10.4252, 10.18.15.4248, 10.18.14.4112, 10.18.10.3958, 10.18.10.3496, 10.18.10.3431, 10.18.10.3412, 10.18.10.3355, 9.18.10.3234, 9.18.10.3071, 9.18.10.3055, 9.18.10.3006; igd10umd32.dll: 9.17.10.4229, 9.17.10.3040, 9.17.10.2857, 8.15.10.2274, 8.15.10.2272, 8.15.10.2246, 8.15.10.1840, 8.15.10.1808; igd10umd64.dll: 9.17.10.4229, 9.17.10.2857, 10.18.10.3496; isonyvideoprocessor.dll: 4.1.2247.8090, 4.1.2153.6200; tosqep.dll: 1.2.15.526, 1.1.12.201, 1.0.11.318, 1.0.11.215, 1.0.10.1224; tosqep64.dll: 1.1.12.201, 1.0.11.215; nvwgf2um.dll: 10.18.13.6510, 10.18.13.5891, 10.18.13.5887, 10.18.13.5582, 10.18.13.5382, 9.18.13.4195, 9.18.13.3165; atidxx32.dll: 21.19.151.3, 21.19.137.1, 21.19.134.1, 20.19.0.32837, 20.19.0.32832, 8.17.10.682, 8.17.10.671, 8.17.10.661, 8.17.10.648, 8.17.10.644, 8.17.10.625, 8.17.10.605, 8.17.10.581, 8.17.10.569, 8.17.10.560, 8.17.10.545, 8.17.10.539, 8.17.10.531, 8.17.10.525, 8.17.10.520, 8.17.10.519, 8.17.10.514, 8.17.10.511, 8.17.10.494, 8.17.10.489, 8.17.10.483, 8.17.10.453, 8.17.10.451, 8.17.10.441, 8.17.10.436, 8.17.10.432, 8.17.10.425, 8.17.10.418, 8.17.10.414, 8.17.10.401, 8.17.10.395, 8.17.10.385, 8.17.10.378, 8.17.10.362, 8.17.10.355, 8.17.10.342, 8.17.10.331, 8.17.10.318, 8.17.10.310, 8.17.10.286, 8.17.10.269, 8.17.10.261, 8.17.10.247, 8.17.10.240, 8.15.10.212; atidxx64.dll: 21.19.151.3, 21.19.137.1, 21.19.134.1, 20.19.0.32832, 8.17.10.682, 8.17.10.661, 8.17.10.644, 8.17.10.625; nvumdshim.dll: 10.18.13.6822");
+ pref("media.wmf.disable-d3d9-for-dlls", "igdumd64.dll: 8.15.10.2189, 8.15.10.2119, 8.15.10.2104, 8.15.10.2102, 8.771.1.0; atiumd64.dll: 7.14.10.833, 7.14.10.867, 7.14.10.885, 7.14.10.903, 7.14.10.911, 8.14.10.768, 9.14.10.1001, 9.14.10.1017, 9.14.10.1080, 9.14.10.1128, 9.14.10.1162, 9.14.10.1171, 9.14.10.1183, 9.14.10.1197, 9.14.10.945, 9.14.10.972, 9.14.10.984, 9.14.10.996");
+ #endif
++pref("media.pdm-omx.enabled", false);
+ #if defined(MOZ_FFMPEG)
+ #if defined(XP_MACOSX)
+ pref("media.ffmpeg.enabled", false);
 -- 
 1.9.1
 
