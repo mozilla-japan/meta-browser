@@ -1,12 +1,12 @@
-diff -Nur firefox-48.0-bak/configure.py firefox-48.0/configure.py
---- firefox-48.0-bak/configure.py	2016-08-17 17:06:29.349136156 +0900
-+++ firefox-48.0/configure.py	2016-08-17 17:15:03.073156160 +0900
-@@ -57,7 +57,7 @@
-     print("Creating config.status", file=sys.stderr)
-     encoding = 'mbcs' if sys.platform == 'win32' else 'utf-8'
-     with codecs.open('config.status', 'w', encoding) as fh:
--        fh.write('#!%s\n' % config['PYTHON'])
-+        fh.write('#!%s\n' % "/usr/bin/python")
-         fh.write('# coding=%s\n' % encoding)
-         # Because we're serializing as JSON but reading as python, the values
-         # for True, False and None are true, false and null, which don't exist.
+diff -Nur firefox-51.0b5-bak/configure.py firefox-51.0b5/configure.py
+--- firefox-51.0b5-bak/configure.py	2016-11-15 01:12:24.000000000 +0900
++++ firefox-51.0b5/configure.py	2016-12-01 13:54:48.282506802 +0900
+@@ -68,7 +68,7 @@
+             from __future__ import unicode_literals
+             from mozbuild.util import encode
+             encoding = '%(encoding)s'
+-        ''') % {'python': config['PYTHON'], 'encoding': encoding})
++        ''') % {'python': '/usr/bin/python', 'encoding': encoding})
+         # A lot of the build backend code is currently expecting byte
+         # strings and breaks in subtle ways with unicode strings. (bug 1296508)
+         for k, v in sanitized_config.iteritems():

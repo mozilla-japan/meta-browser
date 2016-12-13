@@ -18,13 +18,13 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://firefox-50-fix-build-error-without-glx.patch \
            file://mozconfig \
            "
-
-SRC_URI[archive.md5sum] = "743aeb5d71eb6a8f227aad954f8a663a"
-SRC_URI[archive.sha256sum] = "5da027350aee148dc62cc1ca897db30510be87ca8eab5e67a7adc7a2479b8616"
+SRC_URI[archive.md5sum] = "866684401fe57beb47aaee8699bf4883"
+SRC_URI[archive.sha256sum] = "c1e64e6b4906f7bff1398875c6bdf64ee85842faa1f69e35ede1eec1f9dd7a34"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
-MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
+#MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
+MOZ_APP_BASE_VERSION = "51.0"
 
 inherit mozilla
 
