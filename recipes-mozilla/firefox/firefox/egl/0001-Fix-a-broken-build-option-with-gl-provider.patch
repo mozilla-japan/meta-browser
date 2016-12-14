@@ -1,0 +1,37 @@
+From b5f4d669895b4e890e9d978db44e41f777bdc9ce Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Mon, 25 Apr 2016 15:52:53 +0900
+Subject: [PATCH 1/2] Fix a broken build option "--with-gl-provider"
+
+In the previous code, the configure option "--with-gl-provider" with a
+supported provider name (such as EGL) causes a compile error because
+the specified GLContextProvider is declared twice. In addition it's
+also meaningless for unknown or unsupported providers because the
+implementation for it doesn't exist in this case, so it causes a link
+error.
+---
+ gfx/gl/GLContextProvider.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/gfx/gl/GLContextProvider.h b/gfx/gl/GLContextProvider.h
+index ac83e3e..d6f4efb9 100644
+--- a/gfx/gl/GLContextProvider.h
++++ b/gfx/gl/GLContextProvider.h
+@@ -63,10 +63,10 @@ namespace gl {
+ #endif
+ 
+ #ifdef MOZ_GL_PROVIDER
+-  #define GL_CONTEXT_PROVIDER_NAME MOZ_GL_PROVIDER
+-  #include "GLContextProviderImpl.h"
+-  #undef GL_CONTEXT_PROVIDER_NAME
+-  #define GL_CONTEXT_PROVIDER_DEFAULT MOZ_GL_PROVIDER
++// Force use the specified provider.
++// When an unknown provider for the platform is specified, it will cause a
++// link error.
++#define GL_CONTEXT_PROVIDER_DEFAULT MOZ_GL_PROVIDER
+ #endif
+ 
+ #ifdef GL_CONTEXT_PROVIDER_DEFAULT
+-- 
+1.9.1
+

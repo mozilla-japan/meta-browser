@@ -1,0 +1,26 @@
+From 8461fb6d1ecfaf863d6a135be81c1a18afa8998a Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Mon, 25 Apr 2016 17:44:47 +0900
+Subject: [PATCH 2/2] Fix a build error on enabling both Gtk+2 and EGL
+
+---
+ xpcom/base/nsSystemInfo.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/xpcom/base/nsSystemInfo.cpp b/xpcom/base/nsSystemInfo.cpp
+index 3ffe96e..b7a6707 100644
+--- a/xpcom/base/nsSystemInfo.cpp
++++ b/xpcom/base/nsSystemInfo.cpp
+@@ -686,7 +686,8 @@ nsSystemInfo::Init()
+   char gtkver[64];
+   ssize_t gtkver_len = 0;
+ 
+-#if MOZ_WIDGET_GTK == 2
++#if (MOZ_WIDGET_GTK == 2) && defined(USE_GLX_TEST)
++  // it's defined in toolkit/xre/glxtest.cpp
+   extern int gtk_read_end_of_the_pipe;
+ 
+   if (gtk_read_end_of_the_pipe != -1) {
+-- 
+1.9.1
+
