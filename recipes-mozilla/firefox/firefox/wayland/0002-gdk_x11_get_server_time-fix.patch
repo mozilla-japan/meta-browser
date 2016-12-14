@@ -1,0 +1,84 @@
+From 3bb461629cb7007ac1c5c2ea01abcda43edad1ce Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@anakreon.cz>
+Date: Thu, 3 Sep 2015 17:44:06 +0200
+Subject: [PATCH 02/10] gdk_x11_get_server_time fix
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ widget/gtk/nsWindow.cpp | 20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 168e4c3..17c6f03 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -128,6 +128,7 @@ using namespace mozilla::widget;
+ #include "nsWindow.h"
+ 
+ #include <dlfcn.h>
++#include <sys/time.h>
+ 
+ #include "mozilla/layers/APZCTreeManager.h"
+ 
+@@ -284,21 +285,28 @@ namespace mozilla {
+ class CurrentX11TimeGetter
+ {
+ public:
+-    explicit CurrentX11TimeGetter(GdkWindow* aWindow)
++    explicit CurrentX11TimeGetter(GdkWindow* aWindow, bool aIsX11Display)
+         : mWindow(aWindow)
++        , mIsX11Display(aIsX11Display)
+         , mAsyncUpdateStart()
+     {
+     }
+ 
+     guint32 GetCurrentTime() const
+     {
+-        return gdk_x11_get_server_time(mWindow);
++        if (mIsX11Display) {
++            return gdk_x11_get_server_time(mWindow);
++        } else {
++            struct timeval tv;
++            gettimeofday(&tv, NULL);
++            return (guint32) (tv.tv_sec * 1000 + tv.tv_usec / 1000 ); // microseconds to milliseconds
++        }
+     }
+ 
+     void GetTimeAsyncForPossibleBackwardsSkew(const TimeStamp& aNow)
+     {
+         // Check for in-flight request
+-        if (!mAsyncUpdateStart.IsNull()) {
++        if (!mIsX11Display || !mAsyncUpdateStart.IsNull()) {
+             return;
+         }
+         mAsyncUpdateStart = aNow;
+@@ -315,6 +323,9 @@ public:
+     gboolean PropertyNotifyHandler(GtkWidget* aWidget,
+                                    GdkEventProperty* aEvent)
+     {
++        if (!mIsX11Display)
++            return FALSE;
++
+         if (aEvent->atom !=
+             gdk_x11_xatom_to_atom(TimeStampPropAtom())) {
+             return FALSE;
+@@ -337,6 +348,7 @@ private:
+     // This is safe because this class is stored as a member of mWindow and
+     // won't outlive it.
+     GdkWindow* mWindow;
++    bool       mIsX11Display;
+     TimeStamp  mAsyncUpdateStart;
+ };
+ 
+@@ -3035,7 +3047,7 @@ mozilla::CurrentX11TimeGetter*
+ nsWindow::GetCurrentTimeGetter() {
+     MOZ_ASSERT(mGdkWindow, "Expected mGdkWindow to be set");
+     if (MOZ_UNLIKELY(!mCurrentTimeGetter)) {
+-        mCurrentTimeGetter = new CurrentX11TimeGetter(mGdkWindow);
++        mCurrentTimeGetter = new CurrentX11TimeGetter(mGdkWindow, mIsX11Display);
+     }
+     return mCurrentTimeGetter;
+ }
+-- 
+1.9.1
+

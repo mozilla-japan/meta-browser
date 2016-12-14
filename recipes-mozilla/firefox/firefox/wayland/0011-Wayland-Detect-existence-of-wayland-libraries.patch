@@ -1,0 +1,229 @@
+From 1cdca2df90d836c39f2bb24b22cbda02f11a6093 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Tue, 12 Jul 2016 17:28:22 +0900
+Subject: [PATCH 11/11] Wayland: Detect existence of wayland libraries
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ config/system-headers            |  6 ++++++
+ configure.in                     | 22 ++++++++++++++++++++++
+ gfx/gl/GLLibraryEGL.cpp          |  4 ++--
+ toolkit/library/moz.build        |  6 ++++--
+ widget/gtk/mozgtk/gtk3/moz.build |  6 ++++--
+ widget/gtk/mozgtk/mozgtk.c       |  2 ++
+ widget/gtk/nsWindow.cpp          |  6 +++---
+ widget/gtk/nsWindow.h            |  8 +++++---
+ 8 files changed, 48 insertions(+), 12 deletions(-)
+
+diff --git a/config/system-headers b/config/system-headers
+index ab99474..f4c2d29 100644
+--- a/config/system-headers
++++ b/config/system-headers
+@@ -495,7 +495,9 @@ gdk/gdkkeysyms.h
+ gdk/gdkprivate.h
+ gdk/gdkx.h
+ gdk/gdkdirectfb.h
++#ifdef MOZ_WAYLAND
+ gdk/gdkwayland.h
++#endif
+ gdk-pixbuf/gdk-pixbuf.h
+ Gestalt.h
+ getopt.h
+@@ -1206,8 +1208,12 @@ View.h
+ Volume.h
+ wab.h
+ wait.h
++#ifdef MOZ_WAYLAND
+ wayland-client.h
++#ifdef MOZ_WAYLAND_EGL
+ wayland-egl.h
++#endif
++#endif
+ wchar.h
+ wctype.h
+ winbase.h
+diff --git a/configure.in b/configure.in
+index 5198e96..e6db486 100644
+--- a/configure.in
++++ b/configure.in
+@@ -4149,6 +4149,10 @@ MOZ_ARG_WITHOUT_BOOL(x,
+ [  --without-x              Build without X11],
+     WITHOUT_X11=1)
+ 
++MOZ_ARG_WITHOUT_BOOL(x,
++[  --without-wayland        Build without Wayland],
++    WITHOUT_WAYLAND=1)
++
+ dnl ========================================================
+ dnl = Enable the toolkit as needed                         =
+ dnl ========================================================
+@@ -4178,6 +4182,21 @@ cairo-gtk3)
+     AC_DEFINE_UNQUOTED(MOZ_WIDGET_GTK,$MOZ_WIDGET_GTK)
+     MOZ_PDF_PRINTING=1
+     MOZ_INSTRUMENT_EVENT_LOOP=1
++
++    if test -z "$WITHOUT_WAYLAND"; then
++        PKG_CHECK_MODULES(MOZ_WAYLAND, gtk+-wayland-3.0,
++                          MOZ_WAYLAND=1,
++                          MOZ_EAYLAND=)
++        if test -n "$MOZ_WAYLAND"; then
++            AC_DEFINE(MOZ_WAYLAND)
++            PKG_CHECK_MODULES(MOZ_WAYLAND_EGL, wayland-egl,
++                              MOZ_WAYLAND_EGL=1,
++                              MOZ_WAYLAND_EGL=)
++            if test -n "$MOZ_WAYLAND_EGL"; then
++                AC_DEFINE(MOZ_WAYLAND_EGL)
++            fi
++        fi
++    fi
+     ;;
+ 
+ cairo-gtk2|cairo-gtk2-x11)
+@@ -4260,6 +4279,9 @@ cairo-gonk)
+ 
+ esac
+ 
++AC_SUBST(MOZ_WAYLAND)
++AC_SUBST(MOZ_WAYLAND_EGL)
++
+ AC_SUBST(MOZ_PDF_PRINTING)
+ if test "$MOZ_PDF_PRINTING"; then
+    PDF_SURFACE_FEATURE="#define CAIRO_HAS_PDF_SURFACE 1"
+diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
+index a962383..527d285 100644
+--- a/gfx/gl/GLLibraryEGL.cpp
++++ b/gfx/gl/GLLibraryEGL.cpp
+@@ -23,7 +23,7 @@
+ #include "ScopedGLHelpers.h"
+ #ifdef MOZ_WIDGET_GTK
+ #include <gdk/gdk.h>
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
+ #endif
+ #endif
+@@ -411,7 +411,7 @@ GLLibraryEGL::EnsureInitialized(bool forceAccel)
+         }
+     } else {
+         void *nativeDisplay = EGL_DEFAULT_DISPLAY;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+         // Some drivers doesn't support EGL_DEFAULT_DISPLAY
+         GdkDisplay *gdkDisplay = gdk_display_get_default();
+         if (GDK_IS_WAYLAND_DISPLAY(gdkDisplay)) {
+diff --git a/toolkit/library/moz.build b/toolkit/library/moz.build
+index 58c6a2b..43dc704 100644
+--- a/toolkit/library/moz.build
++++ b/toolkit/library/moz.build
+@@ -302,9 +302,11 @@ if CONFIG['MOZ_WIDGET_GTK']:
+     OS_LIBS += CONFIG['XT_LIBS']
+     OS_LIBS += [
+         'gthread-2.0',
+-        'wayland-client',
+-        'wayland-egl',
+     ]
++    if CONFIG['MOZ_WAYLAND']:
++        OS_LIBS += ['wayland-client']
++    if CONFIG['MOZ_WAYLAND_EGL']:
++        OS_LIBS += ['wayland-egl']
+ 
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'qt':
+     OS_LIBS += CONFIG['XLDFLAGS']
+diff --git a/widget/gtk/mozgtk/gtk3/moz.build b/widget/gtk/mozgtk/gtk3/moz.build
+index 58f8722..91b480a 100644
+--- a/widget/gtk/mozgtk/gtk3/moz.build
++++ b/widget/gtk/mozgtk/gtk3/moz.build
+@@ -32,9 +32,11 @@ else:
+ OS_LIBS += [f for f in CONFIG['MOZ_GTK3_LIBS'] if f.startswith('-L')]
+ OS_LIBS += no_as_needed
+ OS_LIBS += [
+-    'wayland-client',
+-    'wayland-egl',
+     'gtk-3',
+     'gdk-3',
+ ]
++if CONFIG['MOZ_WAYLAND']:
++    OS_LIBS += ['wayland-client']
++if CONFIG['MOZ_WAYLAND_EGL']:
++    OS_LIBS += ['wayland-egl']
+ OS_LIBS += as_needed
+diff --git a/widget/gtk/mozgtk/mozgtk.c b/widget/gtk/mozgtk/mozgtk.c
+index 15a97e5..2e55d9a 100644
+--- a/widget/gtk/mozgtk/mozgtk.c
++++ b/widget/gtk/mozgtk/mozgtk.c
+@@ -581,11 +581,13 @@ STUB(gdk_screen_get_monitor_workarea)
+ STUB(gdk_screen_get_primary_monitor)
+ STUB(gtk_drawing_area_new)
+ STUB(gdk_window_set_transient_for)
++#ifdef MOZ_WAYLAND
+ STUB(gdk_wayland_display_get_type)
+ STUB(gdk_wayland_display_get_wl_display)
+ STUB(gdk_wayland_window_get_type)
+ STUB(gdk_wayland_window_get_wl_surface)
+ #endif
++#endif
+ 
+ #ifdef GTK2_SYMBOLS
+ STUB(gdk_drawable_get_screen)
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 08c69ef..06df44b 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -438,7 +438,7 @@ nsWindow::nsWindow()
+ 
+     mContainer           = nullptr;
+     mGdkWindow           = nullptr;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     mWlEglWindow         = nullptr;
+ #endif
+     mShell               = nullptr;
+@@ -768,7 +768,7 @@ nsWindow::Destroy(void)
+ #endif /* MOZ_X11 && MOZ_WIDGET_GTK2 */
+ 
+     GtkWidget *owningWidget = GetMozContainerWidget();
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     if (mWlEglWindow) {
+         wl_egl_window_destroy(mWlEglWindow);
+         mWlEglWindow = nullptr;
+@@ -1785,7 +1785,7 @@ nsWindow::GetNativeData(uint32_t aDataType)
+             return (void*)GDK_WINDOW_XID(mGdkWindow);
+ #endif
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+         if (GDK_IS_WAYLAND_WINDOW(mGdkWindow)) {
+             if (mWlEglWindow)
+                 return mWlEglWindow;
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index 223917c..5e4970d 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -26,10 +26,12 @@
+ #ifdef MOZ_X11
+ #include <gdk/gdkx.h>
+ #endif /* MOZ_X11 */
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
++#ifdef MOZ_WAYLAND_EGL
+ #include <wayland-egl.h>
+-#endif /* GDK_WINDOWING_WAYLAND */
++#endif /* MOZ_WAYLAND_EGL */
++#endif /* MOZ_WAYLAND */
+ 
+ #ifdef ACCESSIBILITY
+ #include "mozilla/a11y/Accessible.h"
+@@ -420,7 +422,7 @@ private:
+     GtkWidget          *mShell;
+     MozContainer       *mContainer;
+     GdkWindow          *mGdkWindow;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     struct wl_egl_window *mWlEglWindow;
+ #endif
+ 
+-- 
+1.9.1
+

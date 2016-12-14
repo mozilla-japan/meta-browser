@@ -1,0 +1,28 @@
+From 3a8b45d801f97362c5246e6a71b649939ac049cd Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@anakreon.cz>
+Date: Fri, 4 Sep 2015 13:29:56 +0200
+Subject: [PATCH 03/10] Fixed gdk_x11_get_server_time() for wayland
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ widget/gtk/nsWindow.cpp | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 17c6f03..182755c 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -297,9 +297,7 @@ public:
+         if (mIsX11Display) {
+             return gdk_x11_get_server_time(mWindow);
+         } else {
+-            struct timeval tv;
+-            gettimeofday(&tv, NULL);
+-            return (guint32) (tv.tv_sec * 1000 + tv.tv_usec / 1000 ); // microseconds to milliseconds
++            return g_get_monotonic_time()/1000;
+         }
+     }
+ 
+-- 
+1.9.1
+
