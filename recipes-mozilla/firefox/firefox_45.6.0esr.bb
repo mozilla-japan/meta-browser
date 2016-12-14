@@ -2,7 +2,7 @@
 # Released under the MIT license (see packages/COPYING)
 
 DESCRIPTION ?= "Browser made by mozilla"
-DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify libvpx \
+DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
             virtual/libgl nss nspr pulseaudio yasm-native icu"
 
 LICENSE = "MPLv1 | GPLv2+ | LGPLv2.1+"
