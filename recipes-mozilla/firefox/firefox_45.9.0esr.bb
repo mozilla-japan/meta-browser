@@ -2,13 +2,8 @@
 # Released under the MIT license (see packages/COPYING)
 
 DESCRIPTION ?= "Browser made by mozilla"
-<<<<<<< HEAD:recipes-mozilla/firefox/firefox_45.9.0esr.bb
 DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
-            virtual/libgl nss nspr pulseaudio yasm-native icu unzip-native"
-=======
-DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
-            virtual/libgl nss nspr pulseaudio yasm-native icu"
->>>>>>> firefox: Use built-in libvpx to make easy to build against older poky:recipes-mozilla/firefox/firefox_45.6.0esr.bb
+            virtual/libgl pulseaudio yasm-native icu unzip-native"
 
 LICENSE = "MPLv1 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a6dca6a06efe93d70f711c0e"
