@@ -39,6 +39,8 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://debian-hacks/Avoid-wrong-sessionstore-data-to-keep-windows-out-of.patch \
            file://Fix-firefox-install-dir.patch \
            file://fixes/Correct-the-source-to-be-compatible-with-gcc6-by-pre.patch \
+           file://egl/0001-Fix-a-broken-build-option-with-gl-provider.patch \
+           file://egl/0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            "
 
 SRC_URI[archive.md5sum] = "ee3cf2401a5716cebacaae5fb70d133f"
@@ -58,6 +60,19 @@ CFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
 CXXFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
 TARGET_CC_ARCH += "${LDFLAGS}"
 
+PACKAGECONFIG[glx] = ",,,"
+PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+
+# Add a config file to enable GPU acceleration by default.
+SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
+           'file://gpu.js', '', d)}"
+
+python do_check_variables() {
+    if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
+        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
+}
+addtask check_variables before do_configure
+
 do_install_append() {
     install -d ${D}${datadir}/applications
     install -d ${D}${datadir}/pixmaps
@@ -66,6 +81,9 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
     install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}/defaults/pref/
+    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}/defaults/pref/
+    fi
 
     # Fix ownership of files
     chown root:root -R ${D}${datadir}
