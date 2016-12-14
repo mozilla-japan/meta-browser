@@ -1,0 +1,986 @@
+From d7723be5600969ce9fc86680abaa04662e328247 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Fri, 11 Nov 2016 16:10:57 +0900
+Subject: [PATCH 2/3] Add the initial implementation of PureOmxPlatformLayer
+
+It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
+libraries directly.
+Although it's not stable yet, I confirmed it works on Renesas's RZ/G
+and reduce CPU usage than FFmpeg.
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ dom/media/platforms/PDMFactory.cpp               |  20 +-
+ dom/media/platforms/PDMFactory.h                 |   3 +
+ dom/media/platforms/moz.build                    |   8 +
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 112 ++++++
+ dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
+ dom/media/platforms/omx/OmxDecoderModule.cpp     |  24 ++
+ dom/media/platforms/omx/OmxDecoderModule.h       |   6 +
+ dom/media/platforms/omx/OmxFunctionList.h        |  13 +
+ dom/media/platforms/omx/OmxPlatformLayer.cpp     |  22 ++
+ dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 440 +++++++++++++++++++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
+ dom/media/platforms/omx/moz.build                |   5 +
+ 12 files changed, 805 insertions(+), 1 deletion(-)
+ create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
+ create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
+ create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
+ create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.cpp
+ create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.h
+
+diff --git a/dom/media/platforms/PDMFactory.cpp b/dom/media/platforms/PDMFactory.cpp
+index cf6bddc..1750e50 100644
+--- a/dom/media/platforms/PDMFactory.cpp
++++ b/dom/media/platforms/PDMFactory.cpp
+@@ -21,6 +21,9 @@
+ #ifdef MOZ_WIDGET_ANDROID
+ #include "AndroidDecoderModule.h"
+ #endif
++#ifdef MOZ_WIDGET_GTK
++#include "OmxDecoderModule.h"
++#endif
+ #include "GMPDecoderModule.h"
+ 
+ #include "mozilla/Preferences.h"
+@@ -59,6 +62,9 @@ bool PDMFactory::sFFmpegDecoderEnabled = false;
+ #ifdef XP_WIN
+ bool PDMFactory::sWMFDecoderEnabled = false;
+ #endif
++#ifdef MOZ_WIDGET_GTK
++bool PDMFactory::sOmxDecoderEnabled = false;
++#endif
+ 
+ bool PDMFactory::sEnableFuzzingWrapper = false;
+ uint32_t PDMFactory::sVideoOutputMinimumInterval_ms = 0;
+@@ -90,6 +96,10 @@ PDMFactory::Init()
+ 
+   Preferences::AddBoolVarCache(&sGMPDecoderEnabled,
+                                "media.gmp.decoder.enabled", false);
++#ifdef MOZ_WIDGET_GTK
++  Preferences::AddBoolVarCache(&sOmxDecoderEnabled,
++                               "media.pdm-omx.enabled", false);
++#endif
+ #ifdef MOZ_FFMPEG
+   Preferences::AddBoolVarCache(&sFFmpegDecoderEnabled,
+                                "media.ffmpeg.enabled", false);
+@@ -115,7 +125,9 @@ PDMFactory::Init()
+ #ifdef MOZ_FFMPEG
+   FFmpegRuntimeLinker::Link();
+ #endif
+-  GMPDecoderModule::Init();
++#ifdef MOZ_WIDGET_GTK
++  OmxDecoderModule::Init();
++#endif
+ }
+ 
+ PDMFactory::PDMFactory()
+@@ -262,6 +274,12 @@ PDMFactory::CreatePDMs()
+     StartupPDM(m);
+   }
+ #endif
++#ifdef MOZ_WIDGET_GTK
++  if (sOmxDecoderEnabled) {
++    m = OmxDecoderModule::Create();
++    StartupPDM(m);
++  }
++#endif
+ #ifdef MOZ_FFMPEG
+   if (sFFmpegDecoderEnabled) {
+     m = FFmpegRuntimeLinker::CreateDecoderModule();
+diff --git a/dom/media/platforms/PDMFactory.h b/dom/media/platforms/PDMFactory.h
+index f85bd2c..3c51922 100644
+--- a/dom/media/platforms/PDMFactory.h
++++ b/dom/media/platforms/PDMFactory.h
+@@ -79,6 +79,9 @@ private:
+ #ifdef XP_WIN
+   static bool sWMFDecoderEnabled;
+ #endif
++#ifdef MOZ_WIDGET_GTK
++  static bool sOmxDecoderEnabled;
++#endif
+   static bool sEnableFuzzingWrapper;
+   static uint32_t sVideoOutputMinimumInterval_ms;
+   static bool sDontDelayInputExhausted;
+diff --git a/dom/media/platforms/moz.build b/dom/media/platforms/moz.build
+index 6388492..dcb5705 100644
+--- a/dom/media/platforms/moz.build
++++ b/dom/media/platforms/moz.build
+@@ -55,6 +55,14 @@ if CONFIG['MOZ_FFMPEG']:
+         'ffmpeg',
+     ]
+ 
++if CONFIG['MOZ_WIDGET_GTK']:
++    EXPORTS += [
++        'omx/OmxCoreLibLinker.h',
++    ]
++    UNIFIED_SOURCES += [
++        'omx/OmxCoreLibLinker.cpp',
++    ]
++
+ if CONFIG['MOZ_APPLEMEDIA']:
+   EXPORTS += [
+       'apple/AppleDecoderModule.h',
+diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
+new file mode 100644
+index 0000000..6bf33c9
+--- /dev/null
++++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
+@@ -0,0 +1,112 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* vim:set ts=2 sw=2 sts=2 et cindent: */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "OmxCoreLibLinker.h"
++#include "mozilla/ArrayUtils.h"
++#include "MainThreadUtils.h"
++#include "prlink.h"
++#include "PlatformDecoderModule.h"
++
++#ifdef LOG
++#undef LOG
++#endif
++
++extern mozilla::LogModule* GetPDMLog();
++
++#define LOG(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("OmxCoreLibLinker::%s: " arg, __func__, ##__VA_ARGS__))
++
++namespace mozilla
++{
++
++OmxCoreLibLinker::LinkStatus OmxCoreLibLinker::sLinkStatus =
++  LinkStatus_INIT;
++
++const char* OmxCoreLibLinker::sLibNames[] = {
++  "/usr/local/lib/libomxr_core.so", // Renesas (R-Car, RZ/G): Our first target
++  "/opt/vc/lib/libopenmaxil.so", // Raspberry Pi: Our next target
++  "libomxil-bellagio.so.0", // Bellagio: An OSS implementation of OpenMAX IL
++};
++
++PRLibrary* OmxCoreLibLinker::sLinkedLib = nullptr;
++const char* OmxCoreLibLinker::sLibName = nullptr;
++
++#define OMX_FUNC(func) void (*func)();
++#include "OmxFunctionList.h"
++#undef OMX_FUNC
++
++bool
++OmxCoreLibLinker::TryLinkingLibrary(const char *libName)
++{
++  PRLibSpec lspec;
++  lspec.type = PR_LibSpec_Pathname;
++  lspec.value.pathname = libName;
++  sLinkedLib = PR_LoadLibraryWithFlags(lspec, PR_LD_NOW | PR_LD_LOCAL);
++  if (sLinkedLib) {
++    if (Bind(libName)) {
++      sLibName = libName;
++      sLinkStatus = LinkStatus_SUCCEEDED;
++      LOG("Succeeded to load %s", libName);
++      return true;
++    } else {
++      LOG("Failed to link %s", libName);
++    }
++    Unlink();
++  }
++  return false;
++}
++
++/* static */ bool
++OmxCoreLibLinker::Link()
++{
++  LOG("");
++
++  if (sLinkStatus) {
++    return sLinkStatus == LinkStatus_SUCCEEDED;
++  }
++
++  MOZ_ASSERT(NS_IsMainThread());
++
++  auto libPath = Preferences::GetCString("media.pdm-omx.core-lib-path");
++  if (!libPath.IsEmpty() && TryLinkingLibrary(libPath.Data()))
++    return true;
++
++  // try known paths
++  for (size_t i = 0; i < ArrayLength(sLibNames); i++) {
++    if (TryLinkingLibrary(sLibNames[i]))
++      return true;
++  }
++  return false;
++}
++
++/* static */ bool
++OmxCoreLibLinker::Bind(const char* aLibName)
++{
++#define OMX_FUNC(func)                                                  \
++  {                                                                     \
++    if (!(func = (typeof(func))PR_FindSymbol(sLinkedLib, #func))) {     \
++      LOG("Couldn't load function " #func " from %s.", aLibName);       \
++      return false;                                                     \
++    }                                                                   \
++  }
++#include "OmxFunctionList.h"
++#undef OMX_FUNC
++  return true;
++}
++
++/* static */ void
++OmxCoreLibLinker::Unlink()
++{
++  LOG("");
++
++  if (sLinkedLib) {
++    PR_UnloadLibrary(sLinkedLib);
++    sLinkedLib = nullptr;
++    sLibName = nullptr;
++    sLinkStatus = LinkStatus_INIT;
++  }
++}
++
++} // namespace mozilla
+diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.h b/dom/media/platforms/omx/OmxCoreLibLinker.h
+new file mode 100644
+index 0000000..389a156
+--- /dev/null
++++ b/dom/media/platforms/omx/OmxCoreLibLinker.h
+@@ -0,0 +1,38 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* vim:set ts=2 sw=2 sts=2 et cindent: */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef __OmxCoreLibLinker_h__
++#define __OmxCoreLibLinker_h__
++
++struct PRLibrary;
++
++namespace mozilla
++{
++
++class OmxCoreLibLinker
++{
++public:
++  static bool Link();
++  static void Unlink();
++
++private:
++  static PRLibrary* sLinkedLib;
++  static const char* sLibName;
++  static const char* sLibNames[];
++
++  static bool TryLinkingLibrary(const char *libName);
++  static bool Bind(const char* aLibName);
++
++  static enum LinkStatus {
++    LinkStatus_INIT = 0,
++    LinkStatus_FAILED,
++    LinkStatus_SUCCEEDED
++  } sLinkStatus;
++};
++
++}
++
++#endif // __OmxCoreLibLinker_h__
+diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
+index 1d17b88..638ac02 100644
+--- a/dom/media/platforms/omx/OmxDecoderModule.cpp
++++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
+@@ -9,8 +9,32 @@
+ #include "OmxDataDecoder.h"
+ #include "OmxPlatformLayer.h"
+ 
++#ifdef MOZ_WIDGET_GTK
++#include "PureOmxPlatformLayer.h"
++#endif
++
+ namespace mozilla {
+ 
++/* static */ bool
++OmxDecoderModule::Init()
++{
++#ifdef MOZ_WIDGET_GTK
++  return PureOmxPlatformLayer::Init();
++#endif
++  return false;
++}
++
++OmxDecoderModule*
++OmxDecoderModule::Create()
++{
++#ifdef MOZ_WIDGET_GTK
++  if (!Init())
++    return nullptr;
++  return new OmxDecoderModule();
++#endif
++  return nullptr;
++}
++
+ already_AddRefed<MediaDataDecoder>
+ OmxDecoderModule::CreateVideoDecoder(const VideoInfo& aConfig,
+                                      mozilla::layers::LayersBackend aLayersBackend,
+diff --git a/dom/media/platforms/omx/OmxDecoderModule.h b/dom/media/platforms/omx/OmxDecoderModule.h
+index 35aab95..6840b00 100644
+--- a/dom/media/platforms/omx/OmxDecoderModule.h
++++ b/dom/media/platforms/omx/OmxDecoderModule.h
+@@ -11,8 +11,14 @@
+ 
+ namespace mozilla {
+ 
++class OmxDecoderModule;
++
+ class OmxDecoderModule : public PlatformDecoderModule {
+ public:
++  // Called on main thread.
++  static bool Init();
++  static OmxDecoderModule* Create();
++
+   already_AddRefed<MediaDataDecoder>
+   CreateVideoDecoder(const VideoInfo& aConfig,
+                      mozilla::layers::LayersBackend aLayersBackend,
+diff --git a/dom/media/platforms/omx/OmxFunctionList.h b/dom/media/platforms/omx/OmxFunctionList.h
+new file mode 100644
+index 0000000..e1e92bf
+--- /dev/null
++++ b/dom/media/platforms/omx/OmxFunctionList.h
+@@ -0,0 +1,13 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++OMX_FUNC(OMX_Init)
++OMX_FUNC(OMX_Deinit)
++OMX_FUNC(OMX_GetHandle)
++OMX_FUNC(OMX_FreeHandle)
++OMX_FUNC(OMX_ComponentNameEnum)
++OMX_FUNC(OMX_GetComponentsOfRole)
++OMX_FUNC(OMX_GetRolesOfComponent)
++OMX_FUNC(OMX_SetupTunnel)
++OMX_FUNC(OMX_GetContentPipe)
+diff --git a/dom/media/platforms/omx/OmxPlatformLayer.cpp b/dom/media/platforms/omx/OmxPlatformLayer.cpp
+index 9ededd8..5b0cea2 100644
+--- a/dom/media/platforms/omx/OmxPlatformLayer.cpp
++++ b/dom/media/platforms/omx/OmxPlatformLayer.cpp
+@@ -13,6 +13,11 @@
+ #include "GonkOmxPlatformLayer.h"
+ #endif
+ 
++#ifdef MOZ_WIDGET_GTK
++#define OMX_PLATFORM_PURE
++#include "PureOmxPlatformLayer.h"
++#endif
++
+ #include "VPXDecoder.h"
+ 
+ #ifdef LOG
+@@ -307,6 +312,23 @@ OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
+   return new GonkOmxPlatformLayer(aDataDecoder, aPromiseLayer, aTaskQueue, aImageContainer);
+ }
+ 
++#elif defined(OMX_PLATFORM_PURE)
++
++bool
++OmxPlatformLayer::SupportsMimeType(const nsACString& aMimeType)
++{
++  return PureOmxPlatformLayer::SupportsMimeType(aMimeType);
++}
++
++OmxPlatformLayer*
++OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
++                         OmxPromiseLayer* aPromiseLayer,
++                         TaskQueue* aTaskQueue,
++                         layers::ImageContainer* aImageContainer)
++{
++  return new PureOmxPlatformLayer(aDataDecoder, aPromiseLayer, aTaskQueue, aImageContainer);
++}
++
+ #else // For platforms without OMX IL support.
+ 
+ bool
+diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
+new file mode 100644
+index 0000000..ae3d75f
+--- /dev/null
++++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
+@@ -0,0 +1,440 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* vim:set ts=2 sw=2 sts=2 et cindent: */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "OmxDataDecoder.h"
++#include "OmxPromiseLayer.h"
++#include "PureOmxPlatformLayer.h"
++#include "OmxCoreLibLinker.h"
++
++#ifdef LOG
++#undef LOG
++#endif
++
++extern mozilla::LogModule* GetPDMLog();
++
++#define LOG(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxPlatformLayer(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
++#define LOG_BUF(arg, ...) MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug, ("PureOmxBufferData(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
++
++namespace mozilla {
++
++#define OMX_FUNC(func) extern typeof(func)* func;
++#include "OmxFunctionList.h"
++#undef OMX_FUNC
++
++PureOmxBufferData::PureOmxBufferData(const PureOmxPlatformLayer& aPlatformLayer,
++                                     const OMX_PARAM_PORTDEFINITIONTYPE& aPortDef)
++  : BufferData(nullptr)
++  , mPlatformLayer(aPlatformLayer)
++  , mPortDef(aPortDef)
++{
++  LOG_BUF("");
++
++  if (ShouldUseEGLImage()) {
++    LOG_BUF("OMX_UseEGLImage() seems available but using it isn't implemented yet.");
++  } else {
++    // Renesas RZ/G doesn't support it
++  }
++
++  OMX_ERRORTYPE err;
++  err = OMX_AllocateBuffer(mPlatformLayer.GetComponent(),
++                           &mBuffer,
++                           mPortDef.nPortIndex,
++                           this,
++                           mPortDef.nBufferSize);
++  if (err != OMX_ErrorNone) {
++    LOG_BUF("Failed to allocate the buffer!: 0x%08x", err);
++  }
++}
++
++PureOmxBufferData::~PureOmxBufferData()
++{
++  LOG_BUF("");
++  ReleaseBuffer();
++}
++
++void PureOmxBufferData::ReleaseBuffer()
++{
++  LOG_BUF("");
++
++  if (mBuffer) {
++    OMX_ERRORTYPE err;
++    err = OMX_FreeBuffer(mPlatformLayer.GetComponent(),
++                         mPortDef.nPortIndex,
++                         mBuffer);
++    if (err != OMX_ErrorNone) {
++      LOG_BUF("Failed to free the buffer!: 0x%08x", err);
++    }
++    mBuffer = nullptr;
++  }
++}
++
++bool PureOmxBufferData::ShouldUseEGLImage()
++{
++  OMX_ERRORTYPE err;
++  err = OMX_UseEGLImage(mPlatformLayer.GetComponent(),
++                        nullptr,
++                        mPortDef.nPortIndex,
++                        nullptr,
++                        nullptr);
++  return (err != OMX_ErrorNotImplemented);
++}
++
++/* static */ bool
++PureOmxPlatformLayer::Init(void)
++{
++  if (!OmxCoreLibLinker::Link())
++    return false;
++
++  OMX_ERRORTYPE err = OMX_Init();
++  if (err != OMX_ErrorNone) {
++    MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug,
++            ("PureOmxPlatformLayer::%s: Failed to initialize OMXCore: 0x%08x",
++             __func__, err));
++    return false;
++  }
++
++  return true;
++}
++
++/* static */ OMX_CALLBACKTYPE PureOmxPlatformLayer::sCallbacks =
++  { EventHandler, EmptyBufferDone, FillBufferDone };
++
++PureOmxPlatformLayer::PureOmxPlatformLayer(OmxDataDecoder* aDataDecoder,
++                                           OmxPromiseLayer* aPromiseLayer,
++                                           TaskQueue* aTaskQueue,
++                                           layers::ImageContainer* aImageContainer)
++  : mComponent(nullptr)
++  , mDataDecoder(aDataDecoder)
++  , mPromiseLayer(aPromiseLayer)
++  , mTaskQueue(aTaskQueue)
++  , mImageContainer(aImageContainer)
++{
++  LOG("");
++}
++
++PureOmxPlatformLayer::~PureOmxPlatformLayer()
++{
++  LOG("");
++  if (mComponent)
++    OMX_FreeHandle(mComponent);
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::InitOmxToStateLoaded(const TrackInfo* aInfo)
++{
++  LOG("");
++
++  if (!aInfo)
++    return OMX_ErrorUndefined;
++  mInfo = aInfo;
++
++  return CreateComponent();
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::EmptyThisBuffer(BufferData* aData)
++{
++  LOG("");
++  return OMX_EmptyThisBuffer(mComponent, aData->mBuffer);
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::FillThisBuffer(BufferData* aData)
++{
++  LOG("");
++  return OMX_FillThisBuffer(mComponent, aData->mBuffer);
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::SendCommand(OMX_COMMANDTYPE aCmd,
++                                  OMX_U32 aParam1,
++                                  OMX_PTR aCmdData)
++{
++  LOG("aCmd: 0x%08x", aCmd);
++  if (!mComponent)
++    return OMX_ErrorUndefined;
++  return OMX_SendCommand(mComponent, aCmd, aParam1, aCmdData);
++}
++
++nsresult
++PureOmxPlatformLayer::FindPortDefinition(OMX_DIRTYPE aType,
++                                         OMX_PARAM_PORTDEFINITIONTYPE& portDef)
++{
++  nsTArray<uint32_t> portIndex;
++  GetPortIndices(portIndex);
++  for (auto idx : portIndex) {
++    InitOmxParameter(&portDef);
++    portDef.nPortIndex = idx;
++
++    OMX_ERRORTYPE err;
++    err = GetParameter(OMX_IndexParamPortDefinition,
++                       &portDef,
++                       sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
++    if (err != OMX_ErrorNone) {
++      return NS_ERROR_FAILURE;
++    } else if (portDef.eDir == aType) {
++      LOG("Found OMX_IndexParamPortDefinition: port: %d, type: %d",
++          portDef.nPortIndex, portDef.eDir);
++      return NS_OK;
++    }
++  }
++}
++
++nsresult
++PureOmxPlatformLayer::AllocateOmxBuffer(OMX_DIRTYPE aType,
++                                        BUFFERLIST* aBufferList)
++{
++  LOG("aType: %d", aType);
++
++  OMX_PARAM_PORTDEFINITIONTYPE portDef;
++  nsresult result = FindPortDefinition(aType, portDef);
++  if (result != NS_OK)
++    return result;
++
++  LOG("nBufferCountActual: %d, nBufferSize: %d",
++      portDef.nBufferCountActual, portDef.nBufferSize);
++
++  for (OMX_U32 i = 0; i < portDef.nBufferCountActual; ++i) {
++    RefPtr<PureOmxBufferData> buffer = new PureOmxBufferData(*this, portDef);
++    aBufferList->AppendElement(buffer);
++  }
++
++  return NS_OK;
++}
++
++nsresult
++PureOmxPlatformLayer::ReleaseOmxBuffer(OMX_DIRTYPE aType,
++                                       BUFFERLIST* aBufferList)
++{
++  LOG("aType: 0x%08x", aType);
++
++  uint32_t len = aBufferList->Length();
++  for (uint32_t i = 0; i < len; i++) {
++    PureOmxBufferData* buffer =
++      static_cast<PureOmxBufferData*>(aBufferList->ElementAt(i).get());
++
++    // Although the ref count of the buffer may not be 0 at this moment, we need
++    // to force release all OpenMAX buffers to flush OMX_CommandStateSet for
++    // switching the state to OMX_StateLoaded.
++    // See OmxDataDecoder::DoAsyncShutdown() for more detail.
++    buffer->ReleaseBuffer();
++  }
++  aBufferList->Clear();
++
++  return NS_OK;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::GetState(OMX_STATETYPE* aType)
++{
++  LOG("");
++
++  if (mComponent)
++    return OMX_GetState(mComponent, aType);
++
++  return OMX_ErrorUndefined;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::GetParameter(OMX_INDEXTYPE aParamIndex,
++                                   OMX_PTR aComponentParameterStructure,
++                                   OMX_U32 aComponentParameterSize)
++{
++  LOG("aParamIndex: 0x%08x", aParamIndex);
++
++  if (!mComponent)
++    return OMX_ErrorUndefined;
++
++  return OMX_GetParameter(mComponent,
++                          aParamIndex,
++                          aComponentParameterStructure);
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::SetParameter(OMX_INDEXTYPE aParamIndex,
++                                   OMX_PTR aComponentParameterStructure,
++                                   OMX_U32 aComponentParameterSize)
++{
++  LOG("aParamIndex: 0x%08x", aParamIndex);
++
++  if (!mComponent)
++    return OMX_ErrorUndefined;
++
++  return OMX_SetParameter(mComponent,
++                          aParamIndex,
++                          aComponentParameterStructure);
++}
++
++nsresult
++PureOmxPlatformLayer::Shutdown()
++{
++  LOG("");
++  return NS_OK;
++}
++
++/* static */ OMX_ERRORTYPE
++PureOmxPlatformLayer::EventHandler(OMX_HANDLETYPE hComponent,
++                                   OMX_PTR pAppData,
++                                   OMX_EVENTTYPE eEventType,
++                                   OMX_U32 nData1,
++                                   OMX_U32 nData2,
++                                   OMX_PTR pEventData)
++{
++  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
++  nsCOMPtr<nsIRunnable> r =
++    NS_NewRunnableFunction([self, eEventType, nData1, nData2, pEventData] () {
++      self->EventHandler(eEventType, nData1, nData2, pEventData);
++    });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
++}
++
++/* static */ OMX_ERRORTYPE
++PureOmxPlatformLayer::EmptyBufferDone(OMX_HANDLETYPE hComponent,
++                                      OMX_IN OMX_PTR pAppData,
++                                      OMX_IN OMX_BUFFERHEADERTYPE* pBuffer)
++{
++  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
++    self->EmptyBufferDone(pBuffer);
++  });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
++}
++
++/* static */ OMX_ERRORTYPE
++PureOmxPlatformLayer::FillBufferDone(OMX_OUT OMX_HANDLETYPE hComponent,
++                                     OMX_OUT OMX_PTR pAppData,
++                                     OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer)
++{
++  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
++    self->FillBufferDone(pBuffer);
++  });
++  self->mTaskQueue->Dispatch(r.forget());
++  return OMX_ErrorNone;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::EventHandler(OMX_EVENTTYPE eEventType,
++                                   OMX_U32 nData1,
++                                   OMX_U32 nData2,
++                                   OMX_PTR pEventData)
++{
++  bool handled = mPromiseLayer->Event(eEventType, nData1, nData2);
++  LOG("eEventType: 0x%08x, handled: %d", eEventType, handled);
++  return OMX_ErrorNone;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::EmptyBufferDone(OMX_IN OMX_BUFFERHEADERTYPE* pBuffer)
++{
++  PureOmxBufferData* buffer = static_cast<PureOmxBufferData*>(pBuffer->pAppPrivate);
++  OMX_DIRTYPE portDirection = buffer->GetPortDirection();
++  LOG("PortDirection: %d", portDirection);
++  mPromiseLayer->EmptyFillBufferDone(portDirection, buffer);
++  return OMX_ErrorNone;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::FillBufferDone(OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer)
++{
++  PureOmxBufferData* buffer = static_cast<PureOmxBufferData*>(pBuffer->pAppPrivate);
++  OMX_DIRTYPE portDirection = buffer->GetPortDirection();
++  LOG("PortDirection: %d", portDirection);
++  mPromiseLayer->EmptyFillBufferDone(portDirection, buffer);
++  return OMX_ErrorNone;
++}
++
++bool
++PureOmxPlatformLayer::SupportsMimeType(const nsACString& aMimeType)
++{
++  return FindStandardComponent(aMimeType, nullptr);
++}
++
++static bool
++GetStandardComponentRole(const nsACString& aMimeType,
++                         nsACString& aRole)
++{
++  if (aMimeType.EqualsLiteral("video/avc") ||
++      aMimeType.EqualsLiteral("video/mp4") ||
++      aMimeType.EqualsLiteral("video/mp4v-es")) {
++    aRole.Assign("video_decoder.avc");
++    return true;
++  } else if (aMimeType.EqualsLiteral("audio/mp4a-latm") ||
++             aMimeType.EqualsLiteral("audio/mp4") ||
++             aMimeType.EqualsLiteral("audio/aac")) {
++    aRole.Assign("audio_decoder.aac");
++    return true;
++  }
++  return false;
++}
++
++/* static */ bool
++PureOmxPlatformLayer::FindStandardComponent(const nsACString& aMimeType,
++                                            nsACString* aComponentName)
++{
++  nsAutoCString role;
++  if (!GetStandardComponentRole(aMimeType, role))
++    return false;
++
++  OMX_U32 nComponents = 0;
++  OMX_ERRORTYPE err;
++  err = OMX_GetComponentsOfRole(const_cast<OMX_STRING>(role.Data()),
++                                &nComponents, nullptr);
++  if (err != OMX_ErrorNone || nComponents <= 0)
++    return false;
++  if (!aComponentName)
++    return true;
++
++  // TODO:
++  // Only the first component will be used.
++  // We should detect the most preferred component.
++  OMX_U8* componentNames[1];
++  componentNames[0] = reinterpret_cast<OMX_U8*>(malloc(OMX_MAX_STRINGNAME_SIZE));
++  nComponents = 1;
++  err = OMX_GetComponentsOfRole(const_cast<OMX_STRING>(role.Data()),
++                                &nComponents, componentNames);
++  if (err == OMX_ErrorNone) {
++    MOZ_LOG(GetPDMLog(), mozilla::LogLevel::Debug,
++            ("PureOmxPlatformLayer::%s: A component has been found for %s: %s",
++             __func__, aMimeType.Data(), componentNames[0]));
++    aComponentName->Assign(reinterpret_cast<char*>(componentNames[0]));
++  }
++  free(componentNames[0]);
++
++  return err == OMX_ErrorNone;
++}
++
++OMX_ERRORTYPE
++PureOmxPlatformLayer::CreateComponent(const nsACString* aComponentName)
++{
++  nsAutoCString componentName;
++  if (aComponentName) {
++    componentName = *aComponentName;
++  } else {
++    bool found = FindStandardComponent(mInfo->mMimeType, &componentName);
++    if (!found)
++      return OMX_ErrorComponentNotFound;
++  }
++
++  OMX_ERRORTYPE err;
++  err = OMX_GetHandle(&mComponent,
++                      const_cast<OMX_STRING>(componentName.Data()),
++                      this,
++                      &sCallbacks);
++
++  const char* mime = mInfo->mMimeType.Data();
++  if (err == OMX_ErrorNone) {
++    LOG("Succeeded to create the component for %s", mime);
++  } else {
++    LOG("Failed to create the component for %s: 0x%08x", mime, err);
++  }
++
++  return err;
++}
++
++}
+diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.h b/dom/media/platforms/omx/PureOmxPlatformLayer.h
+new file mode 100644
+index 0000000..2c68d07
+--- /dev/null
++++ b/dom/media/platforms/omx/PureOmxPlatformLayer.h
+@@ -0,0 +1,115 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* vim:set ts=2 sw=2 sts=2 et cindent: */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#if !defined(PureOmxPlatformLayer_h_)
++#define PureOmxPlatformLayer_h_
++
++#include "OmxPlatformLayer.h"
++
++namespace mozilla {
++
++class PureOmxPlatformLayer;
++
++class PureOmxBufferData : public OmxPromiseLayer::BufferData {
++protected:
++  virtual ~PureOmxBufferData();
++
++public:
++  PureOmxBufferData(const PureOmxPlatformLayer& aPlatformLayer,
++                    const OMX_PARAM_PORTDEFINITIONTYPE& aPortDef);
++
++  void ReleaseBuffer();
++  OMX_DIRTYPE GetPortDirection() const { return mPortDef.eDir; };
++
++protected:
++  bool ShouldUseEGLImage();
++
++  const PureOmxPlatformLayer& mPlatformLayer;
++  const OMX_PARAM_PORTDEFINITIONTYPE mPortDef;
++};
++
++class PureOmxPlatformLayer : public OmxPlatformLayer {
++public:
++  static bool Init(void);
++
++  static bool SupportsMimeType(const nsACString& aMimeType);
++
++  PureOmxPlatformLayer(OmxDataDecoder* aDataDecoder,
++                       OmxPromiseLayer* aPromiseLayer,
++                       TaskQueue* aTaskQueue,
++                       layers::ImageContainer* aImageContainer);
++
++  virtual ~PureOmxPlatformLayer();
++
++  virtual OMX_ERRORTYPE InitOmxToStateLoaded(const TrackInfo* aInfo) override;
++
++  virtual OMX_ERRORTYPE EmptyThisBuffer(BufferData* aData) override;
++
++  virtual OMX_ERRORTYPE FillThisBuffer(BufferData* aData) override;
++
++  virtual OMX_ERRORTYPE SendCommand(OMX_COMMANDTYPE aCmd,
++                                    OMX_U32 aParam1,
++                                    OMX_PTR aCmdData) override;
++
++  virtual nsresult AllocateOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
++
++  virtual nsresult ReleaseOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
++
++  virtual OMX_ERRORTYPE GetState(OMX_STATETYPE* aType) override;
++
++  virtual OMX_ERRORTYPE GetParameter(OMX_INDEXTYPE aParamIndex,
++                                     OMX_PTR aComponentParameterStructure,
++                                     OMX_U32 aComponentParameterSize) override;
++
++  virtual OMX_ERRORTYPE SetParameter(OMX_INDEXTYPE aParamIndex,
++                                     OMX_PTR aComponentParameterStructure,
++                                     OMX_U32 aComponentParameterSize) override;
++
++  virtual nsresult Shutdown() override;
++
++  OMX_HANDLETYPE GetComponent() const { return mComponent; };
++
++  static OMX_ERRORTYPE EventHandler(OMX_HANDLETYPE hComponent,
++                                    OMX_PTR pAppData,
++                                    OMX_EVENTTYPE eEventType,
++                                    OMX_U32 nData1,
++                                    OMX_U32 nData2,
++                                    OMX_PTR pEventData);
++  static OMX_ERRORTYPE EmptyBufferDone(OMX_HANDLETYPE hComponent,
++                                       OMX_IN OMX_PTR pAppData,
++                                       OMX_IN OMX_BUFFERHEADERTYPE* pBuffer);
++  static OMX_ERRORTYPE FillBufferDone(OMX_OUT OMX_HANDLETYPE hComponent,
++                                      OMX_OUT OMX_PTR pAppData,
++                                      OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer);
++
++protected:
++  static bool FindStandardComponent(const nsACString& aMimeType,
++                                    nsACString* aComponentName);
++
++  OMX_ERRORTYPE CreateComponent(const nsACString* aComponentName = nullptr);
++  nsresult FindPortDefinition(OMX_DIRTYPE aType,
++                              OMX_PARAM_PORTDEFINITIONTYPE& portDef);
++
++  OMX_ERRORTYPE EventHandler(OMX_EVENTTYPE eEventType,
++                             OMX_U32 nData1,
++                             OMX_U32 nData2,
++                             OMX_PTR pEventData);
++  OMX_ERRORTYPE EmptyBufferDone(OMX_IN OMX_BUFFERHEADERTYPE* pBuffer);
++  OMX_ERRORTYPE FillBufferDone(OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer);
++
++protected:
++  static OMX_CALLBACKTYPE sCallbacks;
++
++  OMX_HANDLETYPE mComponent;
++  RefPtr<OmxDataDecoder> mDataDecoder;
++  RefPtr<OmxPromiseLayer> mPromiseLayer;
++  RefPtr<TaskQueue> mTaskQueue;
++  RefPtr<layers::ImageContainer> mImageContainer;
++};
++
++}
++
++#endif // PureOmxPlatformLayer_h_
+diff --git a/dom/media/platforms/omx/moz.build b/dom/media/platforms/omx/moz.build
+index 9ad0833e..b3d40f8 100644
+--- a/dom/media/platforms/omx/moz.build
++++ b/dom/media/platforms/omx/moz.build
+@@ -44,6 +44,11 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk' and (CONFIG['ANDROID_VERSION'] == '19'
+         '-libbinder',
+     ]
+ 
++if CONFIG['MOZ_WIDGET_GTK']:
++    UNIFIED_SOURCES += [
++        'PureOmxPlatformLayer.cpp',
++    ]
++
+ FINAL_LIBRARY = 'xul'
+ 
+ if CONFIG['GNU_CXX']:
+-- 
+1.9.1
+

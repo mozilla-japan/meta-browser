@@ -68,6 +68,7 @@ PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-t
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[gstreamer1.0] = "--enable-gstreamer=1.0,--disable-gstreamer,gstreamer1.0,libgstvideo-1.0 gstreamer1.0-plugins-base-app"
+PACKAGECONFIG[openmax] = ",,,"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
@@ -93,6 +94,14 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            'file://wayland/frameless.patch', '', d)}"
 
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
+           'file://openmax/0001-Backport-dom-media-platforms-omx-from-mozilla-centra.patch \
+            file://openmax/0002-Add-the-initial-implementation-of-PureOmxPlatformLay.patch \
+            file://openmax/0003-PDMFactory-Add-a-fallback-blank-decoder-module.patch \
+            file://openmax/openmax.js \
+           ', \
+           '', d)}"
+
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
         bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
@@ -109,6 +118,9 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}/defaults/pref/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}/defaults/pref/
+    fi
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}/defaults/pref/
     fi
 
     # Fix ownership of files
