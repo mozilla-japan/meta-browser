@@ -1,0 +1,33 @@
+From dfe748a911d9696a3d6b1c6ce2853b3c090d2291 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Wed, 13 Jul 2016 15:10:17 +0900
+Subject: [PATCH 12/14] Add AC_TRY_LINK for libwayland-egl
+
+Because some systems don't provide it in spite of having
+wayland-egl.pc.
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+---
+ configure.in | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/configure.in b/configure.in
+index e6db486..1bdf38f 100644
+--- a/configure.in
++++ b/configure.in
+@@ -4193,7 +4193,11 @@ cairo-gtk3)
+                               MOZ_WAYLAND_EGL=1,
+                               MOZ_WAYLAND_EGL=)
+             if test -n "$MOZ_WAYLAND_EGL"; then
+-                AC_DEFINE(MOZ_WAYLAND_EGL)
++                _SAVE_LDFLAGS=$LDFLAGS
++                LDFLAGS="$LDFLAGS $MOZ_WAYLAND_EGL_LIBS"
++                AC_CHECK_LIB(wayland-egl, wl_egl_window_create,
++                            [AC_DEFINE(MOZ_WAYLAND_EGL)], [])
++                LDFLAGS="$_SAVE_LDFLAGS"
+             fi
+         fi
+     fi
+-- 
+1.9.1
+

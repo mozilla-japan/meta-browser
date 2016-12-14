@@ -63,12 +63,34 @@ CFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
 CXXFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
 TARGET_CC_ARCH += "${LDFLAGS}"
 
+PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
+PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
            'file://gpu.js', '', d)}"
+
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
+           'file://wayland/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
+            file://wayland/0002-gdk_x11_get_server_time-fix.patch \
+            file://wayland/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
+            file://wayland/0004-Install-popup_take_focus_filter-to-actual-GdkWindow.patch \
+            file://wayland/0005-Fixed-nsWindow-GetLastUserInputTime.patch \
+            file://wayland/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland/0010-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
+            file://wayland/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
+            file://wayland/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
+           ', \
+           '', d)}"
+
+# Current EGL patch for Wayland doesn't work well on windowed mode.
+# To avoid this issue, force use fullscreen mode by default.
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
+           'file://wayland/frameless.patch', '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
@@ -112,4 +134,18 @@ PRIVATE_LIBS = "libmozjs.so \
                 liblgpllibs.so \
                 libmozsqlite3.so \
                 libbrowsercomps.so \
-                libclearkey.so"
+                libclearkey.so \
+                libmozgtk.so \
+                "
+
+# mark libraries also provided by nss as private too
+PRIVATE_LIBS += " \
+    libfreebl3.so \
+    libnss3.so \
+    libnssckbi.so \
+    libsmime3.so \
+    libnssutil3.so \
+    libnssdbm3.so \
+    libssl3.so \
+    libsoftokn3.so \
+"

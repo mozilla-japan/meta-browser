@@ -1,0 +1,45 @@
+commit afd0e75ee37c92078f2cf574305adc0ec8443334
+Author: Takuro Ashie <ashie@homa.ne.jp>
+Date:   Wed Sep 7 18:01:13 2016 +0900
+
+    Don't show the window frames
+    
+    The current EGL patch for Wayland doesn't work well when the
+    window frame exist. Until the issue is resolved, don't show
+    the frame and make the window fullscreen by default.
+    
+    Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+
+diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
+index 9f0d550..1dc5e66 100644
+--- a/browser/base/content/browser.xul
++++ b/browser/base/content/browser.xul
+@@ -57,7 +57,7 @@
+         macanimationtype="document"
+         screenX="4" screenY="4"
+         fullscreenbutton="true"
+-        sizemode="normal"
++        sizemode="fullscreen"
+         retargetdocumentfocus="urlbar"
+         persist="screenX screenY width height sizemode">
+ 
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 56290a2..2db62b1 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3676,6 +3676,7 @@ nsWindow::Create(nsIWidget* aParent,
+             mWindowType != eWindowType_popup || aInitData->mNoAutoHide ?
+               GTK_WINDOW_TOPLEVEL : GTK_WINDOW_POPUP;
+         mShell = gtk_window_new(type);
++        gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+ 
+         // We only move a general managed toplevel window if someone has
+         // actually placed the window somewhere.  If no placement has taken
+@@ -3726,6 +3727,7 @@ nsWindow::Create(nsIWidget* aParent,
+                 else {
+                   bool decorate = mBorderStyle & eBorderStyle_title;
+                   gtk_window_set_decorated(GTK_WINDOW(mShell), decorate);
++                  gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+                   if (decorate) {
+                     gtk_window_set_deletable(GTK_WINDOW(mShell), mBorderStyle & eBorderStyle_close);
+                   }
