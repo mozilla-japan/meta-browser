@@ -67,6 +67,7 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland",
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+PACKAGECONFIG[gstreamer1.0] = "--enable-gstreamer=1.0,--disable-gstreamer,gstreamer1.0,libgstvideo-1.0 gstreamer1.0-plugins-base-app"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
