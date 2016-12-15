@@ -59,8 +59,8 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}"
 
 ARM_INSTRUCTION_SET = "arm"
 
-CFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
-CXXFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
+#CFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
+#CXXFLAGS +=" -fno-delete-null-pointer-checks -fno-lifetime-dse"
 TARGET_CC_ARCH += "${LDFLAGS}"
 
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
