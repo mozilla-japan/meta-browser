@@ -13,6 +13,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozilla-firefox.desktop \
            file://vendor.js \
            file://fix-python-path.patch \
+           file://remove-needless-windows-dependency.patch \
            file://0001-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0002-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            file://firefox-50-fix-build-error-without-glx.patch \
