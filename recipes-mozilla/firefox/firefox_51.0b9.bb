@@ -18,8 +18,9 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://firefox-50-fix-build-error-without-glx.patch \
            file://mozconfig \
            "
-SRC_URI[archive.md5sum] = "866684401fe57beb47aaee8699bf4883"
-SRC_URI[archive.sha256sum] = "c1e64e6b4906f7bff1398875c6bdf64ee85842faa1f69e35ede1eec1f9dd7a34"
+
+SRC_URI[archive.md5sum] = "d445f9d39c9927c1b8a5a09be555342f"
+SRC_URI[archive.sha256sum] = "19b88cc10b00e4e19f9e6be2739cdc638f14d3d70cd12fd4124cbc39e1272479"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
