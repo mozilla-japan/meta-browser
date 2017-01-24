@@ -64,6 +64,7 @@ ARM_INSTRUCTION_SET = "arm"
 TARGET_CC_ARCH += "${LDFLAGS}"
 
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
+PACKAGECONFIG[officialbranding] = "--enable-official-branding,--disable-official-branding,"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3,--enable-default-toolkit=cairo-gtk2,gtk+3,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
