@@ -1,0 +1,124 @@
+From afcb3517030ed193f5a82ea6574cc19b26810c7c Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 12 Apr 2017 16:03:16 +0200
+Subject: [PATCH 34/44] Fixed crash when pasted to clipboard
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 10 ++++++--
+ widget/gtk/nsClipboardWayland.cpp   | 50 ++++++++++++++++++++-----------------
+ 2 files changed, 35 insertions(+), 25 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 980cb204a91e..5e78d7684266 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -87,17 +87,23 @@ static const struct wl_registry_listener registry_listener = {
+   global_registry_remover
+ };
+ 
+-//Call as timer?
+-//Integrate to compositor loop?
+ void
+ WaylandDisplay::DisplayLoop()
+ {
++  /* NoteThis function may dispatch other events being received on the given
++     queue. This function uses wl_display_dispatch_queue() internally.
++     If you are using wl_display_read_events() from more threads,
++     don't use this function (or make sure that calling wl_display_roundtrip_queue()
++     doesn't interfere with calling wl_display_prepare_read() and
++     wl_display_read_events()).
++  */
+   wl_display_roundtrip_queue(mDisplay, mEventQueue);
+ }
+ 
+ static void
+ RunDisplayLoop(WaylandDisplay *aWaylandDisplay)
+ {
++  // TODO - don't register task when firefox quits.
+   aWaylandDisplay->DisplayLoop();
+   MessageLoop::current()->PostTask(
+       NewRunnableFunction(&RunDisplayLoop, aWaylandDisplay));
+diff --git a/widget/gtk/nsClipboardWayland.cpp b/widget/gtk/nsClipboardWayland.cpp
+index bf8f6a663474..a7e8a215eb96 100644
+--- a/widget/gtk/nsClipboardWayland.cpp
++++ b/widget/gtk/nsClipboardWayland.cpp
+@@ -111,7 +111,7 @@ data_offer_offer (void                 *data,
+       static_cast<nsRetrievalContextWayland*>(data);
+   context->AddMIMEType(type);
+ }
+-/*
++
+ static void
+ data_offer_source_actions(void *data,
+                           struct wl_data_offer *wl_data_offer,
+@@ -125,13 +125,11 @@ data_offer_action(void *data,
+                   uint32_t dnd_action)
+ {
+ }
+-*/
++
+ static const struct wl_data_offer_listener data_offer_listener = {
+-    data_offer_offer
+-/*
++    data_offer_offer,
+     data_offer_source_actions,
+     data_offer_action
+-*/
+ };
+ 
+ static void
+@@ -400,26 +398,32 @@ nsRetrievalContextWayland::GetClipboardContent(const char* aMimeType,
+ 
+     // Choose some reasonable timeout here
+     int ret = poll(&fds, 1, kClipboardTimeout*1000);
+-    if (ret && ret != -1) {
+-        #define BUFFER_SIZE 4096
+-
+-        NS_NewStorageStream(BUFFER_SIZE, UINT32_MAX, getter_AddRefs(storageStream));
+-        nsCOMPtr<nsIOutputStream> outputStream;
+-        rv = storageStream->GetOutputStream(0, getter_AddRefs(outputStream));
+-        if (NS_SUCCEEDED(rv)) {
+-            do {
+-                char buffer[BUFFER_SIZE];
+-                length = read(pipe_fd[0], buffer, sizeof(buffer));
+-                if (length == 0 || length == -1)
+-                    break;
+-
+-                uint32_t ret;
+-                rv = outputStream->Write(buffer, length, &ret);
+-            } while(NS_SUCCEEDED(rv) && length == BUFFER_SIZE);
+-        }
+-        outputStream->Close();
++    if (!ret || ret == -1) {
++        close(pipe_fd[0]);
++        return NS_ERROR_FAILURE;
+     }
+ 
++    #define BUFFER_SIZE 4096
++
++    NS_NewStorageStream(BUFFER_SIZE, UINT32_MAX, getter_AddRefs(storageStream));
++    nsCOMPtr<nsIOutputStream> outputStream;
++    rv = storageStream->GetOutputStream(0, getter_AddRefs(outputStream));
++    if (NS_FAILED(rv)) {
++        close(pipe_fd[0]);
++        return NS_ERROR_FAILURE;
++    }
++
++    do {
++        char buffer[BUFFER_SIZE];
++        length = read(pipe_fd[0], buffer, sizeof(buffer));
++        if (length == 0 || length == -1)
++            break;
++
++        uint32_t ret;
++        rv = outputStream->Write(buffer, length, &ret);
++    } while(NS_SUCCEEDED(rv) && length == BUFFER_SIZE);
++
++    outputStream->Close();
+     close(pipe_fd[0]);
+ 
+     rv = storageStream->GetLength(aContentLength);
+-- 
+2.11.0
+

@@ -1,0 +1,294 @@
+From 686a0cc40468b551b0bc0e8e56b57f33aee557b1 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 27 Mar 2017 12:32:29 +0200
+Subject: [PATCH 15/44] Removed unused code
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ gfx/thebes/gfxPlatformGtk.cpp    |  40 ++++---------
+ gfx/thebes/gfxPlatformGtk.h      |  26 ++-------
+ widget/gtk/WaylandLibWrapper.cpp | 119 ++++++++++++++++++++++++++++-----------
+ widget/gtk/WaylandLibWrapper.h   |   3 +-
+ 4 files changed, 103 insertions(+), 85 deletions(-)
+
+diff --git a/gfx/thebes/gfxPlatformGtk.cpp b/gfx/thebes/gfxPlatformGtk.cpp
+index 8821921e8824..9d7f512f27a7 100644
+--- a/gfx/thebes/gfxPlatformGtk.cpp
++++ b/gfx/thebes/gfxPlatformGtk.cpp
+@@ -55,10 +55,6 @@
+ 
+ #endif /* MOZ_X11 */
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
+-#include <gdk/gdkwayland.h>
+-#endif
+-
+ #include <fontconfig/fontconfig.h>
+ 
+ #include "nsMathUtils.h"
+@@ -109,23 +105,14 @@ gfxPlatformGtk::gfxPlatformGtk()
+     InitBackendPrefs(canvasMask, BackendType::CAIRO,
+                      contentMask, BackendType::CAIRO);
+ 
+-#if defined(MOZ_X11)
+-    mXCompositorDisplay = nullptr;
+-    mWaylandCompositorDisplay = nullptr;
+-
+-    GdkDisplay *gdkDisplay = gdk_display_get_default();
+-    mIsX11Display = GDK_IS_X11_DISPLAY(gdkDisplay);
+-    if (mIsX11Display) {
+-      mXCompositorDisplay = XOpenDisplay(nullptr);
+-      MOZ_ASSERT(mXCompositorDisplay, "Failed to create compositor display!");
+-    }
+-#if defined(GDK_WINDOWING_WAYLAND)
+-    else {
+-      mWaylandCompositorDisplay = wl_display_connect(nullptr);
+-      MOZ_ASSERT(mWaylandCompositorDisplay, "Failed to create compositor display!");
++#ifdef MOZ_X11
++    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++      mCompositorDisplay = XOpenDisplay(nullptr);
++      MOZ_ASSERT(mCompositorDisplay, "Failed to create compositor display!");
++    } else {
++      mCompositorDisplay = nullptr;
+     }
+-#endif
+-#endif // defined(MOZ_X11)
++#endif // MOZ_X11
+ }
+ 
+ gfxPlatformGtk::~gfxPlatformGtk()
+@@ -136,16 +123,11 @@ gfxPlatformGtk::~gfxPlatformGtk()
+         gfxPangoFontGroup::Shutdown();
+     }
+ 
+-#if defined(MOZ_X11)
+-    if (mIsX11Display) {
+-       XCloseDisplay(mXCompositorDisplay);
+-    }
+-#if defined(GDK_WINDOWING_WAYLAND)
+-    else {
+-       wl_display_disconnect(mWaylandCompositorDisplay);
++#ifdef MOZ_X11
++    if (mCompositorDisplay) {
++      XCloseDisplay(mCompositorDisplay);
+     }
+-#endif
+-#endif
++#endif // MOZ_X11
+ }
+ 
+ void
+diff --git a/gfx/thebes/gfxPlatformGtk.h b/gfx/thebes/gfxPlatformGtk.h
+index 9110352f1fbb..982390d1867b 100644
+--- a/gfx/thebes/gfxPlatformGtk.h
++++ b/gfx/thebes/gfxPlatformGtk.h
+@@ -21,12 +21,6 @@ extern "C" {
+ struct _XDisplay;
+ typedef struct _XDisplay Display;
+ #endif // MOZ_X11
+-#ifndef GDK_WINDOWING_WAYLAND
+-#define GDK_WINDOWING_WAYLAND 1
+-#endif
+-#ifdef GDK_WINDOWING_WAYLAND
+-struct wl_display;
+-#endif
+ 
+ class gfxFontconfigUtils;
+ 
+@@ -110,7 +104,7 @@ public:
+     static int32_t GetDPI();
+     static double  GetDPIScale();
+ 
+-#if defined(MOZ_X11) || defined(GDK_WINDOWING_WAYLAND)
++#ifdef MOZ_X11
+     virtual void GetAzureBackendInfo(mozilla::widget::InfoObject &aObj) override {
+       gfxPlatform::GetAzureBackendInfo(aObj);
+       aObj.DefineProperty("CairoUseXRender", mozilla::gfx::gfxVars::UseXRender());
+@@ -152,17 +146,9 @@ public:
+ #endif
+ 
+ #ifdef MOZ_X11
+-    bool     IsXDisplay() {
+-      return mIsX11Display;
+-    }
+-    Display* GetXCompositorDisplay() {
+-      return mXCompositorDisplay;
++    Display* GetCompositorDisplay() {
++      return mCompositorDisplay;
+     }
+-#ifdef GDK_WINDOWING_WAYLAND
+-    wl_display* GetWaylandCompositorDisplay() {
+-      return mWaylandCompositorDisplay;
+-    }
+-#endif
+ #endif // MOZ_X11
+ 
+ protected:
+@@ -175,11 +161,7 @@ private:
+                                              size_t &size) override;
+ 
+ #ifdef MOZ_X11
+-    bool        mIsX11Display;
+-    Display*    mXCompositorDisplay;
+-#ifdef GDK_WINDOWING_WAYLAND
+-    wl_display* mWaylandCompositorDisplay;
+-#endif
++    Display* mCompositorDisplay;
+ #endif
+ 
+     // xxx - this will be removed once the new fontconfig platform font list
+diff --git a/widget/gtk/WaylandLibWrapper.cpp b/widget/gtk/WaylandLibWrapper.cpp
+index 99e169a295d5..c615918d0c3b 100644
+--- a/widget/gtk/WaylandLibWrapper.cpp
++++ b/widget/gtk/WaylandLibWrapper.cpp
+@@ -7,46 +7,101 @@
+ #include "mozilla/PodOperations.h"
+ #include "mozilla/Types.h"
+ #include "prlink.h"
++#include  <gdk/gdk.h>
+ 
+ struct WaylandLibWrapper MozWaylandWrapper;
+ 
+ WaylandLibWrapper::WaylandLibWrapper()
+ {
+-  PRLibSpec lspec;
+-  lspec.type = PR_LibSpec_Pathname;
+-  lspec.value.pathname = "libwayland-client.so.0";
+-  mWaylandLib = PR_LoadLibraryWithFlags(lspec, PR_LD_NOW | PR_LD_LOCAL);
+-  if (!mWaylandLib) {
+-   Unlink();
+-   return;
+-  }
+-
+-#define WAY_FUNC(func)                                                    \
+-   if (!(func = (decltype(func))PR_FindSymbol(mWaylandLib, "wl_"#func))) {\
+-     NS_WARNING("Couldn't load function " # func);                        \
+-     Unlink();                                                            \
+-     return ;                                                             \
+-   }                                                                      \
+-
+-   WAY_FUNC(registry_interface);
+-   WAY_FUNC(surface_interface);
+-   WAY_FUNC(subcompositor_interface);
+-
+-   WAY_FUNC(display_roundtrip_queue);
+-   WAY_FUNC(display_roundtrip);
+-   WAY_FUNC(proxy_add_listener);
+-   WAY_FUNC(proxy_marshal);
+-   WAY_FUNC(proxy_marshal_constructor);
+-   WAY_FUNC(proxy_marshal_constructor_versioned);
+-   WAY_FUNC(proxy_destroy);
++#ifdef GDK_WINDOWING_WAYLAND
++    PRLibSpec lspec;
++    lspec.type = PR_LibSpec_Pathname;
++    lspec.value.pathname = "libwayland-client.so.0";
++    mWaylandLib = PR_LoadLibraryWithFlags(lspec, PR_LD_NOW | PR_LD_LOCAL);
++    if (!mWaylandLib) {
++        SetFallbackCalls();
++        return;
++    }
++
++#define WAY_FUNC(func)                                                       \
++    if (!(func = (decltype(func))PR_FindSymbol(mWaylandLib, "wl_"#func))) {  \
++        NS_WARNING("Couldn't load function " # func);                        \
++        PR_UnloadLibrary(mWaylandLib);                                       \
++        SetFallbackCalls();                                                  \
++        return;                                                              \
++    }                                                                        \
++
++    WAY_FUNC(registry_interface);
++    WAY_FUNC(surface_interface);
++    WAY_FUNC(subcompositor_interface);
++
++    WAY_FUNC(display_roundtrip_queue);
++    WAY_FUNC(display_roundtrip);
++    WAY_FUNC(proxy_add_listener);
++    WAY_FUNC(proxy_marshal);
++    WAY_FUNC(proxy_marshal_constructor);
++    WAY_FUNC(proxy_marshal_constructor_versioned);
++    WAY_FUNC(proxy_destroy);
+ #undef WAY_FUNC
++#else // GDK_WINDOWING_WAYLAND
++    SetFallbackCalls();
++#endif
++}
++
++static int
++fallback_display_roundtrip_queue(struct wl_display *display,
++                                 struct wl_event_queue *queue)
++{
++    return -1;
++}
++static int
++fallback_display_roundtrip(struct wl_display *display)
++{
++    return -1;
++}
++static int
++fallback_proxy_add_listener(struct wl_proxy *proxy,
++                            void (**implementation)(void), void *data)
++{
++    return -1;
++}
++static void
++fallback_proxy_marshal(struct wl_proxy *p, uint32_t opcode, ...)
++{
++    return;
++}
++static struct wl_proxy *
++fallback_proxy_marshal_constructor(struct wl_proxy *proxy,
++                                   uint32_t opcode,
++                                   const struct wl_interface *interface, ...)
++{
++    return nullptr;
++}
++static struct wl_proxy *
++fallback_proxy_marshal_constructor_versioned(struct wl_proxy *proxy,
++    uint32_t opcode, const struct wl_interface *interface, uint32_t version, ...)
++{
++    return nullptr;
++}
++static void
++fallback_proxy_destroy(struct wl_proxy *proxy)
++{
++    return;
+ }
+ 
+ void
+-WaylandLibWrapper::Unlink()
++WaylandLibWrapper::SetFallbackCalls()
+ {
+- if (mWaylandLib) {
+-   PR_UnloadLibrary(mWaylandLib);
+- }
+- PodZero(this);
++#define WAY_FALLBACK(func)  \
++    func = fallback_##func;
++
++    // Set up fallback calls to avoid unexpected crashes
++    WAY_FALLBACK(display_roundtrip_queue);
++    WAY_FALLBACK(display_roundtrip);
++    WAY_FALLBACK(proxy_add_listener);
++    WAY_FALLBACK(proxy_marshal);
++    WAY_FALLBACK(proxy_marshal_constructor);
++    WAY_FALLBACK(proxy_marshal_constructor_versioned);
++    WAY_FALLBACK(proxy_destroy);
++#undef WAY_FALLBACK
+ }
+diff --git a/widget/gtk/WaylandLibWrapper.h b/widget/gtk/WaylandLibWrapper.h
+index 34d6176e5527..ea9052aa1343 100644
+--- a/widget/gtk/WaylandLibWrapper.h
++++ b/widget/gtk/WaylandLibWrapper.h
+@@ -35,8 +35,7 @@ struct WaylandLibWrapper
+   void (*proxy_destroy)(struct wl_proxy *proxy);
+ 
+ private:
+-  // Reset the wrapper and unlink all attached libraries.
+-  void Unlink();
++  void SetFallbackCalls();
+ 
+   PRLibrary* mWaylandLib;
+ };
+-- 
+2.11.0
+

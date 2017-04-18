@@ -1,0 +1,38 @@
+From 873f86e338ebc1e12caf669aa4854972e7439a00 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@anakreon.cz>
+Date: Tue, 31 Jan 2017 16:19:28 +0100
+Subject: [PATCH 07/44] Create .mozconfig
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ .mozconfig | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100644 .mozconfig
+
+diff --git a/.mozconfig b/.mozconfig
+new file mode 100644
+index 000000000000..21497f168bc6
+--- /dev/null
++++ b/.mozconfig
+@@ -0,0 +1,18 @@
++. $topsrcdir/browser/config/mozconfig
++
++ac_add_options --enable-default-toolkit=cairo-gtk3
++
++mk_add_options BUILD_OFFICIAL=1
++mk_add_options MOZILLA_OFFICIAL=1
++mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/objdir
++mk_add_options AUTOCLOBBER=1
++
++ac_add_options --disable-crashreporter
++ac_add_options --without-system-nspr
++ac_add_options --without-system-nss
++
++ac_add_options --enable-debug
++ac_add_options --disable-optimize
++
++ac_add_options --enable-release
++ac_add_options --disable-tests
+-- 
+2.11.0
+

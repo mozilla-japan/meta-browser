@@ -1,0 +1,98 @@
+From 601e3748be4227cb2c4e8933705c2d699ec0bb9e Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 5 Apr 2017 12:13:42 +0200
+Subject: [PATCH 24/44] Updated configure script according to mozbz#1299083
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ .mozconfig            |  3 +--
+ toolkit/moz.configure | 25 ++++++++++---------------
+ 2 files changed, 11 insertions(+), 17 deletions(-)
+
+diff --git a/.mozconfig b/.mozconfig
+index be9d7126606f..0389b40aaf88 100644
+--- a/.mozconfig
++++ b/.mozconfig
+@@ -1,6 +1,6 @@
+ . $topsrcdir/browser/config/mozconfig
+ 
+-ac_add_options --enable-default-toolkit=cairo-gtk3
++ac_add_options --enable-default-toolkit=cairo-gtk3-wayland
+ 
+ mk_add_options BUILD_OFFICIAL=1
+ mk_add_options MOZILLA_OFFICIAL=1
+@@ -13,7 +13,6 @@ ac_add_options --without-system-nss
+ 
+ ac_add_options --enable-debug
+ ac_add_options --disable-optimize
+-ac_add_options --enable-wayland
+ 
+ ac_add_options --enable-release
+ ac_add_options --disable-tests
+diff --git a/toolkit/moz.configure b/toolkit/moz.configure
+index bf149573aa60..72bc231db8b1 100644
+--- a/toolkit/moz.configure
++++ b/toolkit/moz.configure
+@@ -112,7 +112,7 @@ set_config('L10NBASEDIR', l10n_base)
+ # reason.
+ option('--enable-default-toolkit', nargs=1,
+        choices=('cairo-windows', 'cairo-gtk2', 'cairo-gtk2-x11', 'cairo-gtk3',
+-                'cairo-cocoa', 'cairo-uikit', 'cairo-android',
++                'cairo-gtk3-wayland', 'cairo-cocoa', 'cairo-uikit', 'cairo-android',
+                 'cairo-gonk'),
+        help='Select default toolkit')
+ 
+@@ -135,7 +135,7 @@ def toolkit(value, target):
+         else:
+             platform_choices = ('cairo-android',)
+     else:
+-        platform_choices = ('cairo-gtk3', 'cairo-gtk2', 'cairo-gtk2-x11')
++        platform_choices = ('cairo-gtk3', 'cairo-gtk3-wayland', 'cairo-gtk2', 'cairo-gtk2-x11')
+ 
+     if value:
+         if value[0] not in platform_choices:
+@@ -145,11 +145,16 @@ def toolkit(value, target):
+ 
+     return platform_choices[0]
+ 
++@depends(toolkit)
++def wayland(toolkit):
++    return toolkit == 'cairo-gtk3-wayland'
+ 
+ @depends(toolkit)
+ def toolkit(toolkit):
+     if toolkit == 'cairo-gtk2-x11':
+         widget_toolkit = 'gtk2'
++    elif toolkit == 'cairo-gtk3-wayland' :
++        widget_toolkit = 'gtk3'
+     else:
+         widget_toolkit = toolkit.replace('cairo-', '')
+     return widget_toolkit
+@@ -196,21 +201,11 @@ add_old_configure_assignment('MOZ_X11', x11)
+ 
+ # Wayland support
+ # ==============================================================
+-option('--enable-wayland', env='MOZ_WAYLAND',
+-       help='Enable Gtk3 Wayland backend.')
+-
+-@depends('--enable-wayland')
+-def wayland(value):
+-   if value:
+-        return True
+-
+-# Check for Wayland headers
+-wayland_headers = pkg_check_modules('MOZ_WAYLAND', 'gtk+-wayland-3.0 >= 3.20',
++wayland_headers = pkg_check_modules('MOZ_WAYLAND', 'gtk+-wayland-3.0 >= 3.22',
+                                     when=wayland)
+ 
+-set_config('MOZ_WAYLAND', wayland)
+-set_define('MOZ_WAYLAND', wayland)
+-imply_option('--enable-wayland', wayland)
++set_config('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
++set_define('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
+ 
+ # GL Provider
+ # ==============================================================
+-- 
+2.11.0
+

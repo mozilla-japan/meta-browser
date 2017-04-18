@@ -1,0 +1,1684 @@
+From ce7224685f3d9dd0a4d9fe0bd9561d007467d958 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Thu, 30 Mar 2017 09:59:38 +0200
+Subject: [PATCH 18/44] Added clipboard patch from mozbz#1282015
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/moz.build               |   2 +
+ widget/gtk/mozwayland/mozwayland.c |   4 +
+ widget/gtk/nsClipboard.cpp         | 517 ++++++++-----------------------------
+ widget/gtk/nsClipboard.h           |  42 ++-
+ widget/gtk/nsClipboardWayland.cpp  | 429 ++++++++++++++++++++++++++++++
+ widget/gtk/nsClipboardWayland.h    |  53 ++++
+ widget/gtk/nsClipboardX11.cpp      | 309 ++++++++++++++++++++++
+ widget/gtk/nsClipboardX11.h        |  68 +++++
+ widget/gtk/nsNativeThemeGTK.cpp    |   2 +
+ widget/gtk/nsNativeThemeGTK.h      |   1 +
+ 10 files changed, 1016 insertions(+), 411 deletions(-)
+ create mode 100644 widget/gtk/nsClipboardWayland.cpp
+ create mode 100644 widget/gtk/nsClipboardWayland.h
+ create mode 100644 widget/gtk/nsClipboardX11.cpp
+ create mode 100644 widget/gtk/nsClipboardX11.h
+
+diff --git a/widget/gtk/moz.build b/widget/gtk/moz.build
+index 22033066d274..03921d19d5b1 100644
+--- a/widget/gtk/moz.build
++++ b/widget/gtk/moz.build
+@@ -74,6 +74,8 @@ if CONFIG['NS_PRINTING']:
+ if CONFIG['MOZ_X11']:
+     UNIFIED_SOURCES += [
+         'nsClipboard.cpp',
++        'nsClipboardWayland.cpp',
++        'nsClipboardX11.cpp',
+         'nsDragService.cpp',
+         'WindowSurfaceProvider.cpp',
+         'WindowSurfaceWayland.cpp',
+diff --git a/widget/gtk/mozwayland/mozwayland.c b/widget/gtk/mozwayland/mozwayland.c
+index 34f0c62b9e55..5f19be0a2650 100644
+--- a/widget/gtk/mozwayland/mozwayland.c
++++ b/widget/gtk/mozwayland/mozwayland.c
+@@ -13,10 +13,14 @@
+ 
+ const struct wl_interface wl_buffer_interface;
+ const struct wl_interface wl_callback_interface;
++const struct wl_interface wl_data_device_interface;
++const struct wl_interface wl_data_device_manager_interface;
++const struct wl_interface wl_keyboard_interface;
+ const struct wl_interface wl_region_interface;
+ const struct wl_interface wl_registry_interface;
+ const struct wl_interface wl_shm_interface;
+ const struct wl_interface wl_shm_pool_interface;
++const struct wl_interface wl_seat_interface;
+ const struct wl_interface wl_surface_interface;
+ const struct wl_interface wl_subsurface_interface;
+ const struct wl_interface wl_subcompositor_interface;
+diff --git a/widget/gtk/nsClipboard.cpp b/widget/gtk/nsClipboard.cpp
+index 053ae970e8c1..c6e3f4f228ae 100644
+--- a/widget/gtk/nsClipboard.cpp
++++ b/widget/gtk/nsClipboard.cpp
+@@ -9,6 +9,10 @@
+ 
+ #include "nsArrayUtils.h"
+ #include "nsClipboard.h"
++#include "nsClipboardX11.h"
++#if defined(GDK_WINDOWING_WAYLAND)
++#include "nsClipboardWayland.h"
++#endif
+ #include "nsSupportsPrimitives.h"
+ #include "nsString.h"
+ #include "nsReadableUtils.h"
+@@ -20,20 +24,11 @@
+ #include "nsIObserverService.h"
+ #include "mozilla/Services.h"
+ #include "mozilla/RefPtr.h"
+-#include "mozilla/TimeStamp.h"
+ 
+ #include "imgIContainer.h"
+ 
+ #include <gtk/gtk.h>
+-
+-// For manipulation of the X event queue
+-#include <X11/Xlib.h>
+-#include <gdk/gdkx.h>
+-#include <sys/time.h>
+-#include <sys/types.h>
+-#include <errno.h>
+-#include <unistd.h>
+-#include "X11UndefineNone.h"
++#include <gtk/gtkx.h>
+ 
+ #include "mozilla/dom/EncodingUtils.h"
+ #include "nsIUnicodeDecoder.h"
+@@ -62,24 +57,52 @@ ConvertHTMLtoUCS2          (guchar             *data,
+ static void
+ GetHTMLCharset             (guchar * data, int32_t dataLength, nsCString& str);
+ 
++GdkAtom
++GetSelectionAtom(int32_t aWhichClipboard)
++{
++    if (aWhichClipboard == nsIClipboard::kGlobalClipboard)
++        return GDK_SELECTION_CLIPBOARD;
++
++    return GDK_SELECTION_PRIMARY;
++}
++
++// Idle timeout for receiving selection and property notify events (microsec)
++const int
++nsRetrievalContext::kClipboardTimeout = 500000;
++
++NS_IMPL_ISUPPORTS(nsRetrievalContext, nsIObserver)
+ 
+-// Our own versions of gtk_clipboard_wait_for_contents and
+-// gtk_clipboard_wait_for_text, which don't run the event loop while
+-// waiting for the data.  This prevents a lot of problems related to
+-// dispatching events at unexpected times.
++nsRetrievalContext::nsRetrievalContext(void)
++{
++    nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
++    if (os) {
++        os->AddObserver(this, "quit-application", false);
++    }
++}
+ 
+-static GtkSelectionData *
+-wait_for_contents          (GtkClipboard *clipboard, GdkAtom target);
++nsRetrievalContext::~nsRetrievalContext(void)
++{
++}
+ 
+-static gchar *
+-wait_for_text              (GtkClipboard *clipboard);
++NS_IMETHODIMP
++nsRetrievalContext::Observe(nsISupports *aSubject, const char *aTopic, const char16_t *aData)
++{
++    if (strcmp(aTopic, "quit-application") == 0) {
++        // application is going to quit, save clipboard content
++        Store();
++    }
++    return NS_OK;
++}
+ 
+-static GdkFilterReturn
+-selection_request_filter   (GdkXEvent *gdk_xevent,
+-                            GdkEvent *event,
+-                            gpointer data);
++void
++nsRetrievalContext::Store(void)
++{
++    GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
++    gtk_clipboard_store(clipboard);
++}
+ 
+ nsClipboard::nsClipboard()
++ : mContext(nullptr)
+ {
+ }
+ 
+@@ -100,40 +123,24 @@ NS_IMPL_ISUPPORTS(nsClipboard, nsIClipboard)
+ nsresult
+ nsClipboard::Init(void)
+ {
+-    nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
+-    if (!os)
+-      return NS_ERROR_FAILURE;
+-
+-    os->AddObserver(this, "quit-application", false);
+-
+-    // A custom event filter to workaround attempting to dereference a null
+-    // selection requestor in GTK3 versions before 3.11.3. See bug 1178799.
+-#if (MOZ_WIDGET_GTK == 3) && defined(MOZ_X11)
+-    if (gtk_check_version(3, 11, 3))
+-        gdk_window_add_filter(nullptr, selection_request_filter, nullptr);
++    // create nsRetrievalContext
++    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++        mContext = new nsRetrievalContextX11();
++#if defined(GDK_WINDOWING_WAYLAND)
++    } else {
++        mContext = new nsRetrievalContextWayland();
+ #endif
+-
+-    return NS_OK;
+-}
+-
+-NS_IMETHODIMP
+-nsClipboard::Observe(nsISupports *aSubject, const char *aTopic, const char16_t *aData)
+-{
+-    if (strcmp(aTopic, "quit-application") == 0) {
+-        // application is going to quit, save clipboard content
+-        Store();
+-        gdk_window_remove_filter(nullptr, selection_request_filter, nullptr);
+     }
+     return NS_OK;
+ }
+ 
++
+ nsresult
+ nsClipboard::Store(void)
+ {
+     // Ask the clipboard manager to store the current clipboard content
+     if (mGlobalTransferable) {
+-        GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+-        gtk_clipboard_store(clipboard);
++        mContext->Store();
+     }
+     return NS_OK;
+ }
+@@ -248,11 +255,8 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+     if (!aTransferable)
+         return NS_ERROR_FAILURE;
+ 
+-    GtkClipboard *clipboard;
+-    clipboard = gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
+-
+     guchar        *data = nullptr;
+-    gint           length = 0;
++    uint32_t       length = 0;
+     bool           foundData = false;
+     nsAutoCString  foundFlavor;
+ 
+@@ -276,21 +280,34 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+             // Special case text/unicode since we can convert any
+             // string into text/unicode
+             if (!strcmp(flavorStr, kUnicodeMime)) {
+-                gchar* new_text = wait_for_text(clipboard);
+-                if (new_text) {
+-                    // Convert utf-8 into our unicode format.
+-                    NS_ConvertUTF8toUTF16 ucs2string(new_text);
+-                    data = (guchar *)ToNewUnicode(ucs2string);
+-                    length = ucs2string.Length() * 2;
++                nsCOMPtr<nsIInputStream> dataStream;
++                rv = mContext->GetClipboardContent(GTK_DEFAULT_MIME_TEXT,
++                                                   aWhichClipboard,
++                                                   getter_AddRefs(dataStream),
++                                                   &length);
++                if (NS_FAILED(rv)) {
++                    // If the type was text/unicode and we couldn't get
++                    // text off the clipboard, run the next loop
++                    // iteration.
++                    continue;
++                }
++
++                char* new_text = (char*)g_malloc(length);
++                uint32_t ret;
++                rv = dataStream->Read(new_text, length, &ret);
++                if(NS_FAILED(rv)) {
+                     g_free(new_text);
+-                    foundData = true;
+-                    foundFlavor = kUnicodeMime;
+-                    break;
++                    continue;
+                 }
+-                // If the type was text/unicode and we couldn't get
+-                // text off the clipboard, run the next loop
+-                // iteration.
+-                continue;
++
++                // Convert utf-8 into our unicode format.
++                NS_ConvertUTF8toUTF16 ucs2string(new_text, length);
++                data = (guchar *)ToNewUnicode(ucs2string);
++                length = ucs2string.Length() * 2;
++                g_free(new_text);
++                foundData = true;
++                foundFlavor = kUnicodeMime;
++                break;
+             }
+ 
+             // For images, we must wrap the data in an nsIInputStream then return instead of break,
+@@ -304,52 +321,54 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+                     flavorStr.Assign(kJPEGImageMime);
+                 }
+ 
+-                GdkAtom atom = gdk_atom_intern(flavorStr, FALSE);
+-
+-                GtkSelectionData *selectionData = wait_for_contents(clipboard, atom);
+-                if (!selectionData)
++                nsCOMPtr<nsIInputStream> byteStream;
++                rv = mContext->GetClipboardContent(flavorStr.get(), aWhichClipboard,
++                                                   getter_AddRefs(byteStream),
++                                                   &length);
++                if (NS_FAILED(rv))
+                     continue;
+ 
+-                nsCOMPtr<nsIInputStream> byteStream;
+-                NS_NewByteInputStream(getter_AddRefs(byteStream), 
+-                                      (const char*)gtk_selection_data_get_data(selectionData),
+-                                      gtk_selection_data_get_length(selectionData), 
+-                                      NS_ASSIGNMENT_COPY);
+                 aTransferable->SetTransferData(flavorStr, byteStream, sizeof(nsIInputStream*));
+-                gtk_selection_data_free(selectionData);
+                 return NS_OK;
+             }
+ 
+-            // Get the atom for this type and try to request it off
+-            // the clipboard.
+-            GdkAtom atom = gdk_atom_intern(flavorStr, FALSE);
+-            GtkSelectionData *selectionData;
+-            selectionData = wait_for_contents(clipboard, atom);
+-            if (selectionData) {
+-                const guchar *clipboardData = gtk_selection_data_get_data(selectionData);
+-                length = gtk_selection_data_get_length(selectionData);
++            // Try to request it off the clipboard.
++            nsCOMPtr<nsIInputStream> byteStream;
++            rv = mContext->GetClipboardContent(flavorStr.get(), aWhichClipboard,
++                                               getter_AddRefs(byteStream),
++                                               &length);
++            if (NS_SUCCEEDED(rv)) {
+                 // Special case text/html since we can convert into UCS2
+                 if (!strcmp(flavorStr, kHTMLMime)) {
++                    guchar *clipboardData = (guchar *)g_malloc(length);
++                    uint32_t ret;
++                    rv = byteStream->Read((char*)clipboardData, length, &ret);
++                    if(NS_FAILED(rv)) {
++                        g_free(clipboardData);
++                        continue;
++                    }
++
+                     char16_t* htmlBody= nullptr;
+                     int32_t htmlBodyLen = 0;
+                     // Convert text/html into our unicode format
+-                    ConvertHTMLtoUCS2(const_cast<guchar*>(clipboardData), length,
++                    ConvertHTMLtoUCS2(clipboardData, length,
+                                       &htmlBody, htmlBodyLen);
++                    g_free(clipboardData);
++
+                     // Try next data format?
+                     if (!htmlBodyLen)
+                         continue;
+                     data = (guchar *)htmlBody;
+                     length = htmlBodyLen * 2;
++
++                    foundData = true;
++                    foundFlavor = flavorStr;
++
+                 } else {
+-                    data = (guchar *)moz_xmalloc(length);
+-                    if (!data)
+-                        break;
+-                    memcpy(data, clipboardData, length);
++                    aTransferable->SetTransferData(flavorStr, byteStream,
++                                                   sizeof(nsIInputStream*));
++                    return NS_OK;
+                 }
+-                gtk_selection_data_free(selectionData);
+-                foundData = true;
+-                foundFlavor = flavorStr;
+-                break;
+             }
+         }
+     }
+@@ -394,63 +413,16 @@ NS_IMETHODIMP
+ nsClipboard::HasDataMatchingFlavors(const char** aFlavorList, uint32_t aLength,
+                                     int32_t aWhichClipboard, bool *_retval)
+ {
+-    if (!aFlavorList || !_retval)
+-        return NS_ERROR_NULL_POINTER;
+-
+-    *_retval = false;
+-
+-    GtkSelectionData *selection_data =
+-        GetTargets(GetSelectionAtom(aWhichClipboard));
+-    if (!selection_data)
+-        return NS_OK;
+-
+-    gint n_targets = 0;
+-    GdkAtom *targets = nullptr;
+-
+-    if (!gtk_selection_data_get_targets(selection_data, 
+-                                        &targets, &n_targets) ||
+-        !n_targets)
+-        return NS_OK;
+-
+-    // Walk through the provided types and try to match it to a
+-    // provided type.
+-    for (uint32_t i = 0; i < aLength && !*_retval; i++) {
+-        // We special case text/unicode here.
+-        if (!strcmp(aFlavorList[i], kUnicodeMime) && 
+-            gtk_selection_data_targets_include_text(selection_data)) {
+-            *_retval = true;
+-            break;
+-        }
+-
+-        for (int32_t j = 0; j < n_targets; j++) {
+-            gchar *atom_name = gdk_atom_name(targets[j]);
+-            if (!atom_name)
+-                continue;
+-
+-            if (!strcmp(atom_name, aFlavorList[i]))
+-                *_retval = true;
+-
+-            // X clipboard supports image/jpeg, but we want to emulate support
+-            // for image/jpg as well
+-            if (!strcmp(aFlavorList[i], kJPGImageMime) && !strcmp(atom_name, kJPEGImageMime))
+-                *_retval = true;
+-
+-            g_free(atom_name);
+-
+-            if (*_retval)
+-                break;
+-        }
+-    }
+-    gtk_selection_data_free(selection_data);
+-    g_free(targets);
+-
+-    return NS_OK;
++    return mContext->HasDataMatchingFlavors(aFlavorList, aLength,
++                                            aWhichClipboard, _retval);
+ }
+ 
+ NS_IMETHODIMP
+ nsClipboard::SupportsSelectionClipboard(bool *_retval)
+ {
+-    *_retval = true; // yeah, unix supports the selection clipboard
++    // yeah, unix supports the selection clipboard on X11
++    // TODO Wayland
++    *_retval = GDK_IS_X11_DISPLAY(gdk_display_get_default());
+     return NS_OK;
+ }
+ 
+@@ -461,24 +433,6 @@ nsClipboard::SupportsFindClipboard(bool* _retval)
+   return NS_OK;
+ }
+ 
+-/* static */
+-GdkAtom
+-nsClipboard::GetSelectionAtom(int32_t aWhichClipboard)
+-{
+-    if (aWhichClipboard == kGlobalClipboard)
+-        return GDK_SELECTION_CLIPBOARD;
+-
+-    return GDK_SELECTION_PRIMARY;
+-}
+-
+-/* static */
+-GtkSelectionData *
+-nsClipboard::GetTargets(GdkAtom aWhichClipboard)
+-{
+-    GtkClipboard *clipboard = gtk_clipboard_get(aWhichClipboard);
+-    return wait_for_contents(clipboard, gdk_atom_intern("TARGETS", FALSE));
+-}
+-
+ nsITransferable *
+ nsClipboard::GetTransferable(int32_t aWhichClipboard)
+ {
+@@ -801,246 +755,3 @@ void GetHTMLCharset(guchar * data, int32_t dataLength, nsCString& str)
+     }
+     str.AssignLiteral("UNKNOWN");
+ }
+-
+-static void
+-DispatchSelectionNotifyEvent(GtkWidget *widget, XEvent *xevent)
+-{
+-    GdkEvent event;
+-    event.selection.type = GDK_SELECTION_NOTIFY;
+-    event.selection.window = gtk_widget_get_window(widget);
+-    event.selection.selection = gdk_x11_xatom_to_atom(xevent->xselection.selection);
+-    event.selection.target = gdk_x11_xatom_to_atom(xevent->xselection.target);
+-    event.selection.property = gdk_x11_xatom_to_atom(xevent->xselection.property);
+-    event.selection.time = xevent->xselection.time;
+-
+-    gtk_widget_event(widget, &event);
+-}
+-
+-static void
+-DispatchPropertyNotifyEvent(GtkWidget *widget, XEvent *xevent)
+-{
+-    GdkWindow *window = gtk_widget_get_window(widget);
+-    if ((gdk_window_get_events(window)) & GDK_PROPERTY_CHANGE_MASK) {
+-        GdkEvent event;
+-        event.property.type = GDK_PROPERTY_NOTIFY;
+-        event.property.window = window;
+-        event.property.atom = gdk_x11_xatom_to_atom(xevent->xproperty.atom);
+-        event.property.time = xevent->xproperty.time;
+-        event.property.state = xevent->xproperty.state;
+-
+-        gtk_widget_event(widget, &event);
+-    }
+-}
+-
+-struct checkEventContext
+-{
+-    GtkWidget *cbWidget;
+-    Atom       selAtom;
+-};
+-
+-static Bool
+-checkEventProc(Display *display, XEvent *event, XPointer arg)
+-{
+-    checkEventContext *context = (checkEventContext *) arg;
+-
+-    if (event->xany.type == SelectionNotify ||
+-        (event->xany.type == PropertyNotify &&
+-         event->xproperty.atom == context->selAtom)) {
+-
+-        GdkWindow *cbWindow = 
+-            gdk_x11_window_lookup_for_display(gdk_x11_lookup_xdisplay(display),
+-                                              event->xany.window);
+-        if (cbWindow) {
+-            GtkWidget *cbWidget = nullptr;
+-            gdk_window_get_user_data(cbWindow, (gpointer *)&cbWidget);
+-            if (cbWidget && GTK_IS_WIDGET(cbWidget)) {
+-                context->cbWidget = cbWidget;
+-                return True;
+-            }
+-        }
+-    }
+-
+-    return False;
+-}
+-
+-// Idle timeout for receiving selection and property notify events (microsec)
+-static const int kClipboardTimeout = 500000;
+-
+-static gchar* CopyRetrievedData(const gchar *aData)
+-{
+-    return g_strdup(aData);
+-}
+-
+-static GtkSelectionData* CopyRetrievedData(GtkSelectionData *aData)
+-{
+-    // A negative length indicates that retrieving the data failed.
+-    return gtk_selection_data_get_length(aData) >= 0 ?
+-        gtk_selection_data_copy(aData) : nullptr;
+-}
+-
+-class RetrievalContext {
+-    ~RetrievalContext()
+-    {
+-        MOZ_ASSERT(!mData, "Wait() wasn't called");
+-    }
+-
+-public:
+-    NS_INLINE_DECL_REFCOUNTING(RetrievalContext)
+-    enum State { INITIAL, COMPLETED, TIMED_OUT };
+-
+-    RetrievalContext() : mState(INITIAL), mData(nullptr) {}
+-
+-    /**
+-     * Call this when data has been retrieved.
+-     */
+-    template <class T> void Complete(T *aData)
+-    {
+-        if (mState == INITIAL) {
+-            mState = COMPLETED;
+-            mData = CopyRetrievedData(aData);
+-        } else {
+-            // Already timed out
+-            MOZ_ASSERT(mState == TIMED_OUT);
+-        }
+-    }
+-
+-    /**
+-     * Spins X event loop until timing out or being completed. Returns
+-     * null if we time out, otherwise returns the completed data (passing
+-     * ownership to caller).
+-     */
+-    void *Wait();
+-
+-protected:
+-    State mState;
+-    void* mData;
+-};
+-
+-void *
+-RetrievalContext::Wait()
+-{
+-    if (mState == COMPLETED) { // the request completed synchronously
+-        void *data = mData;
+-        mData = nullptr;
+-        return data;
+-    }
+-
+-    GdkDisplay *gdkDisplay = gdk_display_get_default();
+-    if (GDK_IS_X11_DISPLAY(gdkDisplay)) {
+-        Display *xDisplay = GDK_DISPLAY_XDISPLAY(gdkDisplay);
+-        checkEventContext context;
+-        context.cbWidget = nullptr;
+-        context.selAtom = gdk_x11_atom_to_xatom(gdk_atom_intern("GDK_SELECTION",
+-                                                                FALSE));
+-
+-        // Send X events which are relevant to the ongoing selection retrieval
+-        // to the clipboard widget.  Wait until either the operation completes, or
+-        // we hit our timeout.  All other X events remain queued.
+-
+-        int select_result;
+-
+-        int cnumber = ConnectionNumber(xDisplay);
+-        fd_set select_set;
+-        FD_ZERO(&select_set);
+-        FD_SET(cnumber, &select_set);
+-        ++cnumber;
+-        TimeStamp start = TimeStamp::Now();
+-
+-        do {
+-            XEvent xevent;
+-
+-            while (XCheckIfEvent(xDisplay, &xevent, checkEventProc,
+-                                 (XPointer) &context)) {
+-
+-                if (xevent.xany.type == SelectionNotify)
+-                    DispatchSelectionNotifyEvent(context.cbWidget, &xevent);
+-                else
+-                    DispatchPropertyNotifyEvent(context.cbWidget, &xevent);
+-
+-                if (mState == COMPLETED) {
+-                    void *data = mData;
+-                    mData = nullptr;
+-                    return data;
+-                }
+-            }
+-
+-            TimeStamp now = TimeStamp::Now();
+-            struct timeval tv;
+-            tv.tv_sec = 0;
+-            tv.tv_usec = std::max<int32_t>(0,
+-                kClipboardTimeout - (now - start).ToMicroseconds());
+-            select_result = select(cnumber, &select_set, nullptr, nullptr, &tv);
+-        } while (select_result == 1 ||
+-                 (select_result == -1 && errno == EINTR));
+-    }
+-#ifdef DEBUG_CLIPBOARD
+-    printf("exceeded clipboard timeout\n");
+-#endif
+-    mState = TIMED_OUT;
+-    return nullptr;
+-}
+-
+-static void
+-clipboard_contents_received(GtkClipboard     *clipboard,
+-                            GtkSelectionData *selection_data,
+-                            gpointer          data)
+-{
+-    RetrievalContext *context = static_cast<RetrievalContext*>(data);
+-    context->Complete(selection_data);
+-    context->Release();
+-}
+-
+-static GtkSelectionData *
+-wait_for_contents(GtkClipboard *clipboard, GdkAtom target)
+-{
+-    RefPtr<RetrievalContext> context = new RetrievalContext();
+-    // Balanced by Release in clipboard_contents_received
+-    context.get()->AddRef();
+-    gtk_clipboard_request_contents(clipboard, target,
+-                                   clipboard_contents_received,
+-                                   context.get());
+-    return static_cast<GtkSelectionData*>(context->Wait());
+-}
+-
+-static void
+-clipboard_text_received(GtkClipboard *clipboard,
+-                        const gchar  *text,
+-                        gpointer      data)
+-{
+-    RetrievalContext *context = static_cast<RetrievalContext*>(data);
+-    context->Complete(text);
+-    context->Release();
+-}
+-
+-static gchar *
+-wait_for_text(GtkClipboard *clipboard)
+-{
+-    RefPtr<RetrievalContext> context = new RetrievalContext();
+-    // Balanced by Release in clipboard_text_received
+-    context.get()->AddRef();
+-    gtk_clipboard_request_text(clipboard, clipboard_text_received, context.get());
+-    return static_cast<gchar*>(context->Wait());
+-}
+-
+-static GdkFilterReturn
+-selection_request_filter(GdkXEvent *gdk_xevent, GdkEvent *event, gpointer data)
+-{
+-    XEvent *xevent = static_cast<XEvent*>(gdk_xevent);
+-    if (xevent->xany.type == SelectionRequest) {
+-        if (xevent->xselectionrequest.requestor == X11None)
+-            return GDK_FILTER_REMOVE;
+-
+-        GdkDisplay *display = gdk_x11_lookup_xdisplay(
+-                xevent->xselectionrequest.display);
+-        if (!display)
+-            return GDK_FILTER_REMOVE;
+-
+-        GdkWindow *window = gdk_x11_window_foreign_new_for_display(display,
+-                xevent->xselectionrequest.requestor);
+-        if (!window)
+-            return GDK_FILTER_REMOVE;
+-
+-        g_object_unref(window);
+-    }
+-    return GDK_FILTER_CONTINUE;
+-}
+diff --git a/widget/gtk/nsClipboard.h b/widget/gtk/nsClipboard.h
+index 70c866a013c9..21c9661e1ec3 100644
+--- a/widget/gtk/nsClipboard.h
++++ b/widget/gtk/nsClipboard.h
+@@ -10,10 +10,39 @@
+ 
+ #include "nsIClipboard.h"
+ #include "nsIObserver.h"
++#include "nsIBinaryOutputStream.h"
+ #include <gtk/gtk.h>
+ 
+-class nsClipboard : public nsIClipboard,
+-                    public nsIObserver
++// Default Gtk MIME for text
++#define GTK_DEFAULT_MIME_TEXT "UTF8_STRING"
++
++class nsRetrievalContext : public nsIObserver {
++public:
++    NS_DECL_ISUPPORTS
++    NS_DECL_NSIOBSERVER
++
++    nsRetrievalContext();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) = 0;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) = 0;
++
++    // Save global clipboard content to gtk
++    void  Store(void);
++
++protected:
++    virtual ~nsRetrievalContext();
++
++    // Idle timeout for receiving selection and property notify events (microsec)
++    static const int kClipboardTimeout;
++};
++
++class nsClipboard : public nsIClipboard
+ {
+ public:
+     nsClipboard();
+@@ -21,7 +50,6 @@ public:
+     NS_DECL_ISUPPORTS
+     
+     NS_DECL_NSICLIPBOARD
+-    NS_DECL_NSIOBSERVER
+ 
+     // Make sure we are initialized, called from the factory
+     // constructor
+@@ -35,10 +63,6 @@ public:
+ private:
+     virtual ~nsClipboard();
+ 
+-    // Utility methods
+-    static GdkAtom               GetSelectionAtom (int32_t aWhichClipboard);
+-    static GtkSelectionData     *GetTargets       (GdkAtom aWhichClipboard);
+-
+     // Save global clipboard content to gtk
+     nsresult                     Store            (void);
+ 
+@@ -52,7 +76,9 @@ private:
+     nsCOMPtr<nsIClipboardOwner>  mGlobalOwner;
+     nsCOMPtr<nsITransferable>    mSelectionTransferable;
+     nsCOMPtr<nsITransferable>    mGlobalTransferable;
+-
++    RefPtr<nsRetrievalContext>   mContext;
+ };
+ 
++GdkAtom GetSelectionAtom(int32_t aWhichClipboard);
++
+ #endif /* __nsClipboard_h_ */
+diff --git a/widget/gtk/nsClipboardWayland.cpp b/widget/gtk/nsClipboardWayland.cpp
+new file mode 100644
+index 000000000000..b759256be81e
+--- /dev/null
++++ b/widget/gtk/nsClipboardWayland.cpp
+@@ -0,0 +1,429 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/ArrayUtils.h"
++
++#include "nsArrayUtils.h"
++#include "nsClipboard.h"
++#include "nsClipboardWayland.h"
++#include "nsIStorageStream.h"
++#include "nsIBinaryOutputStream.h"
++#include "nsSupportsPrimitives.h"
++#include "nsString.h"
++#include "nsReadableUtils.h"
++#include "nsXPIDLString.h"
++#include "nsPrimitiveHelpers.h"
++#include "nsIServiceManager.h"
++#include "nsImageToPixbuf.h"
++#include "nsStringStream.h"
++#include "nsIObserverService.h"
++#include "mozilla/Services.h"
++#include "mozilla/RefPtr.h"
++#include "mozilla/TimeStamp.h"
++
++#include "imgIContainer.h"
++
++#include <gtk/gtk.h>
++#include <poll.h>
++#include <sys/epoll.h>
++#include <stdlib.h>
++#include <string.h>
++#include <fcntl.h>
++#include <gtk/gtk.h>
++#include <gdk/gdkwayland.h>
++#include <errno.h>
++
++void
++nsRetrievalContextWayland::ResetMIMETypeList(void)
++{
++  int length = mMIMETypes.Length();
++  for (int i = 0; i < length; i++) {
++      free(mMIMETypes[i]);
++  }
++  mMIMETypes.Clear();
++}
++
++void
++nsRetrievalContextWayland::AddMIMEType(const char *aMimeType)
++{
++    mMIMETypes.AppendElement(strdup(aMimeType));
++}
++
++bool
++nsRetrievalContextWayland::HasMIMEType(const char *aMimeType)
++{
++    int length = mMIMETypes.Length();
++    for (int i = 0; i < length; i++) {
++        if(strcmp(mMIMETypes[i], aMimeType) == 0)
++            return true;
++    }
++    return false;
++}
++
++bool
++nsRetrievalContextWayland::HasMIMETypeText(void)
++{
++    // Taken from gtk_targets_include_text()
++    int length = mMIMETypes.Length();
++    for (int i = 0; i < length; i++) {
++        if(strcmp(mMIMETypes[i], "UTF8_STRING") == 0 ||
++           strcmp(mMIMETypes[i], "TEXT") == 0 ||
++           strcmp(mMIMETypes[i], "COMPOUND_TEXT") == 0 ||
++           strcmp(mMIMETypes[i], "text/plain") == 0 ||
++           strcmp(mMIMETypes[i], "text/plain;charset=utf-8") == 0 ||
++           strcmp(mMIMETypes[i], "mTextPlainLocale") == 0)
++        {
++            return true;
++        }
++    }
++    return false;
++}
++
++void
++nsRetrievalContextWayland::SetDataOffer(wl_data_offer *aDataOffer)
++{
++    if(mDataOffer) {
++        wl_data_offer_destroy(mDataOffer);
++    }
++    mDataOffer = aDataOffer;
++}
++
++static void
++data_device_selection (void                  *data,
++                       struct wl_data_device *wl_data_device,
++                       struct wl_data_offer  *offer)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++    context->SetDataOffer(offer);
++}
++
++static void
++data_offer_offer (void                 *data,
++                  struct wl_data_offer *wl_data_offer,
++                  const char           *type)
++{
++  nsRetrievalContextWayland *context =
++      static_cast<nsRetrievalContextWayland*>(data);
++  context->AddMIMEType(type);
++}
++
++static void
++data_offer_source_actions(void *data,
++                          struct wl_data_offer *wl_data_offer,
++                          uint32_t source_actions)
++{
++}
++
++static void
++data_offer_action(void *data,
++                  struct wl_data_offer *wl_data_offer,
++                  uint32_t dnd_action)
++{
++}
++
++static const struct wl_data_offer_listener data_offer_listener = {
++    data_offer_offer,
++    data_offer_source_actions,
++    data_offer_action
++};
++
++static void
++data_device_data_offer (void                  *data,
++                        struct wl_data_device *data_device,
++                        struct wl_data_offer  *offer)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++
++    // We have a new fresh clipboard content
++    context->ResetMIMETypeList();
++    wl_data_offer_add_listener (offer, &data_offer_listener, data);
++}
++
++static void
++data_device_enter (void                  *data,
++                   struct wl_data_device *data_device,
++                   uint32_t               time,
++                   struct wl_surface     *surface,
++                   int32_t                x,
++                   int32_t                y,
++                   struct wl_data_offer  *offer)
++{
++}
++
++static void
++data_device_leave (void                  *data,
++                   struct wl_data_device *data_device)
++{
++}
++
++static void
++data_device_motion (void                  *data,
++                    struct wl_data_device *data_device,
++                    uint32_t               time,
++                    int32_t                x,
++                    int32_t                y)
++{
++}
++
++static void
++data_device_drop (void                  *data,
++                  struct wl_data_device *data_device)
++{
++}
++
++static const struct wl_data_device_listener data_device_listener = {
++    data_device_data_offer,
++    data_device_enter,
++    data_device_leave,
++    data_device_motion,
++    data_device_drop,
++    data_device_selection
++};
++
++static void
++keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
++                       uint32_t format, int fd, uint32_t size)
++{
++}
++
++static void
++keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
++                      uint32_t serial, struct wl_surface *surface,
++                      struct wl_array *keys)
++{
++}
++
++static void
++keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
++                      uint32_t serial, struct wl_surface *surface)
++{
++    // We lost focus so our clipboard data are outdated
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++
++    context->ResetMIMETypeList();
++    context->SetDataOffer(nullptr);
++}
++
++static void
++keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
++                    uint32_t serial, uint32_t time, uint32_t key,
++                    uint32_t state)
++{
++}
++
++static void
++keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
++                          uint32_t serial, uint32_t mods_depressed,
++                          uint32_t mods_latched, uint32_t mods_locked,
++                          uint32_t group)
++{
++}
++
++static const struct wl_keyboard_listener keyboard_listener = {
++    keyboard_handle_keymap,
++    keyboard_handle_enter,
++    keyboard_handle_leave,
++    keyboard_handle_key,
++    keyboard_handle_modifiers,
++};
++
++void
++nsRetrievalContextWayland::ConfigureKeyboard(wl_seat_capability caps)
++{
++  if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
++      mKeyboard = wl_seat_get_keyboard(mSeat);
++      wl_keyboard_add_listener(mKeyboard, &keyboard_listener, this);
++  } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
++      wl_keyboard_destroy(mKeyboard);
++      mKeyboard = nullptr;
++  }
++}
++
++static void
++seat_handle_capabilities(void *data, struct wl_seat *seat,
++                         unsigned int caps)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++    context->ConfigureKeyboard((wl_seat_capability)caps);
++}
++
++static const struct wl_seat_listener seat_listener = {
++      seat_handle_capabilities,
++};
++
++void
++nsRetrievalContextWayland::InitDataDeviceManager(wl_registry *registry,
++                                                 uint32_t id,
++                                                 uint32_t version)
++{
++  int data_device_manager_version = MIN (version, 3);
++  mDataDeviceManager = (wl_data_device_manager *)wl_registry_bind(registry, id,
++      &wl_data_device_manager_interface, data_device_manager_version);
++}
++
++void nsRetrievalContextWayland::InitSeat(wl_registry *registry,
++                                         uint32_t id, uint32_t version,
++                                         void *data)
++{
++  mSeat = (wl_seat*)wl_registry_bind(registry, id, &wl_seat_interface, 1);
++  wl_seat_add_listener(mSeat, &seat_listener, data);
++}
++
++static void
++gdk_registry_handle_global(void               *data,
++                           struct wl_registry *registry,
++                           uint32_t            id,
++                           const char         *interface,
++                           uint32_t            version)
++{
++  nsRetrievalContextWayland *context =
++      static_cast<nsRetrievalContextWayland*>(data);
++
++  if (strcmp (interface, "wl_data_device_manager") == 0) {
++    context->InitDataDeviceManager(registry, id, version);
++  } else if (strcmp(interface, "wl_seat") == 0) {
++    context->InitSeat(registry, id, version, data);
++  }
++}
++
++static void
++gdk_registry_handle_global_remove(void               *data,
++                                 struct wl_registry *registry,
++                                 uint32_t            id)
++{
++}
++
++static const struct wl_registry_listener clipboard_registry_listener = {
++    gdk_registry_handle_global,
++    gdk_registry_handle_global_remove
++};
++
++nsRetrievalContextWayland::nsRetrievalContextWayland(void)
++  : mInitialized(false),
++    mDataDeviceManager(nullptr),
++    mDataOffer(nullptr)
++{
++    const gchar* charset;
++    g_get_charset(&charset);
++    mTextPlainLocale = g_strdup_printf("text/plain;charset=%s", charset);
++
++    mDisplay = gdk_wayland_display_get_wl_display(gdk_display_get_default());
++    wl_registry_add_listener(wl_display_get_registry(mDisplay),
++                             &clipboard_registry_listener, this);
++    wl_display_roundtrip(mDisplay);
++
++    // We don't have Wayland support here so just give up
++    if (!mDataDeviceManager || !mSeat)
++        return;
++
++    wl_data_device *dataDevice =
++        wl_data_device_manager_get_data_device(mDataDeviceManager, mSeat);
++    wl_data_device_add_listener(dataDevice, &data_device_listener, this);
++    wl_display_roundtrip(mDisplay);
++
++    mInitialized = true;
++}
++
++nsRetrievalContextWayland::~nsRetrievalContextWayland(void)
++{
++    g_free(mTextPlainLocale);
++}
++
++NS_IMETHODIMP
++nsRetrievalContextWayland::HasDataMatchingFlavors(const char** aFlavorList,
++    uint32_t aLength, int32_t aWhichClipboard, bool *_retval)
++{
++    if (!aFlavorList || !_retval)
++        return NS_ERROR_NULL_POINTER;
++
++    *_retval = false;
++
++    // Walk through the provided types and try to match it to a
++    // provided type.
++    for (uint32_t i = 0; i < aLength; i++) {
++        // We special case text/unicode here.
++        if (!strcmp(aFlavorList[i], kUnicodeMime) &&
++            HasMIMETypeText()) {
++            *_retval = true;
++            break;
++        }
++        if (HasMIMEType(aFlavorList[i])) {
++            *_retval = true;
++            break;
++        }
++        // X clipboard supports image/jpeg, but we want to emulate support
++        // for image/jpg as well
++        if (!strcmp(aFlavorList[i], kJPGImageMime) &&
++            HasMIMEType(kJPEGImageMime)) {
++            *_retval = true;
++            break;
++        }
++    }
++
++    return NS_OK;
++}
++
++nsresult
++nsRetrievalContextWayland::GetClipboardContent(const char* aMimeType,
++                                               int32_t aWhichClipboard,
++                                               nsIInputStream** aResult,
++                                               uint32_t* aContentLength)
++{
++    NS_ASSERTION(mDataOffer, "Requested data without valid data offer!");
++
++    int pipe_fd[2];
++    if (pipe(pipe_fd) == -1)
++        return NS_ERROR_FAILURE;
++
++    wl_data_offer_receive(mDataOffer, aMimeType, pipe_fd[1]);
++    close(pipe_fd[1]);
++    wl_display_flush(mDisplay);
++
++    nsresult rv;
++    nsCOMPtr<nsIStorageStream> storageStream;
++    nsCOMPtr<nsIBinaryOutputStream> stream;
++    int length;
++
++    struct pollfd fds;
++    fds.fd = pipe_fd[0];
++    fds.events = POLLIN;
++
++    // Choose some reasonable timeout here
++    int ret = poll(&fds, 1, kClipboardTimeout*1000);
++    if (ret && ret != -1) {
++        #define BUFFER_SIZE 4096
++
++        NS_NewStorageStream(BUFFER_SIZE, UINT32_MAX, getter_AddRefs(storageStream));
++        nsCOMPtr<nsIOutputStream> outputStream;
++        rv = storageStream->GetOutputStream(0, getter_AddRefs(outputStream));
++        if (NS_SUCCEEDED(rv)) {
++            do {
++                char buffer[BUFFER_SIZE];
++                length = read(pipe_fd[0], buffer, sizeof(buffer));
++                if (length == 0 || length == -1)
++                    break;
++
++                uint32_t ret;
++                rv = outputStream->Write(buffer, length, &ret);
++            } while(NS_SUCCEEDED(rv) && length == BUFFER_SIZE);
++        }
++        outputStream->Close();
++    }
++
++    close(pipe_fd[0]);
++
++    rv = storageStream->GetLength(aContentLength);
++    NS_ENSURE_SUCCESS(rv, rv);
++
++    rv = storageStream->NewInputStream(0, aResult);
++    NS_ENSURE_SUCCESS(rv, rv);
++    return NS_OK;
++}
+diff --git a/widget/gtk/nsClipboardWayland.h b/widget/gtk/nsClipboardWayland.h
+new file mode 100644
+index 000000000000..0feede8dab4f
+--- /dev/null
++++ b/widget/gtk/nsClipboardWayland.h
+@@ -0,0 +1,53 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef __nsClipboardWayland_h_
++#define __nsClipboardWayland_h_
++
++#include "nsIClipboard.h"
++#include <gtk/gtk.h>
++#include <gdk/gdkwayland.h>
++#include <nsTArray.h>
++
++class nsRetrievalContextWayland : public nsRetrievalContext
++{
++public:
++    nsRetrievalContextWayland();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) override;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) override;
++
++    void SetDataOffer(wl_data_offer *aDataOffer);
++    void AddMIMEType(const char *aMimeType);
++    bool HasMIMEType(const char *aMimeType);
++    // Our version of gtk_selection_data_targets_include_text()
++    bool HasMIMETypeText(void);
++    void ResetMIMETypeList(void);
++    void ConfigureKeyboard(wl_seat_capability caps);
++
++    void InitDataDeviceManager(wl_registry *registry, uint32_t id, uint32_t version);
++    void InitSeat(wl_registry *registry, uint32_t id, uint32_t version, void *data);
++private:
++    virtual ~nsRetrievalContextWayland() override;
++
++    bool                    mInitialized;
++    wl_display             *mDisplay;
++    wl_seat                *mSeat;
++    wl_data_device_manager *mDataDeviceManager;
++    wl_data_offer          *mDataOffer;
++    wl_keyboard            *mKeyboard;
++    nsTArray<char*>         mMIMETypes;
++    gchar                  *mTextPlainLocale;
++};
++
++#endif /* __nsClipboardWayland_h_ */
+diff --git a/widget/gtk/nsClipboardX11.cpp b/widget/gtk/nsClipboardX11.cpp
+new file mode 100644
+index 000000000000..45c6d9faf666
+--- /dev/null
++++ b/widget/gtk/nsClipboardX11.cpp
+@@ -0,0 +1,309 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/ArrayUtils.h"
++
++#include "nsArrayUtils.h"
++#include "nsClipboard.h"
++#include "nsClipboardX11.h"
++#include "nsSupportsPrimitives.h"
++#include "nsString.h"
++#include "nsReadableUtils.h"
++#include "nsXPIDLString.h"
++#include "nsPrimitiveHelpers.h"
++#include "nsIServiceManager.h"
++#include "nsImageToPixbuf.h"
++#include "nsStringStream.h"
++#include "nsIObserverService.h"
++#include "mozilla/Services.h"
++#include "mozilla/RefPtr.h"
++#include "mozilla/TimeStamp.h"
++
++#include "imgIContainer.h"
++
++#include <gtk/gtk.h>
++
++// For manipulation of the X event queue
++#include <X11/Xlib.h>
++#include <gdk/gdkx.h>
++#include <sys/time.h>
++#include <sys/types.h>
++#include <errno.h>
++#include <unistd.h>
++#include "X11UndefineNone.h"
++
++using namespace mozilla;
++
++static GdkFilterReturn
++selection_request_filter(GdkXEvent *gdk_xevent, GdkEvent *event, gpointer data)
++{
++    XEvent *xevent = static_cast<XEvent*>(gdk_xevent);
++    if (xevent->xany.type == SelectionRequest) {
++        if (xevent->xselectionrequest.requestor == X11None)
++            return GDK_FILTER_REMOVE;
++
++        GdkDisplay *display = gdk_x11_lookup_xdisplay(
++                xevent->xselectionrequest.display);
++        if (!display)
++            return GDK_FILTER_REMOVE;
++
++        GdkWindow *window = gdk_x11_window_foreign_new_for_display(display,
++                xevent->xselectionrequest.requestor);
++        if (!window)
++            return GDK_FILTER_REMOVE;
++
++        g_object_unref(window);
++    }
++    return GDK_FILTER_CONTINUE;
++}
++
++nsRetrievalContextX11::nsRetrievalContextX11(void)
++: mState(INITIAL),
++  mData(nullptr)
++{
++    // A custom event filter to workaround attempting to dereference a null
++    // selection requestor in GTK3 versions before 3.11.3. See bug 1178799.
++#if (MOZ_WIDGET_GTK == 3) && defined(MOZ_X11)
++    if (gtk_check_version(3, 11, 3))
++        gdk_window_add_filter(nullptr, selection_request_filter, nullptr);
++#endif
++}
++
++nsRetrievalContextX11::~nsRetrievalContextX11(void)
++{
++    gdk_window_remove_filter(nullptr, selection_request_filter, nullptr);
++}
++
++static void
++DispatchSelectionNotifyEvent(GtkWidget *widget, XEvent *xevent)
++{
++    GdkEvent event;
++    event.selection.type = GDK_SELECTION_NOTIFY;
++    event.selection.window = gtk_widget_get_window(widget);
++    event.selection.selection = gdk_x11_xatom_to_atom(xevent->xselection.selection);
++    event.selection.target = gdk_x11_xatom_to_atom(xevent->xselection.target);
++    event.selection.property = gdk_x11_xatom_to_atom(xevent->xselection.property);
++    event.selection.time = xevent->xselection.time;
++
++    gtk_widget_event(widget, &event);
++}
++
++static void
++DispatchPropertyNotifyEvent(GtkWidget *widget, XEvent *xevent)
++{
++    GdkWindow *window = gtk_widget_get_window(widget);
++    if ((gdk_window_get_events(window)) & GDK_PROPERTY_CHANGE_MASK) {
++        GdkEvent event;
++        event.property.type = GDK_PROPERTY_NOTIFY;
++        event.property.window = window;
++        event.property.atom = gdk_x11_xatom_to_atom(xevent->xproperty.atom);
++        event.property.time = xevent->xproperty.time;
++        event.property.state = xevent->xproperty.state;
++
++        gtk_widget_event(widget, &event);
++    }
++}
++
++struct checkEventContext
++{
++    GtkWidget *cbWidget;
++    Atom       selAtom;
++};
++
++static Bool
++checkEventProc(Display *display, XEvent *event, XPointer arg)
++{
++    checkEventContext *context = (checkEventContext *) arg;
++
++    if (event->xany.type == SelectionNotify ||
++        (event->xany.type == PropertyNotify &&
++         event->xproperty.atom == context->selAtom)) {
++
++        GdkWindow *cbWindow =
++            gdk_x11_window_lookup_for_display(gdk_x11_lookup_xdisplay(display),
++                                              event->xany.window);
++        if (cbWindow) {
++            GtkWidget *cbWidget = nullptr;
++            gdk_window_get_user_data(cbWindow, (gpointer *)&cbWidget);
++            if (cbWidget && GTK_IS_WIDGET(cbWidget)) {
++                context->cbWidget = cbWidget;
++                return True;
++            }
++        }
++    }
++
++    return False;
++}
++
++void *
++nsRetrievalContextX11::Wait()
++{
++    if (mState == COMPLETED) { // the request completed synchronously
++        void *data = mData;
++        mData = nullptr;
++        return data;
++    }
++
++    GdkDisplay *gdkDisplay = gdk_display_get_default();
++    if (GDK_IS_X11_DISPLAY(gdkDisplay)) {
++        Display *xDisplay = GDK_DISPLAY_XDISPLAY(gdkDisplay);
++        checkEventContext context;
++        context.cbWidget = nullptr;
++        context.selAtom = gdk_x11_atom_to_xatom(gdk_atom_intern("GDK_SELECTION",
++                                                                FALSE));
++
++        // Send X events which are relevant to the ongoing selection retrieval
++        // to the clipboard widget.  Wait until either the operation completes, or
++        // we hit our timeout.  All other X events remain queued.
++
++        int select_result;
++
++        int cnumber = ConnectionNumber(xDisplay);
++        fd_set select_set;
++        FD_ZERO(&select_set);
++        FD_SET(cnumber, &select_set);
++        ++cnumber;
++        TimeStamp start = TimeStamp::Now();
++
++        do {
++            XEvent xevent;
++
++            while (XCheckIfEvent(xDisplay, &xevent, checkEventProc,
++                                 (XPointer) &context)) {
++
++                if (xevent.xany.type == SelectionNotify)
++                    DispatchSelectionNotifyEvent(context.cbWidget, &xevent);
++                else
++                    DispatchPropertyNotifyEvent(context.cbWidget, &xevent);
++
++                if (mState == COMPLETED) {
++                    void *data = mData;
++                    mData = nullptr;
++                    return data;
++                }
++            }
++
++            TimeStamp now = TimeStamp::Now();
++            struct timeval tv;
++            tv.tv_sec = 0;
++            tv.tv_usec = std::max<int32_t>(0,
++                kClipboardTimeout - (now - start).ToMicroseconds());
++            select_result = select(cnumber, &select_set, nullptr, nullptr, &tv);
++        } while (select_result == 1 ||
++                 (select_result == -1 && errno == EINTR));
++    }
++#ifdef DEBUG_CLIPBOARD
++    printf("exceeded clipboard timeout\n");
++#endif
++    mState = TIMED_OUT;
++    return nullptr;
++}
++
++static void
++clipboard_contents_received(GtkClipboard     *clipboard,
++                            GtkSelectionData *selection_data,
++                            gpointer          data)
++{
++    nsRetrievalContextX11 *context = static_cast<nsRetrievalContextX11*>(data);
++    context->Complete(selection_data);
++}
++
++GtkSelectionData*
++nsRetrievalContextX11::WaitForContents(GtkClipboard *clipboard, const char *aMimeType)
++{
++    mState = INITIAL;
++    NS_ASSERTION(!mData, "Leaking clipboard content!");
++
++    gtk_clipboard_request_contents(clipboard,
++                                   gdk_atom_intern(aMimeType, FALSE),
++                                   clipboard_contents_received,
++                                   this);
++    return static_cast<GtkSelectionData*>(Wait());
++}
++
++NS_IMETHODIMP
++nsRetrievalContextX11::HasDataMatchingFlavors(const char** aFlavorList,
++                                              uint32_t aLength,
++                                              int32_t aWhichClipboard,
++                                              bool *_retval)
++{
++    if (!aFlavorList || !_retval)
++        return NS_ERROR_NULL_POINTER;
++
++    *_retval = false;
++
++    GtkClipboard *clipboard = 
++        gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
++
++    GtkSelectionData *selection_data =
++        WaitForContents(clipboard, "TARGETS");
++    if (!selection_data)
++        return NS_OK;
++
++    gint n_targets = 0;
++    GdkAtom *targets = nullptr;
++
++    if (!gtk_selection_data_get_targets(selection_data,
++                                        &targets, &n_targets) ||
++        !n_targets)
++        return NS_OK;
++
++    // Walk through the provided types and try to match it to a
++    // provided type.
++    for (uint32_t i = 0; i < aLength && !*_retval; i++) {
++        // We special case text/unicode here.
++        if (!strcmp(aFlavorList[i], kUnicodeMime) &&
++            gtk_selection_data_targets_include_text(selection_data)) {
++            *_retval = true;
++            break;
++        }
++
++        for (int32_t j = 0; j < n_targets; j++) {
++            gchar *atom_name = gdk_atom_name(targets[j]);
++            if (!atom_name)
++                continue;
++
++            if (!strcmp(atom_name, aFlavorList[i]))
++                *_retval = true;
++
++            // X clipboard supports image/jpeg, but we want to emulate support
++            // for image/jpg as well
++            if (!strcmp(aFlavorList[i], kJPGImageMime) && !strcmp(atom_name, kJPEGImageMime))
++                *_retval = true;
++
++            g_free(atom_name);
++
++            if (*_retval)
++                break;
++        }
++    }
++    gtk_selection_data_free(selection_data);
++    g_free(targets);
++
++    return NS_OK;
++}
++
++nsresult
++nsRetrievalContextX11::GetClipboardContent(const char* aMimeType,
++                                           int32_t aWhichClipboard,
++                                           nsIInputStream** aResult,
++                                           uint32_t* aContentLength)
++{
++    GtkClipboard *clipboard;
++    clipboard = gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
++
++    GtkSelectionData *selectionData = WaitForContents(clipboard, aMimeType);
++    if (!selectionData)
++        return NS_ERROR_FAILURE;
++
++    *aContentLength = gtk_selection_data_get_length(selectionData);
++    NS_NewByteInputStream(aResult,
++                          (const char*)gtk_selection_data_get_data(selectionData),
++                          *aContentLength, NS_ASSIGNMENT_COPY);
++    gtk_selection_data_free(selectionData);
++    return NS_OK;
++}
+diff --git a/widget/gtk/nsClipboardX11.h b/widget/gtk/nsClipboardX11.h
+new file mode 100644
+index 000000000000..f9eb0d3b4f82
+--- /dev/null
++++ b/widget/gtk/nsClipboardX11.h
+@@ -0,0 +1,68 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef __nsClipboardX11_h_
++#define __nsClipboardX11_h_
++
++#include "nsIClipboard.h"
++#include <gtk/gtk.h>
++
++class nsRetrievalContextX11 : public nsRetrievalContext
++{
++public:
++    enum State { INITIAL, COMPLETED, TIMED_OUT };
++
++    nsRetrievalContextX11();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) override;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) override;
++
++    gchar* CopyRetrievedData(const gchar *aData)
++    {
++      return g_strdup(aData);
++    }
++    GtkSelectionData* CopyRetrievedData(GtkSelectionData *aData)
++    {
++      // A negative length indicates that retrieving the data failed.
++      return gtk_selection_data_get_length(aData) >= 0 ?
++          gtk_selection_data_copy(aData) : nullptr;
++    }
++
++    // Call this when data has been retrieved.
++    template <class T> void Complete(T *aData)
++    {
++      if (mState == INITIAL) {
++          mState = COMPLETED;
++          mData = CopyRetrievedData(aData);
++      } else {
++          // Already timed out
++          MOZ_ASSERT(mState == TIMED_OUT);
++      }
++    }
++private:
++    virtual ~nsRetrievalContextX11() override;
++
++    GtkSelectionData* WaitForContents(GtkClipboard *clipboard,
++                                      const char *aMimeType);
++    /**
++     * Spins X event loop until timing out or being completed. Returns
++     * null if we time out, otherwise returns the completed data (passing
++     * ownership to caller).
++     */
++    void *Wait();
++
++    State mState;
++    void* mData;
++};
++
++#endif /* __nsClipboardX11_h_ */
+diff --git a/widget/gtk/nsNativeThemeGTK.cpp b/widget/gtk/nsNativeThemeGTK.cpp
+index fa835b52b1cc..0c26f208dcba 100644
+--- a/widget/gtk/nsNativeThemeGTK.cpp
++++ b/widget/gtk/nsNativeThemeGTK.cpp
+@@ -7,6 +7,7 @@
+ #include "nsThemeConstants.h"
+ #include "gtkdrawing.h"
+ #include "nsScreenGtk.h"
++#include "X11UndefineNone.h"
+ 
+ #include "gfx2DGlue.h"
+ #include "nsIObserverService.h"
+@@ -30,6 +31,7 @@
+ 
+ #include <gdk/gdkprivate.h>
+ #include <gtk/gtk.h>
++#include <gtk/gtkx.h>
+ 
+ #include "gfxContext.h"
+ #include "gfxPlatformGtk.h"
+diff --git a/widget/gtk/nsNativeThemeGTK.h b/widget/gtk/nsNativeThemeGTK.h
+index 56ae0317f832..7ad7c1761aa3 100644
+--- a/widget/gtk/nsNativeThemeGTK.h
++++ b/widget/gtk/nsNativeThemeGTK.h
+@@ -6,6 +6,7 @@
+ #ifndef _GTK_NSNATIVETHEMEGTK_H_
+ #define _GTK_NSNATIVETHEMEGTK_H_
+ 
++#include "X11UndefineNone.h"
+ #include "nsITheme.h"
+ #include "nsCOMPtr.h"
+ #include "nsIAtom.h"
+-- 
+2.11.0
+

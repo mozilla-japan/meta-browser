@@ -1,0 +1,421 @@
+From d1f40df8daf937387dbd919c3a39910752ece443 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 3 Apr 2017 12:19:32 +0200
+Subject: [PATCH 21/44] Use MOZ_WAYLAND instead of GDK_WINDOWING_WAYLAND
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceProvider.cpp |  8 ++++----
+ widget/gtk/WindowSurfaceProvider.h   |  7 ++++---
+ widget/gtk/WindowSurfaceWayland.cpp  |  4 +---
+ widget/gtk/X11CompositorWidget.cpp   |  6 +++---
+ widget/gtk/X11CompositorWidget.h     |  2 +-
+ widget/gtk/mozcontainer.c            | 22 +++++++++++-----------
+ widget/gtk/mozcontainer.h            |  6 +++---
+ widget/gtk/mozwayland/mozwayland.c   |  3 ---
+ widget/gtk/nsClipboard.cpp           |  4 ++--
+ widget/gtk/nsWindow.cpp              | 12 ++++++------
+ widget/gtk/nsWindow.h                |  6 +++---
+ 11 files changed, 38 insertions(+), 42 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceProvider.cpp b/widget/gtk/WindowSurfaceProvider.cpp
+index 2a126e7b27c1..251a826641b3 100644
+--- a/widget/gtk/WindowSurfaceProvider.cpp
++++ b/widget/gtk/WindowSurfaceProvider.cpp
+@@ -11,7 +11,7 @@
+ #include "WindowSurfaceX11Image.h"
+ #include "WindowSurfaceX11SHM.h"
+ #include "WindowSurfaceXRender.h"
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ #include "WindowSurfaceWayland.h"
+ #endif
+ 
+@@ -28,7 +28,7 @@ WindowSurfaceProvider::WindowSurfaceProvider()
+     , mXVisual(nullptr)
+     , mXDepth(0)
+     , mWindowSurface(nullptr)
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     , mWidget(nullptr)
+     , mWaylandDisplay(nullptr)
+     , mWaylandSurface(nullptr)
+@@ -55,7 +55,7 @@ void WindowSurfaceProvider::Initialize(
+   mIsX11Display = true;
+ }
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ void WindowSurfaceProvider::Initialize(
+       nsWindow *aWidget,
+       wl_display *aWaylandDisplay,
+@@ -79,7 +79,7 @@ void WindowSurfaceProvider::CleanupResources()
+ UniquePtr<WindowSurface>
+ WindowSurfaceProvider::CreateWindowSurface()
+ {
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+   if (!mIsX11Display) {
+     MOZ_ASSERT(mWaylandDisplay);
+     LOGDRAW(("Drawing to nsWindow %p using wl_surface\n", (void*)this));
+diff --git a/widget/gtk/WindowSurfaceProvider.h b/widget/gtk/WindowSurfaceProvider.h
+index 60b55ba48ef6..8efb1efb4227 100644
+--- a/widget/gtk/WindowSurfaceProvider.h
++++ b/widget/gtk/WindowSurfaceProvider.h
+@@ -12,7 +12,7 @@
+ #include "mozilla/gfx/2D.h"
+ #include "Units.h"
+ #include <gdk/gdk.h>
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
+ #endif
+ 
+@@ -44,7 +44,8 @@ public:
+       Window aWindow,
+       Visual* aVisual,
+       int aDepth);
+-#ifdef GDK_WINDOWING_WAYLAND
++
++#ifdef MOZ_WAYLAND
+    void Initialize(nsWindow *aWidget,
+                    wl_display *aWaylandDisplay,
+                    wl_surface *aWaylandSurface);
+@@ -73,7 +74,7 @@ private:
+   Visual*     mXVisual;
+   int         mXDepth;
+   UniquePtr<WindowSurface> mWindowSurface;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+   nsWindow*   mWidget;
+   wl_display* mWaylandDisplay;
+   wl_surface* mWaylandSurface;
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 6255fe07412f..ac67b8fb1880 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -14,7 +14,7 @@ moz-container -> display check
+ X11CompositorWidget - update
+ nsWindow::GetCompositorWidgetInitData
+ GDK_WINDOWING_X11 - remove
+-#ifdef GDK_WINDOWING_WAYLAND + display test
++#ifdef MOZ_WAYLAND + display test
+ - ensure we always draw to container
+ - surface cleaning/realocation
+ - can we redraw on allocate?
+@@ -43,9 +43,7 @@ GDK_WINDOWING_X11 - remove
+ #include "gfxPlatform.h"
+ #include "os-compatibility.h"
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
+ #include <gdk/gdkwayland.h>
+-#endif
+ #include <sys/mman.h>
+ #include <fcntl.h>
+ 
+diff --git a/widget/gtk/X11CompositorWidget.cpp b/widget/gtk/X11CompositorWidget.cpp
+index 929633e3d559..b5cc9112cd4b 100644
+--- a/widget/gtk/X11CompositorWidget.cpp
++++ b/widget/gtk/X11CompositorWidget.cpp
+@@ -22,7 +22,7 @@ X11CompositorWidget::X11CompositorWidget(const CompositorWidgetInitData& aInitDa
+   // If we don't, then use the init data to connect to the display
+   if (aWindow) {
+     mIsX11Display = aWindow->IsX11Display();
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     if (!mIsX11Display) {
+       mWaylandDisplay = aWindow->WaylandDisplay();
+ 	} else
+@@ -31,14 +31,14 @@ X11CompositorWidget::X11CompositorWidget(const CompositorWidgetInitData& aInitDa
+       mXDisplay = aWindow->XDisplay();
+     }
+   } else {
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     // TODO - not implemented
+     MOZ_CRASH();
+ #endif
+     mXDisplay = XOpenDisplay(aInitData.XDisplayString().get());
+   }
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+   if (!mIsX11Display) {
+     mWaylandSurface = (wl_surface *)aInitData.XWindow();
+     mProvider.Initialize(aWindow, mWaylandDisplay, mWaylandSurface);
+diff --git a/widget/gtk/X11CompositorWidget.h b/widget/gtk/X11CompositorWidget.h
+index 7221d19c2bf0..a80e4221bc5e 100644
+--- a/widget/gtk/X11CompositorWidget.h
++++ b/widget/gtk/X11CompositorWidget.h
+@@ -61,7 +61,7 @@ private:
+   bool     mIsX11Display;
+   Display* mXDisplay;
+   Window   mXWindow;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+   wl_display* mWaylandDisplay;
+   wl_surface* mWaylandSurface;
+ #endif
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 6779821823fd..44c16d359210 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -27,7 +27,7 @@ static void moz_container_init                (MozContainer      *container);
+ static void moz_container_map                 (GtkWidget         *widget);
+ static void moz_container_unmap               (GtkWidget         *widget);
+ static void moz_container_realize             (GtkWidget         *widget);
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ static void moz_container_unrealize           (GtkWidget         *widget);
+ #endif
+ static void moz_container_size_allocate       (GtkWidget         *widget,
+@@ -43,7 +43,7 @@ static void moz_container_forall      (GtkContainer      *container,
+ static void moz_container_add         (GtkContainer      *container,
+                                         GtkWidget        *widget);
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ static struct wl_event_queue *mQueue;
+ #endif
+ 
+@@ -155,7 +155,7 @@ moz_container_move (MozContainer *container, GtkWidget *child_widget,
+ 
+ /* static methods */
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ /* We have to recreate our wl_surfaces when GdkWindow is shown,
+  * otherwise Gdk resources may not finished
+  * and gdk_wayland_window_get_wl_surface() fails.
+@@ -242,7 +242,7 @@ moz_container_class_init (MozContainerClass *klass)
+     widget_class->map = moz_container_map;
+     widget_class->unmap = moz_container_unmap;
+     widget_class->realize = moz_container_realize;
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+     widget_class->unrealize = moz_container_unrealize;
+ #endif
+     widget_class->size_allocate = moz_container_size_allocate;
+@@ -252,7 +252,7 @@ moz_container_class_init (MozContainerClass *klass)
+     container_class->add = moz_container_add;
+ }
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ static void
+ registry_handle_global (void *data,
+                         struct wl_registry *registry,
+@@ -289,7 +289,7 @@ moz_container_init (MozContainer *container)
+     gtk_container_set_resize_mode(GTK_CONTAINER(container), GTK_RESIZE_IMMEDIATE);
+     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(container), FALSE);
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+     {
+       GdkDisplay *gdk_display = gtk_widget_get_display(GTK_WIDGET(container));
+       if (GDK_IS_WAYLAND_DISPLAY (gdk_display)) {
+@@ -347,7 +347,7 @@ moz_container_unmap (GtkWidget *widget)
+     if (gtk_widget_get_has_window (widget)) {
+         gdk_window_hide (gtk_widget_get_window(widget));
+     }
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+   /* Gdk/Wayland deletes underlying GdkWindow wl_surface on unmap event.
+    * Delete the wl_subsurface interface which
+    * keeps wl_surface object and it's available for reuse.
+@@ -403,12 +403,12 @@ moz_container_realize (GtkWidget *widget)
+ #if (MOZ_WIDGET_GTK == 2)
+     widget->style = gtk_style_attach (widget->style, widget->window);
+ #endif
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+     moz_container_create_surface(MOZ_CONTAINER(widget));
+ #endif
+ }
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ static void
+ moz_container_unrealize (GtkWidget *widget)
+ {
+@@ -468,7 +468,7 @@ moz_container_size_allocate (GtkWidget     *widget,
+                                allocation->height);
+     }
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+     if (container->subsurface) {
+         gint x, y;
+         gdk_window_get_position(gtk_widget_get_window(widget), &x, &y);
+@@ -585,7 +585,7 @@ moz_container_add(GtkContainer *container, GtkWidget *widget)
+     moz_container_put(MOZ_CONTAINER(container), widget, 0, 0);
+ }
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ struct wl_surface*
+ moz_container_get_wl_surface(MozContainer *container)
+ {
+diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
+index c4018d459b3e..2f16084bef3e 100644
+--- a/widget/gtk/mozcontainer.h
++++ b/widget/gtk/mozcontainer.h
+@@ -58,7 +58,7 @@ typedef struct _MozContainerClass MozContainerClass;
+ /* Workaround for bug at wayland-util.h,
+  * present in wayland < 1.12
+  */
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ struct wl_subcompositor;
+ struct wl_surface;
+ struct wl_subsurface;
+@@ -69,7 +69,7 @@ struct _MozContainer
+     GtkContainer   container;
+     GList         *children;
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     struct wl_subcompositor *subcompositor;
+     struct wl_surface       *surface;
+     struct wl_subsurface    *subsurface;
+@@ -94,7 +94,7 @@ void       moz_container_move          (MozContainer *container,
+                                         gint          width,
+                                         gint          height);
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ struct wl_surface * moz_container_get_wl_surface (MozContainer *container);
+ gboolean            moz_container_map_wl_surface (MozContainer *container);
+ struct wl_event_queue* moz_container_get_wl_queue();
+diff --git a/widget/gtk/mozwayland/mozwayland.c b/widget/gtk/mozwayland/mozwayland.c
+index 5f19be0a2650..9dbb581bbdfe 100644
+--- a/widget/gtk/mozwayland/mozwayland.c
++++ b/widget/gtk/mozwayland/mozwayland.c
+@@ -7,8 +7,6 @@
+ 
+ #include "mozilla/Types.h"
+ #include <gtk/gtk.h>
+-
+-#ifdef GDK_WINDOWING_WAYLAND
+ #include <gdk/gdkwayland.h>
+ 
+ const struct wl_interface wl_buffer_interface;
+@@ -273,4 +271,3 @@ wl_log_set_handler_client(wl_log_func_t handler)
+ {
+ }
+ 
+-#endif // GDK_WINDOWING_WAYLAND
+diff --git a/widget/gtk/nsClipboard.cpp b/widget/gtk/nsClipboard.cpp
+index c6e3f4f228ae..48f6ca720193 100644
+--- a/widget/gtk/nsClipboard.cpp
++++ b/widget/gtk/nsClipboard.cpp
+@@ -10,7 +10,7 @@
+ #include "nsArrayUtils.h"
+ #include "nsClipboard.h"
+ #include "nsClipboardX11.h"
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ #include "nsClipboardWayland.h"
+ #endif
+ #include "nsSupportsPrimitives.h"
+@@ -126,7 +126,7 @@ nsClipboard::Init(void)
+     // create nsRetrievalContext
+     if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+         mContext = new nsRetrievalContextX11();
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+     } else {
+         mContext = new nsRetrievalContextWayland();
+ #endif
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index e9b78a6b1a30..f9f6bdad6d86 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -59,7 +59,7 @@
+ #include <gtk/gtkprivate.h>
+ #endif
+ 
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+ #include <gdk/gdkwayland.h>
+ #endif
+ 
+@@ -463,7 +463,7 @@ nsWindow::nsWindow()
+     mXDepth   = 0;
+ #endif /* MOZ_X11 */
+     mPluginType          = PluginType_NONE;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     mWaylandSurface = nullptr;
+ #endif
+ 
+@@ -1758,7 +1758,7 @@ nsWindow::GetNativeData(uint32_t aDataType)
+           return GDK_DISPLAY_XDISPLAY(gdkDisplay);
+         }
+ #endif /* MOZ_X11 */
+-#if defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_WAYLAND)
+         if (GDK_IS_WAYLAND_DISPLAY(gdkDisplay)) {
+           return gdk_wayland_display_get_wl_display(gdkDisplay);
+         }
+@@ -2156,7 +2156,7 @@ nsWindow::OnExposeEvent(cairo_t *cr)
+     if (!listener)
+         return FALSE;
+ 
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     // We don't have any Wayland surface to paint to
+     if (mContainer && !mIsX11Display && !moz_container_map_wl_surface(mContainer))
+         return FALSE;
+@@ -4058,7 +4058,7 @@ nsWindow::Create(nsIWidget* aParent,
+ 
+       mSurfaceProvider.Initialize(mXDisplay, mXWindow, mXVisual, mXDepth);
+     }
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     else {
+       mWaylandDisplay = gdk_wayland_display_get_wl_display(gdk_display_get_default());
+       mWaylandSurface = moz_container_get_wl_surface(MOZ_CONTAINER(mContainer));
+@@ -7081,7 +7081,7 @@ nsWindow::RoundsWidgetCoordinatesTo()
+ void nsWindow::GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInitData* aInitData)
+ {
+ #ifdef MOZ_X11
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+   if (!mIsX11Display) {
+     *aInitData = mozilla::widget::CompositorWidgetInitData(
+                                   (uintptr_t)mWaylandSurface,
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index a90387c410e0..012e28fee114 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -23,7 +23,7 @@
+ #ifdef MOZ_X11
+ #include <gdk/gdkx.h>
+ #endif /* MOZ_X11 */
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
+ #endif
+ 
+@@ -353,7 +353,7 @@ public:
+ #ifdef MOZ_X11
+     Display* XDisplay() { return mXDisplay; }
+ #endif
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     wl_display* WaylandDisplay() { return mWaylandDisplay; }
+ #endif
+     virtual void GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInitData* aInitData) override;
+@@ -469,7 +469,7 @@ private:
+     Window              mXWindow;
+     Visual*             mXVisual;
+     int                 mXDepth;
+-#ifdef GDK_WINDOWING_WAYLAND
++#ifdef MOZ_WAYLAND
+     wl_display*         mWaylandDisplay;
+     wl_surface*         mWaylandSurface;
+ #endif
+-- 
+2.11.0
+

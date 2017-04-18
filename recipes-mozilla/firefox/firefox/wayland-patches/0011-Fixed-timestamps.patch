@@ -1,0 +1,52 @@
+From 30c019444f2eb0f2e381e73daac40fb006a39b0e Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 27 Mar 2017 18:23:55 +0900
+Subject: [PATCH 11/44] Fixed timestamps
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+
+This patch is slightly modified for ESR52 branch.
+---
+ mozglue/misc/TimeStamp.h | 4 +++-
+ widget/gtk/nsWindow.cpp  | 8 ++++++--
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/mozglue/misc/TimeStamp.h b/mozglue/misc/TimeStamp.h
+index a1a0eb36078e..196359a965a0 100644
+--- a/mozglue/misc/TimeStamp.h
++++ b/mozglue/misc/TimeStamp.h
+@@ -405,9 +405,11 @@ public:
+    * on platforms that support vsync aligned refresh drivers / compositors
+    * Verified true as of Jan 31, 2015: B2G and OS X
+    * False on Windows 7
++   * Wayland/GTK event time also uses CLOCK_MONOTONIC.
+    * UNTESTED ON OTHER PLATFORMS
+    */
+-#if defined(MOZ_WIDGET_GONK) || defined(XP_DARWIN)
++#if defined(MOZ_WIDGET_GONK) || defined(XP_DARWIN) || \
++    defined(MOZ_WIDGET_GTK)
+   static TimeStamp FromSystemTime(int64_t aSystemTime)
+   {
+     static_assert(sizeof(aSystemTime) == sizeof(TimeStampValue),
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 14b66794d6ce..018243394822 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3083,8 +3083,12 @@ nsWindow::GetEventTimeStamp(guint32 aEventTime)
+         return TimeStamp::Now();
+     }
+     if (!mIsX11Display) {
+-        // Wayland uses CLOCK_MONOTONIC for event timestamp on Linux
+-        return TimeStamp::Now();
++        // Wayland uses SYSTEM_TIME_MONOTONIC.
++        // Our posix implemententaion of TimeStamp::Now uses SYSTEM_TIME_MONOTONIC
++        //  too. Due to same implementation, we can use this via FromSystemTime.
++        int64_t tick =
++           BaseTimeDurationPlatformUtils::TicksFromMilliseconds(aEventTime);
++        return TimeStamp::FromSystemTime(tick);
+     } else {
+         CurrentX11TimeGetter* getCurrentTime = GetCurrentTimeGetter();
+         MOZ_ASSERT(getCurrentTime,
+-- 
+2.11.0
+

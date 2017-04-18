@@ -1,0 +1,50 @@
+From 7ac98a9d15b5d62b0a9fb93a8466cb3a035f5d75 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 27 Mar 2017 17:32:25 +0900
+Subject: [PATCH 12/44] Import updated mozcontainer.cpp, gfxPlatform.cpp patch
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+
+This patch is slightly modified from original patch for nsWindow.cpp:
+
+https://github.com/stransky/gecko-dev/commit/80f9bb2575c6f2f31dce4a94b898a64afa4b7aad
+---
+ widget/gtk/nsWindow.cpp | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 018243394822..1ccf583c6832 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -1738,18 +1738,19 @@ nsWindow::GetNativeData(uint32_t aDataType)
+ 
+         return mGdkWindow;
+     }
+-
+     case NS_NATIVE_PLUGIN_PORT:
+-        return SetupPluginPort();
+-
++        if (!mWaylandDisplay) {
++            return SetupPluginPort();
++        }
+     case NS_NATIVE_PLUGIN_ID:
+-        if (!mPluginNativeWindow) {
+-          NS_WARNING("no native plugin instance!");
+-          return nullptr;
++        if (!mWaylandDisplay) {
++            if (!mPluginNativeWindow) {
++                NS_WARNING("no native plugin instance!");
++                return nullptr;
++            }
++            // Return the socket widget XID
++            return (void*)mPluginNativeWindow->window;
+         }
+-        // Return the socket widget XID
+-        return (void*)mPluginNativeWindow->window;
+-
+     case NS_NATIVE_DISPLAY: {
+ #if defined(MOZ_X11)
+         GdkDisplay* gdkDisplay = gdk_display_get_default();
+-- 
+2.11.0
+

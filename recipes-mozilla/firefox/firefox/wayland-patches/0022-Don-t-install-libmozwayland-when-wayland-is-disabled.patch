@@ -1,0 +1,28 @@
+From 80d6d26a4771b35b7ab2316b61cdef9f9400e7c5 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 3 Apr 2017 22:25:30 +0200
+Subject: [PATCH 22/44] Don't install libmozwayland when wayland is disabled
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ browser/installer/package-manifest.in | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+index b67ceb70336d..0dad63a5d158 100644
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -107,8 +107,10 @@
+ #ifdef MOZ_GTK3
+ @BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
+ @BINPATH@/gtk2/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
++#ifdef MOZ_WAYLAND
+ @BINPATH@/@DLL_PREFIX@mozwayland@DLL_SUFFIX@
+ #endif
++#endif
+ 
+ [browser]
+ ; [Base Browser Files]
+-- 
+2.11.0
+

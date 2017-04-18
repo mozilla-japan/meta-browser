@@ -1,0 +1,117 @@
+From 47b8d6b3747d66bbd75ff85499224abc99b3efdb Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Thu, 6 Apr 2017 12:36:47 +0200
+Subject: [PATCH 25/44] Removed event queue from mozcontainer
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp |  5 +++--
+ widget/gtk/mozcontainer.c           | 23 ++---------------------
+ widget/gtk/mozcontainer.h           |  1 -
+ 3 files changed, 5 insertions(+), 24 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index ac67b8fb1880..cb973de2e1b9 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -394,7 +394,7 @@ WindowSurfaceWayland::Init()
+     return;
+   mInitialized = true;
+ 
+-  mQueue = moz_container_get_wl_queue();
++  mQueue = wl_display_create_queue(mDisplay);
+ 
+   // wl_shm and wl_subcompositor are not provided by Gtk so we need
+   // to query wayland directly
+@@ -497,8 +497,9 @@ WindowSurfaceWayland::Commit(const LayoutDeviceIntRegion& aInvalidRegion)
+   BackBufferWayland* buffer = GetBufferToDraw(rect.width,
+                                               rect.height);
+   NS_ASSERTION(buffer, "We don't have any buffer to draw to!");
+-  if (!buffer)
++  if (!buffer) {
+     return;
++  }
+ 
+   for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
+     const mozilla::LayoutDeviceIntRect &r = iter.Get();
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 44c16d359210..56d173e95843 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -43,10 +43,6 @@ static void moz_container_forall      (GtkContainer      *container,
+ static void moz_container_add         (GtkContainer      *container,
+                                         GtkWidget        *widget);
+ 
+-#ifdef MOZ_WAYLAND
+-static struct wl_event_queue *mQueue;
+-#endif
+-
+ typedef struct _MozContainerChild MozContainerChild;
+ 
+ struct _MozContainerChild {
+@@ -184,7 +180,6 @@ moz_container_map_wl_surface(MozContainer *container)
+       wl_subcompositor_get_subsurface (container->subcompositor,
+                                        container->surface,
+                                        gtk_surface);
+-    wl_proxy_set_queue((struct wl_proxy *)container->subsurface, mQueue);
+     gdk_window_get_position(window, &x, &y);
+     wl_subsurface_set_position(container->subsurface, x, y);
+     wl_subsurface_set_desync(container->subsurface);
+@@ -211,16 +206,10 @@ moz_container_create_surface(MozContainer *container)
+     if (GDK_IS_X11_DISPLAY(display))
+         return;
+ 
+-    if (!mQueue) {
+-      mQueue = wl_display_create_queue(gdk_wayland_display_get_wl_display(display));
+-    }
+-
+     if (!container->surface) {
+         struct wl_compositor *compositor;
+-
+         compositor = gdk_wayland_display_get_wl_compositor(display);
+         container->surface = wl_compositor_create_surface(compositor);
+-        wl_proxy_set_queue((struct wl_proxy *)container->surface, mQueue);
+     }
+ }
+ 
+@@ -297,13 +286,10 @@ moz_container_init (MozContainer *container)
+           struct wl_registry *registry;
+ 
+           display = gdk_wayland_display_get_wl_display(gdk_display);
+-          if (!mQueue) {
+-            mQueue = wl_display_create_queue(display);
+-          }
+           registry = wl_display_get_registry(display);
+           wl_registry_add_listener(registry, &registry_listener, container);
+-          wl_proxy_set_queue((struct wl_proxy *)registry, mQueue);
+-          wl_display_roundtrip_queue(display, mQueue);
++          wl_display_roundtrip(display);
++          wl_display_roundtrip(display);
+         }
+     }
+ #endif
+@@ -591,9 +577,4 @@ moz_container_get_wl_surface(MozContainer *container)
+ {
+     return container->surface;
+ }
+-struct wl_event_queue*
+-moz_container_get_wl_queue()
+-{
+-    return mQueue;
+-}
+ #endif
+diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
+index 2f16084bef3e..9c610bf7a46a 100644
+--- a/widget/gtk/mozcontainer.h
++++ b/widget/gtk/mozcontainer.h
+@@ -97,7 +97,6 @@ void       moz_container_move          (MozContainer *container,
+ #ifdef MOZ_WAYLAND
+ struct wl_surface * moz_container_get_wl_surface (MozContainer *container);
+ gboolean            moz_container_map_wl_surface (MozContainer *container);
+-struct wl_event_queue* moz_container_get_wl_queue();
+ #endif
+ 
+ #ifdef __cplusplus
+-- 
+2.11.0
+

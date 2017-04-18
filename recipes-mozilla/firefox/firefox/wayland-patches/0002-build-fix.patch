@@ -1,0 +1,26 @@
+From 2c6e218bcce490658c37f53611178cfca820c466 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 9 Nov 2016 09:06:11 +0100
+Subject: [PATCH 02/44] build fix
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 8e86d0dfc409..0555c8bdeff1 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -7084,7 +7084,7 @@ void nsWindow::GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInit
+   } else {
+     *aInitData = mozilla::widget::CompositorWidgetInitData(
+                                   (uintptr_t)mWaylandSurface,
+-                                  nullptr,
++                                  nsCString(nullptr),
+                                   GetClientSize());
+   }
+   #endif
+-- 
+2.11.0
+

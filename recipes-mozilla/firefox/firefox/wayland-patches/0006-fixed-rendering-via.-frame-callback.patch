@@ -1,0 +1,214 @@
+From e5c85ed5ffc8f0a9d9a477fa8b9e7b123e29ab93 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Tue, 21 Mar 2017 13:17:23 +0900
+Subject: [PATCH 06/44] fixed rendering via. frame callback
+
+Signed-off-by: Hiroshi Hatake <cosmo0920.oucc@gmail.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 63 +++++++++++++++++++------------------
+ widget/gtk/WindowSurfaceWayland.h   |  3 +-
+ widget/gtk/mozcontainer.c           |  2 +-
+ widget/gtk/nsWindow.cpp             |  6 ----
+ 4 files changed, 35 insertions(+), 39 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 8386ff0da484..1cabc71c1ab3 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -9,10 +9,6 @@
+  * https://github.com/wayland-project/weston/blob/master/clients/simple-shm.c
+  */
+ /*
+-- make it work single thread, no e10s
+-- simple multi-thread app
+-- abort() on exhausted buffer pool
+-
+ TODO:
+ moz-container -> display check
+ X11CompositorWidget - update
+@@ -83,9 +79,6 @@ ImageBuffer::Lock(const LayoutDeviceIntRegion& aRegion)
+   gfx::IntRect bounds = aRegion.GetBounds().ToUnknownRect();
+   gfx::IntSize imageSize(bounds.XMost(), bounds.YMost());
+ 
+-  fprintf(stderr, "ImageBuffer::Lock %d,%d, size %d x %d\n",
+-                   bounds.x, bounds.y, imageSize.width, imageSize.height);
+-
+   // We use the same trick as nsShmImage::CreateDrawTarget() does:
+   // Due to bug 1205045, we must avoid making GTK calls off the main thread
+   // to query window size.
+@@ -249,8 +242,15 @@ BackBufferWayland::Resize(int aWidth, int aHeight)
+ // Update back buffer with image data from ImageBuffer
+ void
+ BackBufferWayland::CopyRectangle(ImageBuffer *aImage,
+-                                 const mozilla::LayoutDeviceIntRect &r)
++                                 const mozilla::LayoutDeviceIntRect &rect)
+ {
++  mozilla::LayoutDeviceIntRect r = rect;
++
++  if (r.x + r.width > mWidth)
++    r.width = mWidth - r.x;
++  if (r.y + r.height > mHeight)
++    r.height = mHeight - r.y;
++
+   for (int y = r.y; y < r.y + r.height; y++) {
+     int start = (y * mWidth + r.x) * BUFFER_BPP;
+     int lenght = r.width * BUFFER_BPP;
+@@ -352,7 +352,6 @@ gst_wl_display_thread_run (gpointer data)
+ 
+   /* main loop */
+   while (1) {
+-    //fprintf(stderr, "***** Loop Enter 1.\n");
+     while (wl_display_prepare_read_queue (WindowSurfaceWayland::GetDisplay(),
+                                           WindowSurfaceWayland::GetQueue()) < 0) {
+       wl_display_dispatch_queue_pending (WindowSurfaceWayland::GetDisplay(),
+@@ -360,12 +359,9 @@ gst_wl_display_thread_run (gpointer data)
+     }
+     wl_display_flush (WindowSurfaceWayland::GetDisplay());
+ 
+-    // fprintf(stderr, "***** Loop Enter 2.\n");
+     int ret = poll(&fds, 1, -1);
+-    // fprintf(stderr, "***** Loop Enter 3.\n");
+     if (ret == -1) {
+       wl_display_cancel_read(WindowSurfaceWayland::GetDisplay());
+-      // fprintf(stderr, "***** Loop error!!\n");
+       break;
+     }
+     wl_display_read_events(WindowSurfaceWayland::GetDisplay());
+@@ -433,6 +429,7 @@ WindowSurfaceWayland::WindowSurfaceWayland(nsWindow *aWidget,
+   , mFrontBuffer(nullptr)
+   , mBackBuffer(nullptr)
+   , mFrameCallback(nullptr)
++  , mDelayedCommit(false)
+ {
+   NS_ASSERTION(mSurface != nullptr,
+                "Missing Wayland surfaces to draw to!");
+@@ -456,7 +453,6 @@ WindowSurfaceWayland::GetBufferToDraw(int aWidth, int aHeight)
+     mBackBuffer = new BackBufferWayland(aWidth, aHeight);
+   } else {
+     if (mFrontBuffer->IsAttached()) {
+-      return nullptr; //TODO
+ 
+       if (mBackBuffer->IsAttached()) {
+         NS_ASSERTION(!mBackBuffer->IsAttached(), "We don't have any buffer to draw to!");
+@@ -489,10 +485,6 @@ WindowSurfaceWayland::Commit(const LayoutDeviceIntRegion& aInvalidRegion)
+ {
+   gfx::IntRect bounds = aInvalidRegion.GetBounds().ToUnknownRect();
+   gfx::IntSize bufferSize(bounds.XMost(), bounds.YMost());
+-  gfx::IntSize areaSize = bounds.Size();
+-
+-  fprintf(stderr, "WindowSurfaceWayland::Commit %d,%d, size %d x %d\n",
+-                   bounds.x, bounds.y, bufferSize.width, bufferSize.height);
+ 
+   LayoutDeviceIntRect rect = mWidget->GetBounds();
+   BackBufferWayland* buffer = GetBufferToDraw(rect.width,
+@@ -502,33 +494,42 @@ WindowSurfaceWayland::Commit(const LayoutDeviceIntRegion& aInvalidRegion)
+     return;
+ 
+   for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
+-    buffer->CopyRectangle(&mImageBuffer, iter.Get());
++    const mozilla::LayoutDeviceIntRect &r = iter.Get();
++    buffer->CopyRectangle(&mImageBuffer, r);
++    wl_surface_damage(mSurface, r.x, r.y, r.width, r.height);
+   }
+ 
+-  wl_surface_damage(mSurface, bounds.x, bounds.y, areaSize.width, areaSize.height);
+-/*
+   if (mFrameCallback) {
+-      wl_callback_destroy(mFrameCallback);
++    // Do nothing here - buffer will be commited to compositor
++    // in next frame callback event.
++    mDelayedCommit = true;
++    return;
++  } else  {
++    mFrameCallback = wl_surface_frame(mSurface);
++    wl_callback_add_listener(mFrameCallback, &frame_listener, this);
++
++    // There's no pending frame callback so we can draw immediately
++    // and create frame callback for possible subsequent drawing.
++    mFrontBuffer->Attach(mSurface);
++    mDelayedCommit = false;
+   }
+-  mFrameCallback = wl_surface_frame(mSurface);
+-  wl_callback_add_listener(mFrameCallback, &frame_listener, this);
+-*/
+-  Draw();
+ }
+ 
+ void
+ WindowSurfaceWayland::Draw()
+ {
+-/*
+   if (mFrameCallback) {
+       wl_callback_destroy(mFrameCallback);
++      mFrameCallback = nullptr;
+   }
+ 
+-  mFrameCallback = wl_surface_frame(mSurface);
+-  wl_callback_add_listener(mFrameCallback,
+-                           &frame_listener, this);
+-*/
+-  mFrontBuffer->Attach(mSurface);
++  if (mDelayedCommit) {
++    mFrameCallback = wl_surface_frame(mSurface);
++    wl_callback_add_listener(mFrameCallback, &frame_listener, this);
++
++    mFrontBuffer->Attach(mSurface);
++    mDelayedCommit = false;
++  }
+ }
+ 
+ }  // namespace widget
+diff --git a/widget/gtk/WindowSurfaceWayland.h b/widget/gtk/WindowSurfaceWayland.h
+index 3ec86ecf7c7a..dfc504958870 100644
+--- a/widget/gtk/WindowSurfaceWayland.h
++++ b/widget/gtk/WindowSurfaceWayland.h
+@@ -38,7 +38,7 @@ public:
+   ~BackBufferWayland();
+ 
+   void CopyRectangle(ImageBuffer *aImage,
+-                     const mozilla::LayoutDeviceIntRect &r);
++                     const mozilla::LayoutDeviceIntRect &rect);
+ 
+   void Attach(wl_surface* aSurface);
+   void Detach();
+@@ -123,6 +123,7 @@ private:
+   BackBufferWayland*        mFrontBuffer;
+   BackBufferWayland*        mBackBuffer;
+   wl_callback*              mFrameCallback;
++  bool                      mDelayedCommit;
+ };
+ 
+ }  // namespace widget
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index e05ca2584384..5d4683622d2f 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -209,7 +209,7 @@ moz_container_create_surface(MozContainer *container)
+       mQueue = wl_display_create_queue(gdk_wayland_display_get_wl_display(display));
+     }
+ 
+-    if (container->subcompositor && !container->surface) {
++    if (!container->surface) {
+         GdkDisplay *display;
+         struct wl_compositor *compositor;
+ 
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index af7d1ee2006a..bc029d7d903b 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3831,12 +3831,6 @@ nsWindow::Create(nsIWidget* aParent,
+ 
+         // the drawing window
+         mGdkWindow = gtk_widget_get_window(eventWidget);
+-#if defined(GDK_WINDOWING_WAYLAND)
+-        wl_surface *waylandSurface = moz_container_get_wl_surface(
+-                                          MOZ_CONTAINER(container));
+-        g_object_set_data(G_OBJECT(mGdkWindow), "WAYLAND_SURFACE",
+-                          waylandSurface);
+-#endif
+ 
+         if (mWindowType == eWindowType_popup) {
+             // gdk does not automatically set the cursor for "temporary"
+-- 
+2.11.0
+

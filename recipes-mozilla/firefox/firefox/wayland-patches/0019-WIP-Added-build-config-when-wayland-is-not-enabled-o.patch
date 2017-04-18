@@ -1,0 +1,291 @@
+From 20bac6cf7532ed7e044c3af7d2513d7d0e440a1f Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@anakreon.cz>
+Date: Fri, 31 Mar 2017 16:08:31 +0200
+Subject: [PATCH 19/44] WIP - Added build config when wayland is not enabled on
+ host system
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ toolkit/library/moz.build            |  4 ++++
+ widget/gtk/WindowSurfaceProvider.cpp | 17 ++++++++++++-----
+ widget/gtk/X11CompositorWidget.cpp   | 24 ++++++++++++++++--------
+ widget/gtk/moz.build                 | 10 ++++++++--
+ widget/gtk/mozcontainer.c            |  2 ++
+ widget/gtk/nsClipboardWayland.cpp    |  8 +++++---
+ widget/gtk/nsWindow.cpp              | 35 ++++++++++++++++++++++++-----------
+ 7 files changed, 71 insertions(+), 29 deletions(-)
+
+diff --git a/toolkit/library/moz.build b/toolkit/library/moz.build
+index f8caffdbf689..9f4f7335a0b5 100644
+--- a/toolkit/library/moz.build
++++ b/toolkit/library/moz.build
+@@ -133,6 +133,10 @@ if CONFIG['USE_ICU']:
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gtk3':
+     USE_LIBS += [
+         'mozgtk_stub',
++    ]
++
++if CONFIG['MOZ_WAYLAND']:
++    USE_LIBS += [
+         'mozwayland',
+     ]
+ 
+diff --git a/widget/gtk/WindowSurfaceProvider.cpp b/widget/gtk/WindowSurfaceProvider.cpp
+index 536bbdb027da..2a126e7b27c1 100644
+--- a/widget/gtk/WindowSurfaceProvider.cpp
++++ b/widget/gtk/WindowSurfaceProvider.cpp
+@@ -11,7 +11,9 @@
+ #include "WindowSurfaceX11Image.h"
+ #include "WindowSurfaceX11SHM.h"
+ #include "WindowSurfaceXRender.h"
++#ifdef GDK_WINDOWING_WAYLAND
+ #include "WindowSurfaceWayland.h"
++#endif
+ 
+ namespace mozilla {
+ namespace widget {
+@@ -52,6 +54,7 @@ void WindowSurfaceProvider::Initialize(
+   mXDepth = aDepth;
+   mIsX11Display = true;
+ }
++
+ #ifdef GDK_WINDOWING_WAYLAND
+ void WindowSurfaceProvider::Initialize(
+       nsWindow *aWidget,
+@@ -67,6 +70,7 @@ void WindowSurfaceProvider::Initialize(
+   mIsX11Display = false;
+ }
+ #endif
++
+ void WindowSurfaceProvider::CleanupResources()
+ {
+   mWindowSurface = nullptr;
+@@ -75,7 +79,14 @@ void WindowSurfaceProvider::CleanupResources()
+ UniquePtr<WindowSurface>
+ WindowSurfaceProvider::CreateWindowSurface()
+ {
+-  if (mIsX11Display) {
++#ifdef GDK_WINDOWING_WAYLAND
++  if (!mIsX11Display) {
++    MOZ_ASSERT(mWaylandDisplay);
++    LOGDRAW(("Drawing to nsWindow %p using wl_surface\n", (void*)this));
++    return MakeUnique<WindowSurfaceWayland>(mWidget, mWaylandDisplay, mWaylandSurface);
++  } else
++#endif
++  {
+     // We should be initialized
+     MOZ_ASSERT(mXDisplay);
+ 
+@@ -100,10 +111,6 @@ WindowSurfaceProvider::CreateWindowSurface()
+ 
+     LOGDRAW(("Drawing to nsWindow %p using XPutImage\n", (void*)this));
+     return MakeUnique<WindowSurfaceX11Image>(mXDisplay, mXWindow, mXVisual, mXDepth);
+-  } else {
+-    MOZ_ASSERT(mWaylandDisplay);
+-    LOGDRAW(("Drawing to nsWindow %p using wl_surface\n", (void*)this));
+-    return MakeUnique<WindowSurfaceWayland>(mWidget, mWaylandDisplay, mWaylandSurface);
+   }
+ }
+ 
+diff --git a/widget/gtk/X11CompositorWidget.cpp b/widget/gtk/X11CompositorWidget.cpp
+index eb3fe82873ca..929633e3d559 100644
+--- a/widget/gtk/X11CompositorWidget.cpp
++++ b/widget/gtk/X11CompositorWidget.cpp
+@@ -22,18 +22,29 @@ X11CompositorWidget::X11CompositorWidget(const CompositorWidgetInitData& aInitDa
+   // If we don't, then use the init data to connect to the display
+   if (aWindow) {
+     mIsX11Display = aWindow->IsX11Display();
+-    if (mIsX11Display) {
+-      mXDisplay = aWindow->XDisplay();
+-    } else {
++#ifdef GDK_WINDOWING_WAYLAND
++    if (!mIsX11Display) {
+       mWaylandDisplay = aWindow->WaylandDisplay();
++	} else
++#endif
++	{
++      mXDisplay = aWindow->XDisplay();
+     }
+   } else {
++#ifdef GDK_WINDOWING_WAYLAND
+     // TODO - not implemented
+-    abort();
++    MOZ_CRASH();
++#endif
+     mXDisplay = XOpenDisplay(aInitData.XDisplayString().get());
+   }
+ 
+-  if (mIsX11Display) {
++#ifdef GDK_WINDOWING_WAYLAND
++  if (!mIsX11Display) {
++    mWaylandSurface = (wl_surface *)aInitData.XWindow();
++    mProvider.Initialize(aWindow, mWaylandDisplay, mWaylandSurface);
++  } else
++#endif
++  {
+     mXWindow = (Window)aInitData.XWindow();
+ 
+     // Grab the window's visual and depth
+@@ -50,9 +61,6 @@ X11CompositorWidget::X11CompositorWidget(const CompositorWidgetInitData& aInitDa
+       visual,
+       depth
+       );
+-  } else {
+-    mWaylandSurface = (wl_surface *)aInitData.XWindow();
+-    mProvider.Initialize(aWindow, mWaylandDisplay, mWaylandSurface);
+   }
+ 
+   mClientSize = aInitData.InitialClientSize();
+diff --git a/widget/gtk/moz.build b/widget/gtk/moz.build
+index 03921d19d5b1..2f3c3c4cd1d3 100644
+--- a/widget/gtk/moz.build
++++ b/widget/gtk/moz.build
+@@ -6,6 +6,8 @@
+ 
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gtk3':
+     DIRS += ['mozgtk']
++
++if CONFIG['MOZ_WAYLAND']:
+     DIRS += ['mozwayland']
+ 
+ EXPORTS += [
+@@ -74,11 +76,9 @@ if CONFIG['NS_PRINTING']:
+ if CONFIG['MOZ_X11']:
+     UNIFIED_SOURCES += [
+         'nsClipboard.cpp',
+-        'nsClipboardWayland.cpp',
+         'nsClipboardX11.cpp',
+         'nsDragService.cpp',
+         'WindowSurfaceProvider.cpp',
+-        'WindowSurfaceWayland.cpp',
+         'WindowSurfaceX11.cpp',
+         'WindowSurfaceX11Image.cpp',
+         'WindowSurfaceXRender.cpp',
+@@ -87,6 +87,12 @@ if CONFIG['MOZ_X11']:
+         'WindowSurfaceProvider.h',
+     ]
+ 
++if CONFIG['MOZ_WAYLAND']:
++    UNIFIED_SOURCES += [
++        'nsClipboardWayland.cpp',
++        'WindowSurfaceWayland.cpp',
++    ]
++
+ if CONFIG['ACCESSIBILITY']:
+     UNIFIED_SOURCES += [
+         'maiRedundantObjectFactory.c',
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 7704b5d2b351..6779821823fd 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -43,7 +43,9 @@ static void moz_container_forall      (GtkContainer      *container,
+ static void moz_container_add         (GtkContainer      *container,
+                                         GtkWidget        *widget);
+ 
++#ifdef GDK_WINDOWING_WAYLAND
+ static struct wl_event_queue *mQueue;
++#endif
+ 
+ typedef struct _MozContainerChild MozContainerChild;
+ 
+diff --git a/widget/gtk/nsClipboardWayland.cpp b/widget/gtk/nsClipboardWayland.cpp
+index b759256be81e..bf8f6a663474 100644
+--- a/widget/gtk/nsClipboardWayland.cpp
++++ b/widget/gtk/nsClipboardWayland.cpp
+@@ -111,7 +111,7 @@ data_offer_offer (void                 *data,
+       static_cast<nsRetrievalContextWayland*>(data);
+   context->AddMIMEType(type);
+ }
+-
++/*
+ static void
+ data_offer_source_actions(void *data,
+                           struct wl_data_offer *wl_data_offer,
+@@ -125,11 +125,13 @@ data_offer_action(void *data,
+                   uint32_t dnd_action)
+ {
+ }
+-
++*/
+ static const struct wl_data_offer_listener data_offer_listener = {
+-    data_offer_offer,
++    data_offer_offer
++/*
+     data_offer_source_actions,
+     data_offer_action
++*/
+ };
+ 
+ static void
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 40d2f256dfe7..e9b78a6b1a30 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -4748,11 +4748,20 @@ nsWindow::GrabPointer(guint32 aTime)
+ 
+     if (!mGdkWindow)
+         return;
+-
++/*
+     GdkSeat *gdkSeat = gdk_display_get_default_seat(gdk_display_get_default());
+     gint retval;
+     retval = gdk_seat_grab(gdkSeat, mGdkWindow, GDK_SEAT_CAPABILITY_ALL_POINTING, TRUE,
+                            nullptr, nullptr, nullptr, nullptr);
++*/
++    gint retval;
++    retval = gdk_pointer_grab(mGdkWindow, TRUE,
++                              (GdkEventMask)(GDK_BUTTON_PRESS_MASK |
++                                             GDK_BUTTON_RELEASE_MASK |
++                                             GDK_ENTER_NOTIFY_MASK |
++                                             GDK_LEAVE_NOTIFY_MASK |
++                                             GDK_POINTER_MOTION_MASK),
++                              (GdkWindow *)nullptr, nullptr, aTime);
+ 
+     if (retval == GDK_GRAB_NOT_VIEWABLE) {
+         LOG(("GrabPointer: window not viewable; will retry\n"));
+@@ -4776,8 +4785,11 @@ nsWindow::ReleaseGrabs(void)
+     LOG(("ReleaseGrabs\n"));
+ 
+     mRetryPointerGrab = false;
++/*
+     GdkSeat *gdkSeat = gdk_display_get_default_seat(gdk_display_get_default());
+     gdk_seat_ungrab(gdkSeat);
++*/
++    gdk_pointer_ungrab(GDK_CURRENT_TIME);
+ }
+ 
+ GtkWidget *
+@@ -7068,19 +7080,20 @@ nsWindow::RoundsWidgetCoordinatesTo()
+ 
+ void nsWindow::GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInitData* aInitData)
+ {
+-  #ifdef MOZ_X11
+-    if (mIsX11Display) {
+-    *aInitData = mozilla::widget::CompositorWidgetInitData(
+-                                  mXWindow,
+-                                  nsCString(XDisplayString(mXDisplay)),
+-                                  GetClientSize());
+-  #ifdef GDK_WINDOWING_WAYLAND
+-  } else {
++#ifdef MOZ_X11
++#ifdef GDK_WINDOWING_WAYLAND
++  if (!mIsX11Display) {
+     *aInitData = mozilla::widget::CompositorWidgetInitData(
+                                   (uintptr_t)mWaylandSurface,
+                                   nsCString(nullptr),
+                                   GetClientSize());
++  } else
++#endif
++  {
++    *aInitData = mozilla::widget::CompositorWidgetInitData(
++                                  mXWindow,
++                                  nsCString(XDisplayString(mXDisplay)),
++                                  GetClientSize());
+   }
+-  #endif
+-  #endif
++#endif
+ }
+-- 
+2.11.0
+

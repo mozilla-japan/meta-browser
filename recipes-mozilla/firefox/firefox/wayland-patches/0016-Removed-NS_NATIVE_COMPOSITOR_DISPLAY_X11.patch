@@ -1,0 +1,50 @@
+From 626ded87a94842b4765762f8e49b7fdbd56e08a8 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 27 Mar 2017 12:36:47 +0200
+Subject: [PATCH 16/44] Removed NS_NATIVE_COMPOSITOR_DISPLAY_X11
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 11 +++--------
+ widget/nsIWidget.h      |  2 --
+ 2 files changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 1ccf583c6832..40d2f256dfe7 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -1786,15 +1786,10 @@ nsWindow::GetNativeData(uint32_t aDataType)
+     }
+     case NS_NATIVE_OPENGL_CONTEXT:
+       return nullptr;
+-#if defined(MOZ_X11) || defined(GDK_WINDOWING_WAYLAND)
++#if defined(MOZ_X11)
+     case NS_NATIVE_COMPOSITOR_DISPLAY:
+-        if (mIsX11Display)
+-          return gfxPlatformGtk::GetPlatform()->GetXCompositorDisplay();
+-        else
+-          return gfxPlatformGtk::GetPlatform()->GetWaylandCompositorDisplay();
+-    case NS_NATIVE_COMPOSITOR_DISPLAY_X11:
+-        return (void *)mIsX11Display;
+-#endif // MOZ_X11 || GDK_WINDOWING_WAYLAND
++        return gfxPlatformGtk::GetPlatform()->GetCompositorDisplay();
++#endif
+     default:
+         NS_WARNING("nsWindow::GetNativeData called with bad value");
+         return nullptr;
+diff --git a/widget/nsIWidget.h b/widget/nsIWidget.h
+index beea447982a4..2d14cc107f11 100644
+--- a/widget/nsIWidget.h
++++ b/widget/nsIWidget.h
+@@ -132,8 +132,6 @@ typedef void* nsNativeWidget;
+ #define NS_NATIVE_PLUGIN_OBJECT_PTR    104
+ #ifdef MOZ_X11
+ #define NS_NATIVE_COMPOSITOR_DISPLAY   105
+-// Return true the compositor display is X11
+-#define NS_NATIVE_COMPOSITOR_DISPLAY_X11 106
+ #endif // MOZ_X11
+ #endif
+ #ifdef MOZ_WIDGET_ANDROID
+-- 
+2.11.0
+

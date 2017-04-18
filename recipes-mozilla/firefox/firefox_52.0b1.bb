@@ -42,21 +42,43 @@ PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
 
-# TODO: Port to 50.0
-#SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
-#           'file://wayland-patches/0001-Initial-patch-from-https-stransky.fedorapeople.org-f.patch \
-#            file://wayland-patches/0002-gdk_x11_get_server_time-fix.patch \
-#            file://wayland-patches/0003-Fixed-gdk_x11_get_server_time-for-wayland.patch \
-#            file://wayland-patches/0004-Install-popup_take_focus_filter-to-actual-GdkWindow.patch \
-#            file://wayland-patches/0005-Fixed-nsWindow-GetLastUserInputTime.patch \
-#            file://wayland-patches/0008-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-#            file://wayland-patches/0009-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
-#            file://wayland-patches/0010-Disable-query-EGL_EXTENSIONS.patch \
-#            file://wayland-patches/0011-Wayland-Detect-existence-of-wayland-libraries.patch \
-#            file://wayland-patches/0012-Add-AC_TRY_LINK-for-libwayland-egl.patch \
-#            file://wayland-patches/0013-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
-#           ', \
-#           '', d)}"
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
+           'file://wayland-patches/0001-Added-wayland-patch.patch \
+            file://wayland-patches/0002-build-fix.patch \
+            file://wayland-patches/0003-Debug-version.patch \
+            file://wayland-patches/0004-Removed-debug-Dump-code.patch \
+            file://wayland-patches/0005-Dynamically-resize-wl_buffer-according-to-attached-w.patch \
+            file://wayland-patches/0006-fixed-rendering-via.-frame-callback.patch \
+            file://wayland-patches/0007-Create-.mozconfig.patch \
+            file://wayland-patches/0008-Fixed-flickering-when-wl_buffer-is-altered.patch \
+            file://wayland-patches/0009-Added-wayland-lib-wrapper.patch \
+            file://wayland-patches/0010-Fixed-CurrentX11TimeGetter-usage-fixed-WindowSurface.patch \
+            file://wayland-patches/0011-Fixed-timestamps.patch \
+            file://wayland-patches/0012-Import-updated-mozcontainer.cpp-gfxPlatform.cpp-patc.patch \
+            file://wayland-patches/0013-fixed-crash-at-browser-end.patch \
+            file://wayland-patches/0014-Removed-wayland-client-from-libxul.so.patch \
+            file://wayland-patches/0015-Removed-unused-code.patch \
+            file://wayland-patches/0016-Removed-NS_NATIVE_COMPOSITOR_DISPLAY_X11.patch \
+            file://wayland-patches/0017-Link-wayland-run-time-and-provide-fallback-library-w.patch \
+            file://wayland-patches/0018-Added-clipboard-patch-from-mozbz-1282015.patch \
+            file://wayland-patches/0019-WIP-Added-build-config-when-wayland-is-not-enabled-o.patch \
+            file://wayland-patches/0020-Added-enable-wayland-configure-option.patch \
+            file://wayland-patches/0021-Use-MOZ_WAYLAND-instead-of-GDK_WINDOWING_WAYLAND.patch \
+            file://wayland-patches/0022-Don-t-install-libmozwayland-when-wayland-is-disabled.patch \
+            file://wayland-patches/0023-Improved-wayland-configure-defines.patch \
+            file://wayland-patches/0024-Updated-configure-script-according-to-mozbz-1299083.patch \
+            file://wayland-patches/0025-Removed-event-queue-from-mozcontainer.patch \
+            file://wayland-patches/0026-WindowSurfaceWayland-refactorization.patch \
+            file://wayland-patches/0027-tabs-replacement.patch \
+            file://wayland-patches/0028-Optimized-back-buffer-buffer-switches.patch \
+            file://wayland-patches/0029-Don-t-read-wayland-events-when-poll-fails.patch \
+            file://wayland-patches/0030-Force-release-unused-back-buffers.patch \
+            file://wayland-patches/0031-Moved-wayland-loop-to-Compositor-thread.patch \
+            file://wayland-patches/0032-Removed-ImageBuffer-and-draw-directly-to-wayland-bac.patch \
+            file://wayland-patches/0033-Removed-old-comments.patch \
+            file://wayland-patches/0034-Fixed-crash-when-pasted-to-clipboard.patch \
+           ', \
+           '', d)}"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
