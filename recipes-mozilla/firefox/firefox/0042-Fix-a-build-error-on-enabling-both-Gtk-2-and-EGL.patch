@@ -1,17 +1,19 @@
-From 8461fb6d1ecfaf863d6a135be81c1a18afa8998a Mon Sep 17 00:00:00 2001
+From 032546a395eb7cfbc297fc4d3706e2dfd4f77603 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Mon, 25 Apr 2016 17:44:47 +0900
-Subject: [PATCH 2/2] Fix a build error on enabling both Gtk+2 and EGL
+Subject: [PATCH 42/44] Fix a build error on enabling both Gtk+2 and EGL
 
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
 ---
  xpcom/base/nsSystemInfo.cpp | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/xpcom/base/nsSystemInfo.cpp b/xpcom/base/nsSystemInfo.cpp
-index 3ffe96e..b7a6707 100644
+index 2ef95047d2a4..86750b5743b0 100644
 --- a/xpcom/base/nsSystemInfo.cpp
 +++ b/xpcom/base/nsSystemInfo.cpp
-@@ -686,7 +686,8 @@ nsSystemInfo::Init()
+@@ -692,7 +692,8 @@ nsSystemInfo::Init()
    char gtkver[64];
    ssize_t gtkver_len = 0;
  
@@ -22,5 +24,5 @@ index 3ffe96e..b7a6707 100644
  
    if (gtk_read_end_of_the_pipe != -1) {
 -- 
-1.9.1
+2.11.0
 
