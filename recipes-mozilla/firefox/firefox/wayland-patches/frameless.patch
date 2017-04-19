@@ -1,0 +1,52 @@
+From f5e9fc55b87616dba0d135458d97d74b02de43b1 Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Wed, 19 Apr 2017 11:42:26 +0900
+Subject: [PATCH] Don't show the window frames
+
+The current EGL patch for Wayland doesn't work well when the
+window frame exist. Until the issue is resolved, don't show
+the frame and make the window fullscreen by default.
+
+Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ browser/base/content/browser.xul | 2 +-
+ widget/gtk/nsWindow.cpp          | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
+index 2c74aecdf607..7a11377e3060 100644
+--- a/browser/base/content/browser.xul
++++ b/browser/base/content/browser.xul
+@@ -58,7 +58,7 @@
+         macanimationtype="document"
+         screenX="4" screenY="4"
+         fullscreenbutton="true"
+-        sizemode="normal"
++        sizemode="fullscreen"
+         retargetdocumentfocus="urlbar"
+         persist="screenX screenY width height sizemode">
+ 
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index c61562196526..0fb2aeee3a22 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3735,6 +3735,7 @@ nsWindow::Create(nsIWidget* aParent,
+             mWindowType != eWindowType_popup || aInitData->mNoAutoHide ?
+               GTK_WINDOW_TOPLEVEL : GTK_WINDOW_POPUP;
+         mShell = gtk_window_new(type);
++        gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+ 
+         // We only move a general managed toplevel window if someone has
+         // actually placed the window somewhere.  If no placement has taken
+@@ -3785,6 +3786,7 @@ nsWindow::Create(nsIWidget* aParent,
+                 else {
+                   bool decorate = mBorderStyle & eBorderStyle_title;
+                   gtk_window_set_decorated(GTK_WINDOW(mShell), decorate);
++                  gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+                   if (decorate) {
+                     gtk_window_set_deletable(GTK_WINDOW(mShell), mBorderStyle & eBorderStyle_close);
+                   }
+-- 
+2.11.0
+
