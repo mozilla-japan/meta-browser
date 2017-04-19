@@ -77,6 +77,14 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0032-Removed-ImageBuffer-and-draw-directly-to-wayland-bac.patch \
             file://wayland-patches/0033-Removed-old-comments.patch \
             file://wayland-patches/0034-Fixed-crash-when-pasted-to-clipboard.patch \
+            file://wayland-patches/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland-patches/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland-patches/0037-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland-patches/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
+            file://wayland-patches/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
+            file://wayland-patches/0040-GLContextPrividerEGL-Remove-needless-code.patch \
+            file://wayland-patches/0043-Add-with-gl-provider-EGL-to-.mozconfig.patch \
+            file://wayland-patches/0044-Fix-build-error-for-invalid-symbol.patch \
            ', \
            '', d)}"
 

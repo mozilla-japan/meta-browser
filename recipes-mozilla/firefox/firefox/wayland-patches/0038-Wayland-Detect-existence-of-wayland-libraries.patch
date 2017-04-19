@@ -1,0 +1,138 @@
+From e04d299b98ec399102be76b7d6eef38e4ec52b43 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Mon, 10 Apr 2017 18:07:15 +0900
+Subject: [PATCH 38/44] Wayland: Detect existence of wayland libraries
+
+This commit is originated from 1cdca2df90d836c39f2bb24b22cbda02f11a6093.
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ config/system-headers            | 4 ++++
+ toolkit/library/moz.build        | 4 ++++
+ toolkit/moz.configure            | 5 +++++
+ widget/gtk/mozgtk/gtk3/moz.build | 4 ++++
+ widget/gtk/nsWindow.cpp          | 6 +++---
+ widget/gtk/nsWindow.h            | 4 +++-
+ 6 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/config/system-headers b/config/system-headers
+index d73740b904e8..f41f9140293e 100644
+--- a/config/system-headers
++++ b/config/system-headers
+@@ -1191,8 +1191,12 @@ View.h
+ Volume.h
+ wab.h
+ wait.h
++#ifdef MOZ_WAYLAND
+ wayland-client.h
++#ifdef MOZ_WAYLAND_EGL
+ wayland-egl.h
++#endif
++#endif
+ wchar.h
+ wctype.h
+ winbase.h
+diff --git a/toolkit/library/moz.build b/toolkit/library/moz.build
+index 0958f4847c32..c8abaf92d3c9 100644
+--- a/toolkit/library/moz.build
++++ b/toolkit/library/moz.build
+@@ -212,6 +212,10 @@ if CONFIG['OS_ARCH'] == 'WINNT':
+ if CONFIG['MOZ_WAYLAND']:
+     OS_LIBS += [
+         'wayland-client',
++    ]
++
++if CONFIG['MOZ_WAYLAND_EGL']:
++    OS_LIBS += [
+         'wayland-egl',
+     ]
+ 
+diff --git a/toolkit/moz.configure b/toolkit/moz.configure
+index 72bc231db8b1..88606a1586a4 100644
+--- a/toolkit/moz.configure
++++ b/toolkit/moz.configure
+@@ -207,6 +207,11 @@ wayland_headers = pkg_check_modules('MOZ_WAYLAND', 'gtk+-wayland-3.0 >= 3.22',
+ set_config('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
+ set_define('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
+ 
++wayland_egl_headers = pkg_check_modules('MOZ_WAYLAND_EGL', 'wayland-egl',
++                                        when=wayland)
++
++set_config('MOZ_WAYLAND_EGL', depends_if(wayland_egl_headers)(lambda _: True))
++set_define('MOZ_WAYLAND_EGL', depends_if(wayland_egl_headers)(lambda _: True))
+ # GL Provider
+ # ==============================================================
+ option('--with-gl-provider', nargs=1, help='Set GL provider backend type')
+diff --git a/widget/gtk/mozgtk/gtk3/moz.build b/widget/gtk/mozgtk/gtk3/moz.build
+index c1662adb992c..a9dd27573bca 100644
+--- a/widget/gtk/mozgtk/gtk3/moz.build
++++ b/widget/gtk/mozgtk/gtk3/moz.build
+@@ -39,6 +39,10 @@ OS_LIBS += [
+ if CONFIG['MOZ_WAYLAND']:
+      OS_LIBS += [
+          'wayland-client',
++     ]
++
++if CONFIG['MOZ_WAYLAND_EGL']:
++     OS_LIBS += [
+          'wayland-egl',
+      ]
+ 
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 5b5cbca2c1aa..5998475dfaba 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -444,7 +444,7 @@ nsWindow::nsWindow()
+ 
+     mContainer           = nullptr;
+     mGdkWindow           = nullptr;
+-#ifdef MOZ_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     mWlEglWindow         = nullptr;
+ #endif
+     mShell               = nullptr;
+@@ -784,7 +784,7 @@ nsWindow::Destroy()
+ #endif /* MOZ_X11 && MOZ_WIDGET_GTK == 2 && defined(MOZ_X11) */
+ 
+     GtkWidget *owningWidget = GetMozContainerWidget();
+-#ifdef MOZ_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     if (mWlEglWindow) {
+         wl_egl_window_destroy(mWlEglWindow);
+         mWlEglWindow = nullptr;
+@@ -1802,7 +1802,7 @@ nsWindow::GetNativeData(uint32_t aDataType)
+             return (void*)GDK_WINDOW_XID(mGdkWindow);
+ #endif
+ 
+-#ifdef MOZ_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+         if (GDK_IS_WAYLAND_WINDOW(mGdkWindow)) {
+             if (mWlEglWindow)
+                 return mWlEglWindow;
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index 95d157230811..d05a03300967 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -25,8 +25,10 @@
+ #endif /* MOZ_X11 */
+ #ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
++#ifdef MOZ_WAYLAND_EGL
+ #include <wayland-egl.h>
+ #endif
++#endif
+ 
+ #include "mozilla/widget/WindowSurface.h"
+ #include "mozilla/widget/WindowSurfaceProvider.h"
+@@ -445,7 +447,7 @@ private:
+     GtkWidget          *mShell;
+     MozContainer       *mContainer;
+     GdkWindow          *mGdkWindow;
+-#ifdef MOZ_WAYLAND
++#ifdef MOZ_WAYLAND_EGL
+     struct wl_egl_window *mWlEglWindow;
+ #endif
+ 
+-- 
+2.11.0
+

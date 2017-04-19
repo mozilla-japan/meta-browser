@@ -1,0 +1,202 @@
+From a8ca6d13453e639dc125c1fb4277bebd0a227bd2 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Mon, 10 Apr 2017 17:47:06 +0900
+Subject: [PATCH 36/44] Use wl_egl_window as a native EGL window on Wayland
+
+Note that it doesn't work correctly yet. Although it can enable
+CompositorOGL, it breaks window handling. I'll replace the path
+with a proper one later.
+
+This commit is originated from a07fa6d5e29c9785326fc5b26ec65a8128ffb61f.
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ config/system-headers            |  2 ++
+ gfx/gl/GLContextProviderEGL.cpp  |  8 ++++++--
+ toolkit/library/moz.build        |  6 ++++++
+ widget/gtk/mozgtk/gtk3/moz.build |  7 +++++++
+ widget/gtk/mozgtk/mozgtk.c       |  1 +
+ widget/gtk/nsWindow.cpp          | 38 ++++++++++++++++++++++++++++++++++++++
+ widget/gtk/nsWindow.h            |  4 ++++
+ widget/nsIWidget.h               |  3 +++
+ 8 files changed, 67 insertions(+), 2 deletions(-)
+
+diff --git a/config/system-headers b/config/system-headers
+index 74a52ab0a16b..d73740b904e8 100644
+--- a/config/system-headers
++++ b/config/system-headers
+@@ -1191,6 +1191,8 @@ View.h
+ Volume.h
+ wab.h
+ wait.h
++wayland-client.h
++wayland-egl.h
+ wchar.h
+ wctype.h
+ winbase.h
+diff --git a/gfx/gl/GLContextProviderEGL.cpp b/gfx/gl/GLContextProviderEGL.cpp
+index ca972e0f3c13..ad478e0bd2bb 100644
+--- a/gfx/gl/GLContextProviderEGL.cpp
++++ b/gfx/gl/GLContextProviderEGL.cpp
+@@ -5,8 +5,12 @@
+ 
+ #if defined(MOZ_WIDGET_GTK)
+     #include <gdk/gdkx.h>
+-    // we're using default display for now
+-    #define GET_NATIVE_WINDOW(aWidget) ((EGLNativeWindowType)GDK_WINDOW_XID((GdkWindow*)aWidget->GetNativeData(NS_NATIVE_WINDOW)))
++    #if defined(MOZ_WAYLAND)
++      #define GET_NATIVE_WINDOW(aWidget) ((EGLNativeWindowType)aWidget->GetNativeData(NS_NATIVE_EGL_WINDOW))
++    #else
++      // we're using default display for now
++      #define GET_NATIVE_WINDOW(aWidget) ((EGLNativeWindowType)GDK_WINDOW_XID((GdkWindow*)aWidget->GetNativeData(NS_NATIVE_WINDOW)))
++   #endif
+ #else
+     #define GET_NATIVE_WINDOW(aWidget) ((EGLNativeWindowType)aWidget->GetNativeData(NS_NATIVE_WINDOW))
+ #endif
+diff --git a/toolkit/library/moz.build b/toolkit/library/moz.build
+index 9f4f7335a0b5..0958f4847c32 100644
+--- a/toolkit/library/moz.build
++++ b/toolkit/library/moz.build
+@@ -209,6 +209,12 @@ if CONFIG['OS_ARCH'] == 'WINNT':
+         'winspool',
+     ]
+ 
++if CONFIG['MOZ_WAYLAND']:
++    OS_LIBS += [
++        'wayland-client',
++        'wayland-egl',
++    ]
++
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gonk':
+     OS_LIBS += [
+         'dbus',
+diff --git a/widget/gtk/mozgtk/gtk3/moz.build b/widget/gtk/mozgtk/gtk3/moz.build
+index 4e9379565dd6..c1662adb992c 100644
+--- a/widget/gtk/mozgtk/gtk3/moz.build
++++ b/widget/gtk/mozgtk/gtk3/moz.build
+@@ -35,4 +35,11 @@ OS_LIBS += [
+     'gtk-3',
+     'gdk-3',
+ ]
++
++if CONFIG['MOZ_WAYLAND']:
++     OS_LIBS += [
++         'wayland-client',
++         'wayland-egl',
++     ]
++
+ OS_LIBS += as_needed
+diff --git a/widget/gtk/mozgtk/mozgtk.c b/widget/gtk/mozgtk/mozgtk.c
+index c9d554a21355..a94c60e0dd44 100644
+--- a/widget/gtk/mozgtk/mozgtk.c
++++ b/widget/gtk/mozgtk/mozgtk.c
+@@ -523,6 +523,7 @@ STUB(gdk_seat_ungrab)
+ STUB(gdk_window_get_type)
+ STUB(gdk_x11_window_get_xid)
+ STUB(gdk_x11_display_get_type)
++STUB(gdk_wayland_window_get_type)
+ STUB(gdk_wayland_window_get_wl_surface)
+ STUB(gdk_wayland_window_set_use_custom_surface)
+ STUB(gdk_wayland_display_get_wl_display)
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index f9f6bdad6d86..5b5cbca2c1aa 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -444,6 +444,9 @@ nsWindow::nsWindow()
+ 
+     mContainer           = nullptr;
+     mGdkWindow           = nullptr;
++#ifdef MOZ_WAYLAND
++    mWlEglWindow         = nullptr;
++#endif
+     mShell               = nullptr;
+     mPluginNativeWindow  = nullptr;
+     mHasMappedToplevel   = false;
+@@ -781,6 +784,12 @@ nsWindow::Destroy()
+ #endif /* MOZ_X11 && MOZ_WIDGET_GTK == 2 && defined(MOZ_X11) */
+ 
+     GtkWidget *owningWidget = GetMozContainerWidget();
++#ifdef MOZ_WAYLAND
++    if (mWlEglWindow) {
++        wl_egl_window_destroy(mWlEglWindow);
++        mWlEglWindow = nullptr;
++    }
++#endif
+     if (mShell) {
+         gtk_widget_destroy(mShell);
+         mShell = nullptr;
+@@ -1784,6 +1793,35 @@ nsWindow::GetNativeData(uint32_t aDataType)
+         }
+         return mIMContext.get();
+     }
++    case NS_NATIVE_EGL_WINDOW: {
++        if (!mGdkWindow)
++            return nullptr;
++
++#ifdef MOZ_X11
++        if (mIsX11Display)
++            return (void*)GDK_WINDOW_XID(mGdkWindow);
++#endif
++
++#ifdef MOZ_WAYLAND
++        if (GDK_IS_WAYLAND_WINDOW(mGdkWindow)) {
++            if (mWlEglWindow)
++                return mWlEglWindow;
++
++            struct wl_surface *wlsurf =
++                gdk_wayland_window_get_wl_surface(mGdkWindow);
++            if (!wlsurf)
++                return nullptr;
++
++            mWlEglWindow =
++                wl_egl_window_create(wlsurf,
++                                     gdk_window_get_width(mGdkWindow),
++                                     gdk_window_get_height(mGdkWindow));
++            return mWlEglWindow;
++        }
++#endif
++
++        return nullptr;
++    }
+     case NS_NATIVE_OPENGL_CONTEXT:
+       return nullptr;
+ #if defined(MOZ_X11)
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index 012e28fee114..95d157230811 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -25,6 +25,7 @@
+ #endif /* MOZ_X11 */
+ #ifdef MOZ_WAYLAND
+ #include <gdk/gdkwayland.h>
++#include <wayland-egl.h>
+ #endif
+ 
+ #include "mozilla/widget/WindowSurface.h"
+@@ -444,6 +445,9 @@ private:
+     GtkWidget          *mShell;
+     MozContainer       *mContainer;
+     GdkWindow          *mGdkWindow;
++#ifdef MOZ_WAYLAND
++    struct wl_egl_window *mWlEglWindow;
++#endif
+ 
+     uint32_t            mHasMappedToplevel : 1,
+                         mIsFullyObscured : 1,
+diff --git a/widget/nsIWidget.h b/widget/nsIWidget.h
+index 2d14cc107f11..25a28e25f46a 100644
+--- a/widget/nsIWidget.h
++++ b/widget/nsIWidget.h
+@@ -133,6 +133,9 @@ typedef void* nsNativeWidget;
+ #ifdef MOZ_X11
+ #define NS_NATIVE_COMPOSITOR_DISPLAY   105
+ #endif // MOZ_X11
++#ifdef MOZ_WAYLAND
++#define NS_NATIVE_EGL_WINDOW           106
++#endif // MOZ_WAYLAND
+ #endif
+ #ifdef MOZ_WIDGET_ANDROID
+ #define NS_JAVA_SURFACE                100
+-- 
+2.11.0
+
