@@ -22,13 +22,13 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozconfig \
            "
 
-SRC_URI[archive.md5sum] = "41c4fae7ac3a0cf5e0af59edf460a106"
-SRC_URI[archive.sha256sum] = "f82151bdae3c12818d3444084e0bbdd3975bf5861beccfcb3afdd37bae9c880b"
+SRC_URI[archive.md5sum] = "7209fadf23c2c349988a34ba4eb22062"
+SRC_URI[archive.sha256sum] = "05ed22738b3ac49253fe482a316ca3b4163885b03b22404ff9177b0fba950522"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
 #MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
-MOZ_APP_BASE_VERSION = "52.0"
+MOZ_APP_BASE_VERSION = "52.0.2"
 
 inherit mozilla
 
