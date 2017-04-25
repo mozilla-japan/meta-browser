@@ -86,6 +86,15 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0043-Add-with-gl-provider-EGL-to-.mozconfig.patch \
             file://wayland-patches/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland-patches/0001-Adopt-wl_data_offer_listener-for-older-Wayland-under.patch \
+            file://wayland-patches/0001-Disabled-broadway-backend-does-not-work-and-enabled-.patch \
+            file://wayland-patches/0002-Added-D-Bus-remote-files.patch \
+            file://wayland-patches/0003-replace.patch \
+            file://wayland-patches/0004-WIP-DBus-remote-backend.patch \
+            file://wayland-patches/0005-in-place-dbus.patch \
+            file://wayland-patches/0006-tab-replacement.patch \
+            file://wayland-patches/0007-tweaking.patch \
+            file://wayland-patches/0008-Removed-unused-files.patch \
+            file://wayland-patches/0009-Build-fixes-for-destructor-argument-mismatch.patch \
            ', \
            '', d)}"
 

@@ -1,0 +1,67 @@
+From 3fa6ae0d8ab635454d03bbd2077d8f70274ba821 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Thu, 13 Apr 2017 13:51:35 +0200
+Subject: [PATCH 1/9] Disabled broadway backend (does not work) and enabled
+ XRemote on Wayland
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ toolkit/xre/nsAppRunner.cpp | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/toolkit/xre/nsAppRunner.cpp b/toolkit/xre/nsAppRunner.cpp
+index 4979e1652351..81cd1371170f 100644
+--- a/toolkit/xre/nsAppRunner.cpp
++++ b/toolkit/xre/nsAppRunner.cpp
+@@ -2879,7 +2879,6 @@ static const char* detectDisplay(void)
+ {
+   bool tryX11 = false;
+   bool tryWayland = false;
+-  bool tryBroadway = false;
+ 
+   // Honor user backend selection
+   const char *backend = PR_GetEnv("GDK_BACKEND");
+@@ -2887,14 +2886,11 @@ static const char* detectDisplay(void)
+     // Try all backends
+     tryX11 = true;
+     tryWayland = true;
+-    tryBroadway = true;
+   } else if (backend) {
+     if (strstr(backend, "x11"))
+       tryX11 = true;
+     if (strstr(backend, "wayland"))
+       tryWayland = true;
+-    if (strstr(backend, "broadway"))
+-      tryBroadway = true;
+   }
+ 
+   const char *display_name;
+@@ -2902,8 +2898,6 @@ static const char* detectDisplay(void)
+     return display_name;
+   } else if (tryWayland && (display_name = PR_GetEnv("WAYLAND_DISPLAY"))) {
+     return display_name;
+-  } else if (tryBroadway && (display_name = PR_GetEnv("BROADWAY_DISPLAY"))) {
+-    return display_name;
+   }
+ 
+   PR_fprintf(PR_STDERR, "Error: GDK_BACKEND does not match available displays\n");
+@@ -3785,9 +3779,14 @@ XREMain::XRE_mainStartup(bool* aExitFlag)
+     if (saveDisplayArg) {
+       SaveWordToEnv("DISPLAY", nsDependentCString(display_name));
+     }
+-  } else {
+-    mDisableRemote = true;
+   }
++#ifdef MOZ_WAYLAND
++  else if (GDK_IS_WAYLAND_DISPLAY(mGdkDisplay)) {
++    if (saveDisplayArg) {
++      SaveWordToEnv("WAYLAND_DISPLAY", nsDependentCString(display_name));
++    }
++  }
++#endif
+ #endif
+ #ifdef MOZ_ENABLE_XREMOTE
+   // handle --remote now that xpcom is fired up
+-- 
+2.11.0
+
