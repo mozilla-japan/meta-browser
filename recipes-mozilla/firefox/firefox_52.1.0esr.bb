@@ -4,6 +4,7 @@
 DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
             virtual/libgl pulseaudio yasm-native icu"
+RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a6dca6a06efe93d70f711c0e"
@@ -95,6 +96,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0007-tweaking.patch \
             file://wayland-patches/0008-Removed-unused-files.patch \
             file://wayland-patches/0009-Build-fixes-for-destructor-argument-mismatch.patch \
+            file://wayland-patches/0001-Add-a-missing-CXXFLAGS-for-dbus.patch \
            ', \
            '', d)}"
 
