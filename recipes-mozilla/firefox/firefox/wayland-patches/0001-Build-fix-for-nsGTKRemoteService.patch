@@ -1,0 +1,63 @@
+From be25cb99e973c166b6c5fafa063767197b7b465c Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Tue, 25 Apr 2017 10:02:28 +0200
+Subject: [PATCH] Build fix
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ toolkit/components/remote/nsGTKRemoteService.cpp | 5 +++--
+ toolkit/components/remote/nsGTKRemoteService.h   | 2 +-
+ toolkit/components/remote/nsXRemoteService.h     | 5 +++--
+ 3 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/toolkit/components/remote/nsGTKRemoteService.cpp b/toolkit/components/remote/nsGTKRemoteService.cpp
+index d72cf93a64f1..29462c7228aa 100644
+--- a/toolkit/components/remote/nsGTKRemoteService.cpp
++++ b/toolkit/components/remote/nsGTKRemoteService.cpp
+@@ -174,8 +174,9 @@ nsGTKRemoteService::HandlePropertyChange(GtkWidget *aWidget,
+ 
+ void nsGTKRemoteService::OpenURL(const char *aCommandLine)
+ {
+-  
+-  
++  char* buffer = strdup(aCommandLine);
++  HandleCommandLine(buffer, nullptr, 0);
++  free(buffer);
+ }
+ 
+ #define MOZILLA_REMOTE_OBJECT       "/org/mozilla/Firefox/Remote"
+diff --git a/toolkit/components/remote/nsGTKRemoteService.h b/toolkit/components/remote/nsGTKRemoteService.h
+index 638558b4398a..ae18de7a9cdc 100644
+--- a/toolkit/components/remote/nsGTKRemoteService.h
++++ b/toolkit/components/remote/nsGTKRemoteService.h
+@@ -40,7 +40,7 @@ public:
+     { }
+ 
+     DBusHandlerResult HandleDBusMessage(DBusConnection *aConnection, DBusMessage *msg);
+-    void UnregisterDBusInterface();
++    void UnregisterDBusInterface(DBusConnection *aConnection);
+ 
+ private:
+   ~nsGTKRemoteService() { }
+diff --git a/toolkit/components/remote/nsXRemoteService.h b/toolkit/components/remote/nsXRemoteService.h
+index 7186336751b8..247949518504 100644
+--- a/toolkit/components/remote/nsXRemoteService.h
++++ b/toolkit/components/remote/nsXRemoteService.h
+@@ -39,11 +39,12 @@ protected:
+ 
+     void HandleCommandsFor(Window aWindowId);
+     static nsXRemoteService *sRemoteImplementation;
+-private:
+-    void EnsureAtoms();
+     static const char* HandleCommandLine(char* aBuffer, nsIDOMWindow* aWindow,
+                                          uint32_t aTimestamp);
+ 
++private:
++    void EnsureAtoms();
++
+     virtual void SetDesktopStartupIDOrTimestamp(const nsACString& aDesktopStartupID,
+                                                 uint32_t aTimestamp) = 0;
+ 
+-- 
+2.11.0
+
