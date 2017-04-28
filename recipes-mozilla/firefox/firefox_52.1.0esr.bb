@@ -98,6 +98,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Build-fix-for-nsGTKRemoteService.patch \
             file://wayland-patches/0001-Add-a-missing-CXXFLAGS-for-nsGTKRemoteService.patch \
             file://wayland-patches/0001-Fixed-dbus-params.patch \
+            file://wayland-patches/0001-Add-a-missing-CXXFLAGS-for-XRemoteClient.patch \
            ', \
            '', d)}"
 

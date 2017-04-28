@@ -1,0 +1,22 @@
+From 22cb9874d3f0c458a67bec9210a9cead63566e02 Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Thu, 27 Apr 2017 18:07:34 +0900
+Subject: [PATCH] Add a missing CXXFLAGS for XRemoteClient
+
+---
+ widget/xremoteclient/moz.build | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/widget/xremoteclient/moz.build b/widget/xremoteclient/moz.build
+index 28350772d5e4..e4fc9a3bb5c4 100644
+--- a/widget/xremoteclient/moz.build
++++ b/widget/xremoteclient/moz.build
+@@ -11,3 +11,5 @@ SOURCES += [
+ ]
+ 
+ CXXFLAGS += CONFIG['TK_CFLAGS']
++if CONFIG['MOZ_ENABLE_DBUS']:
++    CXXFLAGS += CONFIG['MOZ_DBUS_GLIB_CFLAGS']
+-- 
+2.11.0
+
