@@ -99,6 +99,11 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Add-a-missing-CXXFLAGS-for-nsGTKRemoteService.patch \
             file://wayland-patches/0001-Fixed-dbus-params.patch \
             file://wayland-patches/0001-Add-a-missing-CXXFLAGS-for-XRemoteClient.patch \
+            file://wayland-patches/0001-fixed-default-profile-name.patch \
+            file://wayland-patches/0002-Better-wayland-shutdown.patch \
+            file://wayland-patches/0003-Better-wayland-shutdown.patch \
+            file://wayland-patches/0004-Fixed-hang-up-at-browser-quit.patch \
+            file://wayland-patches/0005-Fixed-freeze-at-browser-quit-and-fixed-wayland-rende.patch \
            ', \
            '', d)}"
 

@@ -1,0 +1,118 @@
+From 76e8dd024e409ba7ca185166b0d7112d7e9c37f4 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Fri, 28 Apr 2017 13:58:21 +0200
+Subject: [PATCH 4/5] Fixed hang up at browser quit
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 19 +++++++++++++++----
+ widget/gtk/WindowSurfaceWayland.h   |  1 +
+ widget/gtk/mozcontainer.c           |  8 ++++++++
+ 3 files changed, 24 insertions(+), 4 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 240b39e9ed5b..6a7c07b32c4b 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -28,6 +28,8 @@ static nsWaylandDisplay* gWaylandDisplay = nullptr;
+ static void
+ WaylandDisplayAddRef(wl_display *aDisplay)
+ {
++  // We should run in Compositor thread
++  MOZ_ASSERT(!NS_IsMainThread());
+   if (!gWaylandDisplay) {
+     gWaylandDisplay = new nsWaylandDisplay(aDisplay);
+   }
+@@ -35,14 +37,19 @@ WaylandDisplayAddRef(wl_display *aDisplay)
+ }
+ 
+ static void
+-WaylandDisplayRelease()
++WaylandDisplayRelease(void *aUnused)
+ {
++  // WaylandDisplayLoop is running in Compositor thread
++  // so we also have to delete WaylandDisplay there.
++  MOZ_ASSERT(!NS_IsMainThread());
+   NS_IF_RELEASE(gWaylandDisplay);
+ }
+ 
+ static void
+ WaylandDisplayLoop(void *tmp)
+ {
++  MOZ_ASSERT(!NS_IsMainThread());
++
+   // Check we still have the display interface
+   if (gWaylandDisplay && gWaylandDisplay->DisplayLoop()) {
+     MessageLoop::current()->PostTask(
+@@ -117,6 +124,9 @@ NS_IMPL_ISUPPORTS(nsWaylandDisplay, nsISupports);
+ nsWaylandDisplay::nsWaylandDisplay(wl_display *aDisplay)
+   : mDisplay(aDisplay)
+ {
++  // We're supposed to run in Compositor thread
++  MOZ_ASSERT(!NS_IsMainThread());
++
+   mEventQueue = wl_display_create_queue(mDisplay);
+ 
+   // wl_shm and wl_subcompositor are not provided by Gtk so we need
+@@ -336,7 +346,6 @@ WindowBackBuffer::Lock(const LayoutDeviceIntRegion& aRegion)
+                                               gWaylandDisplay->GetSurfaceFormat());
+ }
+ 
+-
+ static void
+ frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time)
+ {
+@@ -358,6 +367,7 @@ WindowSurfaceWayland::WindowSurfaceWayland(nsWindow *aWidget,
+   , mFrameCallback(nullptr)
+   , mDelayedCommit(false)
+   , mFullScreenDamage(false)
++  , mWaylandMessageLoop(MessageLoop::current())
+ {
+   MOZ_RELEASE_ASSERT(mSurface != nullptr,
+                     "We can't do anything useful without valid wl_surface.");
+@@ -378,8 +388,9 @@ WindowSurfaceWayland::~WindowSurfaceWayland()
+   if (mFrameCallback) {
+     wl_callback_destroy(mFrameCallback);
+   }
+-  
+-  WaylandDisplayRelease();
++
++  mWaylandMessageLoop->PostTask(
++    NewRunnableFunction(&WaylandDisplayRelease, nullptr));
+ }
+ 
+ WindowBackBuffer*
+diff --git a/widget/gtk/WindowSurfaceWayland.h b/widget/gtk/WindowSurfaceWayland.h
+index a09b3c44cb7c..22eacbde86a7 100644
+--- a/widget/gtk/WindowSurfaceWayland.h
++++ b/widget/gtk/WindowSurfaceWayland.h
+@@ -122,6 +122,7 @@ private:
+   wl_callback*              mFrameCallback;
+   bool                      mDelayedCommit;
+   bool                      mFullScreenDamage;
++  MessageLoop*              mWaylandMessageLoop;
+ };
+ 
+ }  // namespace widget
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 56d173e95843..c047a39a3e60 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -371,6 +371,14 @@ moz_container_realize (GtkWidget *widget)
+         attributes_mask |= GDK_WA_COLORMAP;
+ #endif
+ 
++#ifdef MOZ_WAYLAND
++        // Get mShell type
++        parent_widget = gtk_widget_get_parent(widget);
++        if (parent_widget &&
++            gtk_window_get_window_type(GTK_WINDOW(parent_widget)) == GTK_WINDOW_POPUP) {
++            //attributes.window_type = GDK_WINDOW_SUBSURFACE;
++        }
++#endif
+         window = gdk_window_new (parent, &attributes, attributes_mask);
+         gdk_window_set_user_data (window, widget);
+ #if (MOZ_WIDGET_GTK == 2)
+-- 
+2.11.0
+

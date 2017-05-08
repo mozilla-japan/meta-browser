@@ -1,0 +1,49 @@
+From f4e1156e010d59f40939bfffc0ba4977a0b6da8b Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Thu, 27 Apr 2017 16:50:37 +0200
+Subject: [PATCH 3/5] Better wayland shutdown
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.h | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.h b/widget/gtk/WindowSurfaceWayland.h
+index 6f7af42dc91a..a09b3c44cb7c 100644
+--- a/widget/gtk/WindowSurfaceWayland.h
++++ b/widget/gtk/WindowSurfaceWayland.h
+@@ -15,10 +15,11 @@ namespace widget {
+ 
+ // Our general connection to Wayland display server,
+ // holds our display connection and runs event loop.
+-class WaylandDisplay {
++class nsWaylandDisplay : public nsISupports {
++  NS_DECL_THREADSAFE_ISUPPORTS
++
+ public:
+-  WaylandDisplay(wl_display *aDisplay);
+-  ~WaylandDisplay();
++  nsWaylandDisplay(wl_display *aDisplay);
+ 
+   void                SetShm(wl_shm* aShm)   { mShm = aShm; };
+   wl_shm*             GetShm()               { return(mShm); };
+@@ -26,13 +27,14 @@ public:
+   wl_display*         GetDisplay()           { return mDisplay; };
+   gfx::SurfaceFormat  GetSurfaceFormat()     { return mFormat; };
+   void                SetWaylandPixelFormat(uint32_t format);
+-  void                DisplayLoop();
++  bool                DisplayLoop();
+ 
+ private:
++  virtual ~nsWaylandDisplay();
++
+   gfx::SurfaceFormat  mFormat;
+   wl_shm*             mShm;
+   wl_event_queue*     mEventQueue;
+-  GThread*            mLoopThread;
+   wl_display*         mDisplay;
+ };
+ 
+-- 
+2.11.0
+
