@@ -1,0 +1,182 @@
+From dd8be289838af558e9c9c783f85a0c69e3eb21a3 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Tue, 9 May 2017 18:23:39 +0200
+Subject: [PATCH 3/3] Fixed wayland surface mapping - create wayland surface
+ when we actually need to draw into it
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/mozcontainer.c | 96 ++++++++++++++++++-----------------------------
+ 1 file changed, 36 insertions(+), 60 deletions(-)
+
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index d88b58ed343f..150fa131b619 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -11,13 +11,12 @@
+ #include <gdk/gdkx.h>
+ #include <gdk/gdkwayland.h>
+ #endif
+-
+ #include <stdio.h>
+-
+ #ifdef ACCESSIBILITY
+ #include <atk/atk.h>
+ #include "maiRedundantObjectFactory.h"
+ #endif
++#include "mozilla/Assertions.h"
+ 
+ /* init methods */
+ static void moz_container_class_init          (MozContainerClass *klass);
+@@ -152,73 +151,56 @@ moz_container_move (MozContainer *container, GtkWidget *child_widget,
+ /* static methods */
+ 
+ #if defined(MOZ_WAYLAND)
+-/* We have to recreate our wl_surfaces when GdkWindow is shown,
+- * otherwise Gdk resources may not finished
+- * and gdk_wayland_window_get_wl_surface() fails.
+- */
+ gboolean
+ moz_container_map_surface(MozContainer *container)
+ {
+-    GdkDisplay *display;
+-    struct wl_compositor *compositor;
+-    struct wl_surface *gtk_surface;
+-    struct wl_region *region;
+-    GdkWindow *window;
+-    gint x, y;
+-
+-    if (container->subsurface)
+-      return TRUE;
+-
+-    window = gtk_widget_get_window(GTK_WIDGET(container));
+-    gtk_surface = gdk_wayland_window_get_wl_surface(window);
+-    if (!gtk_surface) {
+-      // We requested the underlying wl_surface too early.
+-      return FALSE;
+-    }
+-
+-    container->subsurface =
+-      wl_subcompositor_get_subsurface (container->subcompositor,
+-                                       container->surface,
+-                                       gtk_surface);
+-    gdk_window_get_position(window, &x, &y);
+-    wl_subsurface_set_position(container->subsurface, x, y);
+-    wl_subsurface_set_desync(container->subsurface);
+-
+-    // Don't accept input on subsurface
+-    display = gtk_widget_get_display(GTK_WIDGET (container));
+-    compositor = gdk_wayland_display_get_wl_compositor(display);
+-    region = wl_compositor_create_region(compositor);
+-    wl_surface_set_input_region(container->surface, region);
+-    wl_region_destroy(region);
+-    return TRUE;
+-}
+-
+-static void
+-moz_container_unmap_surface(MozContainer *container)
+-{
+-    g_clear_pointer(&container->subsurface, wl_subsurface_destroy);
+-    g_clear_pointer(&container->surface, wl_surface_destroy);
+-}
+-
+-static void
+-moz_container_create_surface(MozContainer *container)
+-{
+     GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(container));
+     if (GDK_IS_X11_DISPLAY(display))
+-        return;
++        return FALSE;
++
++    if (container->subsurface && container->surface)
++        return TRUE;
+ 
+     if (!container->surface) {
+         struct wl_compositor *compositor;
+         compositor = gdk_wayland_display_get_wl_compositor(display);
+         container->surface = wl_compositor_create_surface(compositor);
+     }
++
++    if (!container->subsurface) {
++        GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(container));
++        struct wl_surface* gtk_surface = gdk_wayland_window_get_wl_surface(window);
++        if (!gtk_surface) {
++          // We requested the underlying wl_surface too early.
++          return FALSE;
++        }
++
++        container->subsurface =
++          wl_subcompositor_get_subsurface (container->subcompositor,
++                                           container->surface,
++                                           gtk_surface);
++        gint x, y;
++        gdk_window_get_position(window, &x, &y);
++        wl_subsurface_set_position(container->subsurface, x, y);
++        wl_subsurface_set_desync(container->subsurface);
++
++        // Don't accept input on subsurface
++        GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET (container));
++        struct wl_compositor* compositor = gdk_wayland_display_get_wl_compositor(display);
++        struct wl_region* region = wl_compositor_create_region(compositor);
++        wl_surface_set_input_region(container->surface, region);
++        wl_region_destroy(region);
++    }
++    return TRUE;
+ }
+ 
+ static void
+-moz_container_delete_surface(MozContainer *container)
++moz_container_unmap_surface(MozContainer *container)
+ {
++    g_clear_pointer(&container->subsurface, wl_subsurface_destroy);
+     g_clear_pointer(&container->surface, wl_surface_destroy);
+ }
++
+ #endif
+ 
+ void
+@@ -318,12 +300,10 @@ moz_container_map (GtkWidget *widget)
+         }
+         tmp_list = tmp_list->next;
+     }
+-
+     if (gtk_widget_get_has_window (widget)) {
+         gdk_window_show (gtk_widget_get_window(widget));
+     }
+ #if defined(MOZ_WAYLAND)
+-    moz_container_create_surface(MOZ_CONTAINER(widget));
+     moz_container_map_surface(MOZ_CONTAINER(widget));
+ #endif
+ }
+@@ -339,10 +319,6 @@ moz_container_unmap (GtkWidget *widget)
+         gdk_window_hide (gtk_widget_get_window(widget));
+     }
+ #if defined(MOZ_WAYLAND)
+-  /* Gdk/Wayland deletes underlying GdkWindow wl_surface on unmap event.
+-   * Delete the wl_subsurface interface which
+-   * keeps wl_surface object and it's available for reuse.
+-   */
+     moz_container_unmap_surface(MOZ_CONTAINER(widget));
+ #endif
+ }
+@@ -413,7 +389,6 @@ moz_container_unrealize (GtkWidget *widget)
+ {
+   MozContainer* container = MOZ_CONTAINER(widget);
+   moz_container_unmap_surface(container);
+-  moz_container_delete_surface(container);
+ }
+ #endif
+ 
+@@ -588,7 +563,8 @@ moz_container_add(GtkContainer *container, GtkWidget *widget)
+ struct wl_surface*
+ moz_container_get_wl_surface(MozContainer *container)
+ {
+-    // TODO -> map
++    if (!container->subsurface || !container->surface)
++        moz_container_map_surface(container);
+     return container->surface;
+ }
+ #endif
+-- 
+2.11.0
+

@@ -104,6 +104,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0003-Better-wayland-shutdown.patch \
             file://wayland-patches/0004-Fixed-hang-up-at-browser-quit.patch \
             file://wayland-patches/0005-Fixed-freeze-at-browser-quit-and-fixed-wayland-rende.patch \
+            file://wayland-patches/0001-Reworked-multi-thread-rendering-code-provided-nsWayl.patch \
+            file://wayland-patches/0002-Code-clean-up-distinguish-between-wl_display-and-nsW.patch \
+            file://wayland-patches/0003-Fixed-wayland-surface-mapping-create-wayland-surface.patch \
            ', \
            '', d)}"
 
