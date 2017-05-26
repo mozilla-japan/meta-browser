@@ -109,6 +109,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0003-Fixed-wayland-surface-mapping-create-wayland-surface.patch \
             file://wayland-patches/0001-Call-wl_display_roundtrip-twice-to-ensure-we-have-va.patch \
             file://wayland-patches/0001-Use-wl_display_dispatch_queue_pending-to-fetch-wayla.patch \
+            file://wayland-patches/0001-Fix-setting-up-shellHasCSD-flag-position.patch \
            ', \
            '', d)}"
 
