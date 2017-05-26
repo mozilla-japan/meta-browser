@@ -1,4 +1,4 @@
-From f5e9fc55b87616dba0d135458d97d74b02de43b1 Mon Sep 17 00:00:00 2001
+From f6df4c2a7fbd8c8ab95df85c712749c4555ce30d Mon Sep 17 00:00:00 2001
 From: Hiroshi Hatake <hatake@clear-code.com>
 Date: Wed, 19 Apr 2017 11:42:26 +0900
 Subject: [PATCH] Don't show the window frames
@@ -11,8 +11,8 @@ Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
 Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
 ---
  browser/base/content/browser.xul | 2 +-
- widget/gtk/nsWindow.cpp          | 2 ++
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ widget/gtk/nsWindow.cpp          | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
 index 2c74aecdf607..7a11377e3060 100644
@@ -28,25 +28,17 @@ index 2c74aecdf607..7a11377e3060 100644
          persist="screenX screenY width height sizemode">
  
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index c61562196526..0fb2aeee3a22 100644
+index 4f7f2aa871f7..5cf31b7bd0c6 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -3735,6 +3735,7 @@ nsWindow::Create(nsIWidget* aParent,
-             mWindowType != eWindowType_popup || aInitData->mNoAutoHide ?
-               GTK_WINDOW_TOPLEVEL : GTK_WINDOW_POPUP;
-         mShell = gtk_window_new(type);
-+        gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+@@ -3876,6 +3876,7 @@ nsWindow::Create(nsIWidget* aParent,
  
-         // We only move a general managed toplevel window if someone has
-         // actually placed the window somewhere.  If no placement has taken
-@@ -3785,6 +3786,7 @@ nsWindow::Create(nsIWidget* aParent,
-                 else {
-                   bool decorate = mBorderStyle & eBorderStyle_title;
-                   gtk_window_set_decorated(GTK_WINDOW(mShell), decorate);
-+                  gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
-                   if (decorate) {
-                     gtk_window_set_deletable(GTK_WINDOW(mShell), mBorderStyle & eBorderStyle_close);
-                   }
+         // make sure this is the focus widget in the container
+         gtk_widget_show(container);
++        gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+         gtk_widget_grab_focus(container);
+ 
+         // the drawing window
 -- 
 2.11.0
 
