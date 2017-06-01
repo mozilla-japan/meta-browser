@@ -1,0 +1,45 @@
+From 871cbeab71d80a78b614e52884f94b6b122998ca Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 31 May 2017 12:06:13 +0200
+Subject: [PATCH] Fixed clipboard crashes after browser start, rhbz#1455915
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 954c5a3e9948..53ad9a520dac 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -128,6 +128,9 @@ using namespace mozilla::widget;
+ #include "WindowSurfaceX11SHM.h"
+ #include "WindowSurfaceXRender.h"
+ #endif // MOZ_X11
++#ifdef MOZ_WAYLAND
++#include "nsIClipboard.h"
++#endif
+ 
+ #include "nsShmImage.h"
+ 
+@@ -469,6 +472,17 @@ nsWindow::nsWindow()
+ 
+         // It's OK if either of these fail, but it may not be one day.
+         initialize_prefs();
++
++#ifdef MOZ_WAYLAND
++        // Wayland provides clipboard data to application on focus-in event
++        // so we need to init our clipboard hooks before we create window
++        // and get focus.
++        if (!mIsX11Display) {
++            nsCOMPtr<nsIClipboard> clipboard =
++                do_GetService("@mozilla.org/widget/clipboard;1");
++            NS_ASSERTION(clipboard, "Failed to init clipboard!");
++        }
++#endif
+     }
+ 
+     mLastMotionPressure = 0;
+-- 
+2.11.0
+

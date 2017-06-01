@@ -111,6 +111,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Use-wl_display_dispatch_queue_pending-to-fetch-wayla.patch \
             file://wayland-patches/0001-Fix-setting-up-shellHasCSD-flag-position.patch \
             file://wayland-patches/0001-Fixed-fullscreen-on-Weston.patch \
+            file://wayland-patches/0001-Fixed-clipboard-crashes-after-browser-start-rhbz-145.patch \
            ', \
            '', d)}"
 
