@@ -1,0 +1,51 @@
+From 2832d38b1360a1981ac590945a0c6329907bd9be Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 31 May 2017 12:20:28 +0200
+Subject: [PATCH] Fixed fullscreen on Weston
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index ee65d91c3d99..666e3a9d2055 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -5174,18 +5174,18 @@ nsWindow::PerformFullscreenTransition(FullscreenTransitionStage aStage,
+                        transitionData, nullptr);
+ }
+ 
++#ifdef MOZ_X11
+ static bool
+ IsFullscreenSupported(GtkWidget* aShell)
+ {
+-#ifdef MOZ_X11
+     GdkScreen* screen = gtk_widget_get_screen(aShell);
+     GdkAtom atom = gdk_atom_intern("_NET_WM_STATE_FULLSCREEN", FALSE);
+     if (!gdk_x11_screen_supports_net_wm_hint(screen, atom)) {
+         return false;
+     }
+-#endif
+     return true;
+ }
++#endif
+ 
+ nsresult
+ nsWindow::MakeFullScreen(bool aFullScreen, nsIScreen* aTargetScreen)
+@@ -5193,9 +5193,11 @@ nsWindow::MakeFullScreen(bool aFullScreen, nsIScreen* aTargetScreen)
+     LOG(("nsWindow::MakeFullScreen [%p] aFullScreen %d\n",
+          (void *)this, aFullScreen));
+ 
+-    if (!IsFullscreenSupported(mShell)) {
++#ifdef MOZ_X11
++    if (mIsX11Display && !IsFullscreenSupported(mShell)) {
+         return NS_ERROR_NOT_AVAILABLE;
+     }
++#endif
+ 
+     if (aFullScreen) {
+         if (mSizeMode != nsSizeMode_Fullscreen)
+-- 
+2.11.0
+
