@@ -112,6 +112,8 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Fix-setting-up-shellHasCSD-flag-position.patch \
             file://wayland-patches/0001-Fixed-fullscreen-on-Weston.patch \
             file://wayland-patches/0001-Fixed-clipboard-crashes-after-browser-start-rhbz-145.patch \
+            file://wayland-patches/0001-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
            ', \
            '', d)}"
 

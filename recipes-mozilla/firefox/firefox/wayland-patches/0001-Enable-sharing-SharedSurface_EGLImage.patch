@@ -1,0 +1,59 @@
+From f1d7a496033622edf45f79dfd2b812374be14c5b Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Thu, 8 Jun 2017 15:20:45 +0900
+Subject: [PATCH 1/2] Enable sharing SharedSurface_EGLImage
+
+---
+ gfx/gl/SharedSurfaceEGL.cpp | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/gfx/gl/SharedSurfaceEGL.cpp b/gfx/gl/SharedSurfaceEGL.cpp
+index 5538138e4599..c1fdbf410d9f 100644
+--- a/gfx/gl/SharedSurfaceEGL.cpp
++++ b/gfx/gl/SharedSurfaceEGL.cpp
+@@ -74,7 +74,11 @@ SharedSurface_EGLImage::SharedSurface_EGLImage(GLContext* gl,
+                     gl,
+                     size,
+                     hasAlpha,
++#ifdef MOZ_WAYLAND_EGL
++                    true)
++#else
+                     false) // Can't recycle, as mSync changes never update TextureHost.
++#endif
+     , mMutex("SharedSurface_EGLImage mutex")
+     , mEGL(egl)
+     , mFormats(formats)
+@@ -87,12 +91,14 @@ SharedSurface_EGLImage::~SharedSurface_EGLImage()
+ {
+     mEGL->fDestroyImage(Display(), mImage);
+ 
++#ifndef MOZ_WAYLAND_EGL
+     if (mSync) {
+         // We can't call this unless we have the ext, but we will always have
+         // the ext if we have something to destroy.
+         mEGL->fDestroySync(Display(), mSync);
+         mSync = 0;
+     }
++#endif
+ 
+     if (!mGL || !mGL->MakeCurrent())
+         return;
+@@ -113,6 +119,7 @@ SharedSurface_EGLImage::ProducerReleaseImpl()
+     MutexAutoLock lock(mMutex);
+     mGL->MakeCurrent();
+ 
++#ifndef MOZ_WAYLAND_EGL
+     if (mEGL->IsExtensionSupported(GLLibraryEGL::KHR_fence_sync) &&
+         mGL->IsExtensionSupported(GLContext::OES_EGL_sync))
+     {
+@@ -130,6 +137,7 @@ SharedSurface_EGLImage::ProducerReleaseImpl()
+             return;
+         }
+     }
++#endif
+ 
+     MOZ_ASSERT(!mSync);
+     mGL->fFinish();
+-- 
+2.11.0
+

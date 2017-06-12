@@ -1,0 +1,35 @@
+From ff6be143cbbd54e182261f236035f2618297ce65 Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Thu, 8 Jun 2017 15:21:32 +0900
+Subject: [PATCH 2/2] Add workaround for eglDestroyImageKHR SEGV
+
+This is caused by driver side?
+---
+ gfx/gl/SharedSurfaceEGL.cpp | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/gfx/gl/SharedSurfaceEGL.cpp b/gfx/gl/SharedSurfaceEGL.cpp
+index c1fdbf410d9f..4a0ef4646a51 100644
+--- a/gfx/gl/SharedSurfaceEGL.cpp
++++ b/gfx/gl/SharedSurfaceEGL.cpp
+@@ -89,8 +89,16 @@ SharedSurface_EGLImage::SharedSurface_EGLImage(GLContext* gl,
+ 
+ SharedSurface_EGLImage::~SharedSurface_EGLImage()
+ {
++#ifdef MOZ_WAYLAND_EGL
++    // XXX Current PowerVR driver might call eglDestroyImageKHR automatically?
++    // In more detail, see similiar situation wrokaround:
++    // https://developer.qualcomm.com/comment/6289#comment-6289
++    if(mGL->Vendor() != GLVendor::Imagination) {
++        mEGL->fDestroyImage(Display(), mImage);
++    }
++#else
+     mEGL->fDestroyImage(Display(), mImage);
+-
++#endif
+ #ifndef MOZ_WAYLAND_EGL
+     if (mSync) {
+         // We can't call this unless we have the ext, but we will always have
+-- 
+2.11.0
+
