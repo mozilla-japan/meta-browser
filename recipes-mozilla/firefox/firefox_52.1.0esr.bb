@@ -19,6 +19,7 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://0041-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0042-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            file://firefox-50-fix-build-error-without-glx.patch \
+           file://0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://mozconfig \
            "
 
