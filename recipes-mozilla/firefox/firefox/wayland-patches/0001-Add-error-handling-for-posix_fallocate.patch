@@ -1,0 +1,56 @@
+From 35abec963ba3181dc2a0cbb2a396e4033f0e81fa Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Tue, 13 Jun 2017 18:47:53 +0900
+Subject: [PATCH] Add error handling for posix_fallocate
+
+This patch improves lifetime for multiple windows situation.
+Without this patch, Fx will crash when firing "open in new window" event.
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 9afbaeb47a3c..2e6a28a33e00 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -20,6 +20,7 @@
+ #include <sys/mman.h>
+ #include <assert.h>
+ #include <fcntl.h>
++#include <errno.h>
+ 
+ namespace mozilla {
+ namespace widget {
+@@ -236,6 +237,7 @@ WaylandShmPool::CreateTemporaryFile(int aSize)
+ 
+   char* filename;
+   int fd = -1;
++  int ret = 0;
+ 
+   if (tmpname.GetMutableData(&filename)) {
+       fd = mkstemp(filename);
+@@ -255,9 +257,19 @@ WaylandShmPool::CreateTemporaryFile(int aSize)
+   }
+ 
+ #ifdef HAVE_POSIX_FALLOCATE
+-  int ret = posix_fallocate(fd, 0, aSize);
++  do {
++    ret = posix_fallocate(fd, 0, aSize);
++  } while (ret == EINTR);
++  if (ret != 0) {
++      close(fd);
++  }
+ #else
+-  int ret = ftruncate(fd, aSize);
++  do {
++      ret = ftruncate(fd, aSize);
++  } while (ret < 0 && errno == EINTR);
++  if (ret < 0) {
++      close(fd);
++  }
+ #endif
+   MOZ_RELEASE_ASSERT(ret == 0, "Mapping file allocation failed.");
+ 
+-- 
+2.11.0
+

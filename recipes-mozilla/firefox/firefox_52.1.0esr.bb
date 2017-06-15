@@ -115,6 +115,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Fixed-clipboard-crashes-after-browser-start-rhbz-145.patch \
             file://wayland-patches/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
+            file://wayland-patches/0001-Add-error-handling-for-posix_fallocate.patch \
            ', \
            '', d)}"
 
