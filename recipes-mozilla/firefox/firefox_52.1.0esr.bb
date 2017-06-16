@@ -117,6 +117,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
             file://wayland-patches/0001-Add-error-handling-for-posix_fallocate.patch \
             file://wayland-patches/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
+            file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
            ', \
            '', d)}"
 
