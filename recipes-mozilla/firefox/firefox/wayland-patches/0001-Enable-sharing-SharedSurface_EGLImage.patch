@@ -1,59 +1,50 @@
-From f1d7a496033622edf45f79dfd2b812374be14c5b Mon Sep 17 00:00:00 2001
+From 73932d207c4e580e12f9225992c016493242de62 Mon Sep 17 00:00:00 2001
 From: Hiroshi Hatake <hatake@clear-code.com>
 Date: Thu, 8 Jun 2017 15:20:45 +0900
 Subject: [PATCH 1/2] Enable sharing SharedSurface_EGLImage
 
 ---
- gfx/gl/SharedSurfaceEGL.cpp | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ gfx/gl/SharedSurfaceEGL.cpp | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/gfx/gl/SharedSurfaceEGL.cpp b/gfx/gl/SharedSurfaceEGL.cpp
-index 5538138e4599..c1fdbf410d9f 100644
+index 5538138e4599..76ae7bc1cccd 100644
 --- a/gfx/gl/SharedSurfaceEGL.cpp
 +++ b/gfx/gl/SharedSurfaceEGL.cpp
-@@ -74,7 +74,11 @@ SharedSurface_EGLImage::SharedSurface_EGLImage(GLContext* gl,
+@@ -62,6 +62,12 @@ SharedSurface_EGLImage::HasExtensions(GLLibraryEGL* egl, GLContext* gl)
+             gl->IsExtensionSupported(GLContext::OES_EGL_image));
+ }
+ 
++static bool IsSyncExtensionSupported(GLContext* aGL, GLLibraryEGL* aEGL)
++{
++    return aEGL->IsExtensionSupported(GLLibraryEGL::KHR_fence_sync) &&
++        aGL->IsExtensionSupported(GLContext::OES_EGL_sync);
++}
++
+ SharedSurface_EGLImage::SharedSurface_EGLImage(GLContext* gl,
+                                                GLLibraryEGL* egl,
+                                                const gfx::IntSize& size,
+@@ -74,7 +80,9 @@ SharedSurface_EGLImage::SharedSurface_EGLImage(GLContext* gl,
                      gl,
                      size,
                      hasAlpha,
-+#ifdef MOZ_WAYLAND_EGL
-+                    true)
-+#else
-                     false) // Can't recycle, as mSync changes never update TextureHost.
-+#endif
+-                    false) // Can't recycle, as mSync changes never update TextureHost.
++                    // Can't recycle, as mSync changes never update TextureHost,
++                    // if sync extensions supported.
++                    !IsSyncExtensionSupported(gl, egl))
      , mMutex("SharedSurface_EGLImage mutex")
      , mEGL(egl)
      , mFormats(formats)
-@@ -87,12 +91,14 @@ SharedSurface_EGLImage::~SharedSurface_EGLImage()
- {
-     mEGL->fDestroyImage(Display(), mImage);
- 
-+#ifndef MOZ_WAYLAND_EGL
-     if (mSync) {
-         // We can't call this unless we have the ext, but we will always have
-         // the ext if we have something to destroy.
-         mEGL->fDestroySync(Display(), mSync);
-         mSync = 0;
-     }
-+#endif
- 
-     if (!mGL || !mGL->MakeCurrent())
-         return;
-@@ -113,6 +119,7 @@ SharedSurface_EGLImage::ProducerReleaseImpl()
+@@ -113,8 +121,7 @@ SharedSurface_EGLImage::ProducerReleaseImpl()
      MutexAutoLock lock(mMutex);
      mGL->MakeCurrent();
  
-+#ifndef MOZ_WAYLAND_EGL
-     if (mEGL->IsExtensionSupported(GLLibraryEGL::KHR_fence_sync) &&
-         mGL->IsExtensionSupported(GLContext::OES_EGL_sync))
+-    if (mEGL->IsExtensionSupported(GLLibraryEGL::KHR_fence_sync) &&
+-        mGL->IsExtensionSupported(GLContext::OES_EGL_sync))
++    if (IsSyncExtensionSupported(mGL, mEGL))
      {
-@@ -130,6 +137,7 @@ SharedSurface_EGLImage::ProducerReleaseImpl()
-             return;
-         }
-     }
-+#endif
- 
-     MOZ_ASSERT(!mSync);
-     mGL->fFinish();
+         if (mSync) {
+             MOZ_RELEASE_ASSERT(false, "GFX: Non-recycleable should not Fence twice.");
 -- 
 2.11.0
 
