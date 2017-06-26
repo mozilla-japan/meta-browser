@@ -115,7 +115,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Fixed-clipboard-crashes-after-browser-start-rhbz-145.patch \
             file://wayland-patches/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
-            file://wayland-patches/0001-Add-error-handling-for-posix_fallocate.patch \
+            file://wayland-patches/0001-Fixed-error-handling-for-posix_fallocate-ftruncate-b.patch \
+            file://wayland-patches/0002-Fixed-error-handling-for-posix_fallocate-and-formatt.patch \
+            file://wayland-patches/0003-Fixed-rhbz-1464017-Wayland-Hamburger-menu-popup-and-.patch \
             file://wayland-patches/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
            ', \

@@ -1,0 +1,77 @@
+From 1d4d49799a14f7a15f23facfce9cf33e3991fa85 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Thu, 22 Jun 2017 11:56:03 +0200
+Subject: [PATCH 2/3] Fixed error handling for posix_fallocate and formatting,
+ by Hiroshi Hatake
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 28 +++++++++++++++-------------
+ 1 file changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 44aa825e1a58..6c293c800231 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -240,20 +240,20 @@ WaylandShmPool::CreateTemporaryFile(int aSize)
+   int ret = 0;
+ 
+   if (tmpname.GetMutableData(&filename)) {
+-      fd = mkstemp(filename);
+-      if (fd >= 0) {
+-          int flags = fcntl(fd, F_GETFD);
+-          if (flags >= 0) {
+-              fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+-          }
++    fd = mkstemp(filename);
++    if (fd >= 0) {
++      int flags = fcntl(fd, F_GETFD);
++      if (flags >= 0) {
++        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+       }
++    }
+   }
+ 
+   if (fd >= 0) {
+-      unlink(tmpname.get());
++    unlink(tmpname.get());
+   } else {
+-      printf_stderr("Unable to create mapping file %s\n", filename);
+-      MOZ_CRASH();
++    printf_stderr("Unable to create mapping file %s\n", filename);
++    MOZ_CRASH();
+   }
+ 
+ #ifdef HAVE_POSIX_FALLOCATE
+@@ -261,14 +261,14 @@ WaylandShmPool::CreateTemporaryFile(int aSize)
+     ret = posix_fallocate(fd, 0, aSize);
+   } while (ret == EINTR);
+   if (ret != 0) {
+-      close(fd);
++    close(fd);
+   }
+ #else
+   do {
+-      ret = ftruncate(fd, aSize);
++    ret = ftruncate(fd, aSize);
+   } while (ret < 0 && errno == EINTR);
+   if (ret < 0) {
+-      close(fd);
++    close(fd);
+   }
+ #endif
+   MOZ_RELEASE_ASSERT(ret == 0, "Mapping file allocation failed.");
+@@ -302,7 +302,9 @@ WaylandShmPool::Resize(int aSize)
+     return false;
+ 
+ #ifdef HAVE_POSIX_FALLOCATE
+-  errno = posix_fallocate(mShmPoolFd, 0, aSize);
++  do {
++    errno = posix_fallocate(mShmPoolFd, 0, aSize);
++  } while (errno == EINTR);
+   if (errno != 0)
+     return false;
+ #endif
+-- 
+2.11.0
+
