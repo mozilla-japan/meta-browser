@@ -1,21 +1,50 @@
-From f6df4c2a7fbd8c8ab95df85c712749c4555ce30d Mon Sep 17 00:00:00 2001
-From: Hiroshi Hatake <hatake@clear-code.com>
-Date: Wed, 19 Apr 2017 11:42:26 +0900
+From b515e6d36deaa6af6ad6c11b913332afd9ce7437 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Tue, 27 Jun 2017 13:38:21 +0900
 Subject: [PATCH] Don't show the window frames
 
 The current EGL patch for Wayland doesn't work well when the
 window frame exist. Until the issue is resolved, don't show
 the frame and make the window fullscreen by default.
 
-Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
-Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
- browser/base/content/browser.xul | 2 +-
- widget/gtk/nsWindow.cpp          | 1 +
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ browser/app/profile/firefox.js                           | 2 +-
+ browser/base/content/browser-fullScreenAndPointerLock.js | 4 ++--
+ browser/base/content/browser.xul                         | 2 +-
+ widget/gtk/nsWindow.cpp                                  | 1 +
+ 4 files changed, 5 insertions(+), 4 deletions(-)
 
+diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
+index 026283b..03453b7 100644
+--- a/browser/app/profile/firefox.js
++++ b/browser/app/profile/firefox.js
+@@ -244,7 +244,7 @@ pref("browser.warnOnQuit", true);
+ // might still show the window closing dialog with showQuitWarning == false.
+ pref("browser.showQuitWarning", false);
+ pref("browser.fullscreen.autohide", true);
+-pref("browser.fullscreen.animate", true);
++pref("browser.fullscreen.animate", false);
+ pref("browser.overlink-delay", 80);
+ 
+ #ifdef UNIX_BUT_NOT_MAC
+diff --git a/browser/base/content/browser-fullScreenAndPointerLock.js b/browser/base/content/browser-fullScreenAndPointerLock.js
+index 497e511..fd827be 100644
+--- a/browser/base/content/browser-fullScreenAndPointerLock.js
++++ b/browser/base/content/browser-fullScreenAndPointerLock.js
+@@ -266,8 +266,8 @@ var FullScreen = {
+       window.messageManager.addMessageListener(type, this);
+     }
+ 
+-    if (window.fullScreen)
+-      this.toggle();
++    window.fullScreen = true;
++    this.toggle();
+   },
+ 
+   uninit: function() {
 diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
-index 2c74aecdf607..7a11377e3060 100644
+index 2c74aec..7a11377e 100644
 --- a/browser/base/content/browser.xul
 +++ b/browser/base/content/browser.xul
 @@ -58,7 +58,7 @@
@@ -28,10 +57,10 @@ index 2c74aecdf607..7a11377e3060 100644
          persist="screenX screenY width height sizemode">
  
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index 4f7f2aa871f7..5cf31b7bd0c6 100644
+index d97b350..4114a9d 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -3876,6 +3876,7 @@ nsWindow::Create(nsIWidget* aParent,
+@@ -3790,6 +3790,7 @@ nsWindow::Create(nsIWidget* aParent,
  
          // make sure this is the focus widget in the container
          gtk_widget_show(container);
@@ -40,5 +69,5 @@ index 4f7f2aa871f7..5cf31b7bd0c6 100644
  
          // the drawing window
 -- 
-2.11.0
+1.9.1
 
