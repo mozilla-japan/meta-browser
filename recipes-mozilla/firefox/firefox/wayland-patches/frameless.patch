@@ -1,22 +1,17 @@
-From b515e6d36deaa6af6ad6c11b913332afd9ce7437 Mon Sep 17 00:00:00 2001
-From: Takuro Ashie <ashie@clear-code.com>
-Date: Tue, 27 Jun 2017 13:38:21 +0900
-Subject: [PATCH] Don't show the window frames
+commit 1129cd1407436f7154a86214822ce02e33c03f79
+Author: Takuro Ashie <ashie@clear-code.com>
+Date:   Wed Jun 28 14:13:24 2017 +0900
 
-The current EGL patch for Wayland doesn't work well when the
-window frame exist. Until the issue is resolved, don't show
-the frame and make the window fullscreen by default.
-
-Signed-off-by: Takuro Ashie <ashie@clear-code.com>
----
- browser/app/profile/firefox.js                           | 2 +-
- browser/base/content/browser-fullScreenAndPointerLock.js | 4 ++--
- browser/base/content/browser.xul                         | 2 +-
- widget/gtk/nsWindow.cpp                                  | 1 +
- 4 files changed, 5 insertions(+), 4 deletions(-)
+    Don't show the window frames
+    
+    The current EGL patch for Wayland doesn't work well when the
+    window frame exist. Until the issue is resolved, don't show
+    the frame and make the window fullscreen by default.
+    
+    Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 
 diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
-index 026283b..03453b7 100644
+index 026283bbe9e1..03453b75498e 100644
 --- a/browser/app/profile/firefox.js
 +++ b/browser/app/profile/firefox.js
 @@ -244,7 +244,7 @@ pref("browser.warnOnQuit", true);
@@ -29,7 +24,7 @@ index 026283b..03453b7 100644
  
  #ifdef UNIX_BUT_NOT_MAC
 diff --git a/browser/base/content/browser-fullScreenAndPointerLock.js b/browser/base/content/browser-fullScreenAndPointerLock.js
-index 497e511..fd827be 100644
+index 497e51121182..fd827becd970 100644
 --- a/browser/base/content/browser-fullScreenAndPointerLock.js
 +++ b/browser/base/content/browser-fullScreenAndPointerLock.js
 @@ -266,8 +266,8 @@ var FullScreen = {
@@ -43,24 +38,64 @@ index 497e511..fd827be 100644
    },
  
    uninit: function() {
+diff --git a/browser/base/content/browser-sets.inc b/browser/base/content/browser-sets.inc
+index fc5bfeb7eb01..50c7bacb27d6 100644
+--- a/browser/base/content/browser-sets.inc
++++ b/browser/base/content/browser-sets.inc
+@@ -277,7 +277,9 @@
+ #ifndef XP_MACOSX
+     <key id="showAllHistoryKb" key="&showAllHistoryCmd.commandkey;" command="Browser:ShowAllHistory" modifiers="accel,shift"/>
+     <key keycode="VK_F5" command="Browser:ReloadSkipCache" modifiers="accel"/>
++<!--
+     <key id="key_fullScreen" keycode="VK_F11" command="View:FullScreen"/>
++-->
+ #else
+     <key id="key_fullScreen" key="&fullScreenCmd.macCommandKey;" command="View:FullScreen" modifiers="accel,control"/>
+     <key id="key_fullScreen_old" key="&fullScreenCmd.macCommandKey;" command="View:FullScreen" modifiers="accel,shift"/>
 diff --git a/browser/base/content/browser.xul b/browser/base/content/browser.xul
-index 2c74aec..7a11377e 100644
+index 2c74aecdf607..fbfe830ed584 100644
 --- a/browser/base/content/browser.xul
 +++ b/browser/base/content/browser.xul
-@@ -58,7 +58,7 @@
+@@ -57,8 +57,8 @@
+         windowtype="navigator:browser"
          macanimationtype="document"
          screenX="4" screenY="4"
-         fullscreenbutton="true"
+-        fullscreenbutton="true"
 -        sizemode="normal"
++        fullscreenbutton="false"
 +        sizemode="fullscreen"
          retargetdocumentfocus="urlbar"
          persist="screenX screenY width height sizemode">
  
+@@ -933,6 +933,7 @@
+ 
+       <hbox id="window-controls" hidden="true" pack="end" skipintoolbarset="true"
+             ordinal="1000">
++<!--
+         <toolbarbutton id="minimize-button"
+                        tooltiptext="&fullScreenMinimize.tooltip;"
+                        oncommand="window.minimize();"/>
+@@ -945,6 +946,7 @@
+ #endif
+                        tooltiptext="&fullScreenRestore.tooltip;"
+                        oncommand="BrowserFullScreen();"/>
++-->
+ 
+         <toolbarbutton id="close-button"
+                        tooltiptext="&fullScreenClose.tooltip;"
+@@ -1040,6 +1042,7 @@
+                      observes="View:FullScreen"
+                      type="checkbox"
+                      label="&fullScreenCmd.label;"
++                     disabled="true"
+                      tooltip="dynamic-shortcut-tooltip"/>
+     </toolbarpalette>
+   </toolbox>
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index d97b350..4114a9d 100644
+index 60fd66a86aa4..aea1d517fd8c 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -3790,6 +3790,7 @@ nsWindow::Create(nsIWidget* aParent,
+@@ -3890,6 +3890,7 @@ nsWindow::Create(nsIWidget* aParent,
  
          // make sure this is the focus widget in the container
          gtk_widget_show(container);
@@ -68,6 +103,3 @@ index d97b350..4114a9d 100644
          gtk_widget_grab_focus(container);
  
          // the drawing window
--- 
-1.9.1
-
