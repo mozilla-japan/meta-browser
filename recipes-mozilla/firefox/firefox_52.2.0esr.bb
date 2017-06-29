@@ -15,7 +15,6 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://vendor.js \
            file://avoid-running-config-status.patch \
            file://remove-needless-windows-dependency.patch \
-           file://fix-skia-optional-neon.patch \
            file://0041-Fix-a-broken-build-option-with-gl-provider.patch \
            file://0042-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
            file://firefox-50-fix-build-error-without-glx.patch \
@@ -23,13 +22,12 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozconfig \
            "
 
-SRC_URI[archive.md5sum] = "2d8175512710bb1df5a1fb0f0a2b1bd8"
-SRC_URI[archive.sha256sum] = "da2ba9630b8b56c6f5d36d9f3da2d984ef7986dc8b4d804f6947fcea6c24637d"
+SRC_URI[archive.md5sum] = "512594d84c9aec3fb094eb4bba10e441"
+SRC_URI[archive.sha256sum] = "a2f180e4109b15d86d58444134996c1d49eb52e7702d89510508fbd7bddb9381"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
-#MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
-MOZ_APP_BASE_VERSION = "52.1.0"
+MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
 
