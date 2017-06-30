@@ -118,6 +118,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Fixed-error-handling-for-posix_fallocate-ftruncate-b.patch \
             file://wayland-patches/0002-Fixed-error-handling-for-posix_fallocate-and-formatt.patch \
             file://wayland-patches/0003-Fixed-rhbz-1464017-Wayland-Hamburger-menu-popup-and-.patch \
+            file://wayland-patches/0001-Don-t-call-gdk_x11_window_get_xid-from-LOG-under-way.patch \
+            file://wayland-patches/0002-Removed-the-gdk_seat_-code-let-s-solve-https-bugzill.patch \
+            file://wayland-patches/0003-Don-t-explicitly-grab-on-Wayland-use-only-implicit-g.patch \
             file://wayland-patches/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
            ', \
