@@ -132,8 +132,11 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 
 # Current EGL patch for Wayland doesn't work well on windowed mode.
 # To avoid this issue, force use fullscreen mode by default.
+# In addition, e10s (multi process window) isn't also supported yet.
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           'file://wayland-patches/frameless.patch', '', d)}"
+           'file://wayland-patches/frameless.patch \
+            file://e10s.js \
+           ', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            'file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
@@ -162,6 +165,9 @@ do_install_append() {
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    fi
+    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/e10s.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
     fi
 
     # Fix ownership of files
