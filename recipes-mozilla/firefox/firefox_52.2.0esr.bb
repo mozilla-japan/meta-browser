@@ -13,6 +13,8 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://vendor.js \
+           file://autoconfig.js \
+           file://autoconfig.cfg \
            file://avoid-running-config-status.patch \
            file://remove-needless-windows-dependency.patch \
            file://0041-Fix-a-broken-build-option-with-gl-provider.patch \
@@ -153,6 +155,8 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
     install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    install -m 0644 ${WORKDIR}/autoconfig.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    install -m 0644 ${WORKDIR}/autoconfig.cfg ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
     fi
