@@ -123,6 +123,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0003-Don-t-explicitly-grab-on-Wayland-use-only-implicit-g.patch \
             file://wayland-patches/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
+            file://wayland-patches/0001-Don-t-crash-when-we-re-missing-clipboard-data-rhbz-1.patch \
            ', \
            '', d)}"
 
