@@ -119,7 +119,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
             file://wayland-patches/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-            file://wayland-patches/0001-Adopt-wl_data_offer_listener-for-older-Wayland-under.patch \
            ', \
            '', d)}"
 
