@@ -149,6 +149,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland-patches/frameless.patch \
             file://e10s.js \
+            file://wayland-patches/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
            ', \
            '', d)}"
 
