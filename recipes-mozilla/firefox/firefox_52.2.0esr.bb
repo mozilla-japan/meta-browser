@@ -44,6 +44,7 @@ PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
 
+# Stransky's wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            'file://wayland-patches/0001-Added-wayland-patch.patch \
             file://wayland-patches/0002-build-fix.patch \
@@ -79,15 +80,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0032-Removed-ImageBuffer-and-draw-directly-to-wayland-bac.patch \
             file://wayland-patches/0033-Removed-old-comments.patch \
             file://wayland-patches/0034-Fixed-crash-when-pasted-to-clipboard.patch \
-            file://wayland-patches/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland-patches/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
-            file://wayland-patches/0037-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland-patches/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
-            file://wayland-patches/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
-            file://wayland-patches/0040-GLContextPrividerEGL-Remove-needless-code.patch \
-            file://wayland-patches/0043-Add-with-gl-provider-EGL-to-.mozconfig.patch \
-            file://wayland-patches/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-            file://wayland-patches/0001-Adopt-wl_data_offer_listener-for-older-Wayland-under.patch \
             file://wayland-patches/0001-Disabled-broadway-backend-does-not-work-and-enabled-.patch \
             file://wayland-patches/0002-Added-D-Bus-remote-files.patch \
             file://wayland-patches/0003-replace.patch \
@@ -113,31 +105,48 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0001-Fix-setting-up-shellHasCSD-flag-position.patch \
             file://wayland-patches/0001-Fixed-fullscreen-on-Weston.patch \
             file://wayland-patches/0001-Fixed-clipboard-crashes-after-browser-start-rhbz-145.patch \
-            file://wayland-patches/0001-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
             file://wayland-patches/0001-Fixed-error-handling-for-posix_fallocate-ftruncate-b.patch \
             file://wayland-patches/0002-Fixed-error-handling-for-posix_fallocate-and-formatt.patch \
             file://wayland-patches/0003-Fixed-rhbz-1464017-Wayland-Hamburger-menu-popup-and-.patch \
             file://wayland-patches/0001-Don-t-call-gdk_x11_window_get_xid-from-LOG-under-way.patch \
             file://wayland-patches/0002-Removed-the-gdk_seat_-code-let-s-solve-https-bugzill.patch \
             file://wayland-patches/0003-Don-t-explicitly-grab-on-Wayland-use-only-implicit-g.patch \
+            file://wayland-patches/0001-Don-t-crash-when-we-re-missing-clipboard-data-rhbz-1.patch \
+           ', \
+           '', d)}"
+
+# Gecko Embedded's Additional wayland patches
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
+           ' \
+            file://wayland-patches/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
+            file://wayland-patches/0001-Adopt-wl_data_offer_listener-for-older-Wayland-under.patch \
+           ', \
+           '', d)}"
+
+# Gecko Embedded's Additional wayland patches to support EGL
+#
+# Current EGL patches doesn't work well on windowed mode.
+# To avoid this issue, force use fullscreen mode.
+# In addition, e10s (multi process window) isn't also supported yet.
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
+           'file://wayland-patches/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland-patches/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland-patches/0037-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland-patches/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
+            file://wayland-patches/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
+            file://wayland-patches/0040-GLContextPrividerEGL-Remove-needless-code.patch \
+            file://wayland-patches/0001-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland-patches/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
             file://wayland-patches/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
-            file://wayland-patches/0001-Don-t-crash-when-we-re-missing-clipboard-data-rhbz-1.patch \
+            file://wayland-patches/frameless.patch \
+            file://e10s.js \
            ', \
            '', d)}"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
            'file://gpu.js', '', d)}"
-
-# Current EGL patch for Wayland doesn't work well on windowed mode.
-# To avoid this issue, force use fullscreen mode by default.
-# In addition, e10s (multi process window) isn't also supported yet.
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           'file://wayland-patches/frameless.patch \
-            file://e10s.js \
-           ', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            'file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
