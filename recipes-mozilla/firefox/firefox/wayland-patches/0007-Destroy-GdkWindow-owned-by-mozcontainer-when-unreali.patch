@@ -1,0 +1,44 @@
+From 2da1da120b015f02e8be99bb2bd51aa7138e1777 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 12 Jul 2017 11:46:36 +0200
+Subject: [PATCH 7/8] Destroy GdkWindow owned by mozcontainer when unrealize
+ (rhbz#1467104)
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/mozcontainer.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 2f51a5fe129b..420329e84956 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -361,6 +361,10 @@ moz_container_realize (GtkWidget *widget)
+         }
+ #endif
+         window = gdk_window_new (parent, &attributes, attributes_mask);
++
++        /* TODO
++         * Replace with gtk_widget_register_window/gtk_widget_unregister_window
++         */
+         gdk_window_set_user_data (window, widget);
+ #if (MOZ_WIDGET_GTK == 2)
+         /* TODO GTK3? */
+@@ -386,6 +390,14 @@ moz_container_unrealize (GtkWidget *widget)
+ {
+   MozContainer* container = MOZ_CONTAINER(widget);
+   moz_container_unmap_surface(container);
++
++  gtk_widget_set_realized(widget, FALSE);
++
++  GdkWindow* window = gtk_widget_get_window(widget);
++  gdk_window_set_user_data(window, nullptr);
++  gdk_window_destroy(window);
++
++  gtk_widget_set_window(widget, nullptr);
+ }
+ #endif
+ 
+-- 
+2.11.0
+

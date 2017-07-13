@@ -1,0 +1,141 @@
+From 0fb91b6a28cb815f30b2fc9db3f72c199636f713 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Wed, 12 Jul 2017 11:12:41 +0200
+Subject: [PATCH 5/8] Set damage region for wl_surface after wl_buffer attach,
+ rhbz#1464916
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/WindowSurfaceWayland.cpp | 36 +++++++++++++++++++++++++-----------
+ widget/gtk/WindowSurfaceWayland.h   | 19 +++++++++++++------
+ widget/gtk/mozcontainer.c           |  3 ---
+ 3 files changed, 38 insertions(+), 20 deletions(-)
+
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+index 6c293c800231..fa0ccf8d8f46 100644
+--- a/widget/gtk/WindowSurfaceWayland.cpp
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -397,6 +397,18 @@ void
+ WindowBackBuffer::Attach(wl_surface* aSurface)
+ {
+   wl_surface_attach(aSurface, mWaylandBuffer, 0, 0);
++
++  if (mFullScreenDamage) {
++    wl_surface_damage(aSurface, 0, 0, mWidth, mHeight);
++    mFullScreenDamage = false;
++  } else {
++    for (auto iter = mInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
++      const mozilla::LayoutDeviceIntRect &r = iter.Get();
++        wl_surface_damage(aSurface, r.x, r.y, r.width, r.height);
++    }
++    mInvalidRegion.SetEmpty();
++  }
++
+   wl_surface_commit(aSurface);
+   wl_display_flush(mWaylandDisplay->GetDisplay());
+   mAttached = true;
+@@ -432,6 +444,15 @@ WindowBackBuffer::Lock(const LayoutDeviceIntRegion& aRegion)
+                                               mWaylandDisplay->GetSurfaceFormat());
+ }
+ 
++void
++WindowBackBuffer::SetInvalidRegion(bool aFullScreen,
++                                   const LayoutDeviceIntRegion& aInvalidRegion)
++{
++  mFullScreenDamage = aFullScreen;
++  if (!mFullScreenDamage)
++    mInvalidRegion = aInvalidRegion;
++}
++
+ static void
+ frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time)
+ {
+@@ -548,22 +569,14 @@ WindowSurfaceWayland::Commit(const LayoutDeviceIntRegion& aInvalidRegion)
+   wl_surface* waylandSurface = mWidget->GetWaylandSurface();
+   if (!waylandSurface) {
+     // Target window is already destroyed - don't bother to render there.
++    NS_WARNING("No drawing buffer available");
+     return;
+   }
+   wl_proxy_set_queue((struct wl_proxy *)waylandSurface,
+                      mWaylandDisplay->GetEventQueue());
+ 
+-  for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
+-    const mozilla::LayoutDeviceIntRect &r = iter.Get();
+-    if (!mFullScreenDamage)
+-      wl_surface_damage(waylandSurface, r.x, r.y, r.width, r.height);
+-  }
+-
+-  if (mFullScreenDamage) {
+-    LayoutDeviceIntRect rect = mWidget->GetBounds();
+-    wl_surface_damage(waylandSurface, 0, 0, rect.width, rect.height);
+-    mFullScreenDamage = false;
+-  }
++  mFrontBuffer->SetInvalidRegion(mFullScreenDamage, aInvalidRegion);
++  mFullScreenDamage = false;
+ 
+   if (mFrameCallback) {
+     // Do nothing here - buffer will be commited to compositor
+@@ -595,6 +608,7 @@ WindowSurfaceWayland::FrameCallbackHandler()
+     wl_surface* waylandSurface = mWidget->GetWaylandSurface();
+     if (!waylandSurface) {
+       // Target window is already destroyed - don't bother to render there.
++      NS_WARNING("No drawing buffer available");
+       return;
+     }
+     wl_proxy_set_queue((struct wl_proxy *)waylandSurface,
+diff --git a/widget/gtk/WindowSurfaceWayland.h b/widget/gtk/WindowSurfaceWayland.h
+index e72d9ad33edc..34a0f9ff82b9 100644
+--- a/widget/gtk/WindowSurfaceWayland.h
++++ b/widget/gtk/WindowSurfaceWayland.h
+@@ -88,20 +88,27 @@ public:
+     return aBuffer->mWidth == mWidth && aBuffer->mHeight == mHeight;
+   }
+ 
++  void SetInvalidRegion(bool aFullScreen,
++                        const LayoutDeviceIntRegion& aInvalidRegion);
++
+ private:
+   void Create(int aWidth, int aHeight);
+   void Release();
+ 
+   // WaylandShmPool provides actual shared memory we draw into
+-  WaylandShmPool      mShmPool;
++  WaylandShmPool          mShmPool;
+ 
+   // wl_buffer is a wayland object that encapsulates the shared memory
+   // and passes it to wayland compositor by wl_surface object.
+-  wl_buffer*          mWaylandBuffer;
+-  int                 mWidth;
+-  int                 mHeight;
+-  bool                mAttached;
+-  nsWaylandDisplay*   mWaylandDisplay;
++  wl_buffer*              mWaylandBuffer;
++  int                     mWidth;
++  int                     mHeight;
++  bool                    mAttached;
++  nsWaylandDisplay*       mWaylandDisplay;
++
++  // Invalidate whole buffer or regions
++  bool                    mFullScreenDamage;
++  LayoutDeviceIntRegion   mInvalidRegion;
+ };
+ 
+ // WindowSurfaceWayland is an abstraction for wl_surface
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 150fa131b619..6f8a4d58a72d 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -378,9 +378,6 @@ moz_container_realize (GtkWidget *widget)
+ #if (MOZ_WIDGET_GTK == 2)
+     widget->style = gtk_style_attach (widget->style, widget->window);
+ #endif
+-#if defined(MOZ_WAYLAND)
+-//    moz_container_create_surface(MOZ_CONTAINER(widget));
+-#endif
+ }
+ 
+ #if defined(MOZ_WAYLAND)
+-- 
+2.11.0
+

@@ -1,0 +1,44 @@
+From 051712578a4bc92e4617ec94319cfe448e3d96f3 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 3 Jul 2017 09:20:50 +0200
+Subject: [PATCH 1/8] Fixed rendering of noautohide panels (rhbz#1466377)
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 5dda794c6de8..02380900eeb8 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3699,10 +3699,14 @@ nsWindow::Create(nsIWidget* aParent,
+         // which will use a Window with the override-redirect attribute
+         // (for temporary windows).
+         // For long-lived windows, their stacking order is managed by the
+-        // window manager, as indicated by GTK_WINDOW_TOPLEVEL ...
++        // window manager, as indicated by GTK_WINDOW_TOPLEVEL.
++        // For Wayland we have to always use GTK_WINDOW_POPUP otherwise
++        // we can't control window position.
+         GtkWindowType type =
+-            mWindowType != eWindowType_popup || aInitData->mNoAutoHide ?
++            mWindowType != eWindowType_popup ||
++            (aInitData->mNoAutoHide && mIsX11Display) ?
+               GTK_WINDOW_TOPLEVEL : GTK_WINDOW_POPUP;
++
+         mShell = gtk_window_new(type);
+ 
+         // We only move a general managed toplevel window if someone has
+@@ -3745,7 +3749,8 @@ nsWindow::Create(nsIWidget* aParent,
+ #endif
+                 }
+             }
+-            if (aInitData->mNoAutoHide) {
++            // Don't handle noautohide popups on Wayland as toplevel
++            if (aInitData->mNoAutoHide && mIsX11Display) {
+                 // ... but the window manager does not decorate this window,
+                 // nor provide a separate taskbar icon.
+                 if (mBorderStyle == eBorderStyle_default) {
+-- 
+2.11.0
+

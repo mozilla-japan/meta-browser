@@ -112,6 +112,14 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0002-Removed-the-gdk_seat_-code-let-s-solve-https-bugzill.patch \
             file://wayland-patches/0003-Don-t-explicitly-grab-on-Wayland-use-only-implicit-g.patch \
             file://wayland-patches/0001-Don-t-crash-when-we-re-missing-clipboard-data-rhbz-1.patch \
+            file://wayland-patches/0001-Fixed-rendering-of-noautohide-panels-rhbz-1466377.patch \
+            file://wayland-patches/0002-Use-subsurfaces-for-popup-creation-rhbz-1457201.patch \
+            file://wayland-patches/0003-Fixed-mouse-transparency-for-popups-rhbz-1466377.patch \
+            file://wayland-patches/0004-Added-missing-gtk_widget_input_shape_combine_region-.patch \
+            file://wayland-patches/0005-Set-damage-region-for-wl_surface-after-wl_buffer-att.patch \
+            file://wayland-patches/0006-Map-Wayland-subsurface-only-when-GdkWindow-is-alread.patch \
+            file://wayland-patches/0007-Destroy-GdkWindow-owned-by-mozcontainer-when-unreali.patch \
+            file://wayland-patches/0008-Remove-unrealize-handler-rhbz-1467104.patch \
            ', \
            '', d)}"
 

@@ -1,0 +1,39 @@
+From 8734e5fcbfdac551de332abc7971636a92237431 Mon Sep 17 00:00:00 2001
+From: Martin Stransky <stransky@redhat.com>
+Date: Mon, 19 Jun 2017 13:39:56 +0200
+Subject: [PATCH 2/8] Use subsurfaces for popup creation (rhbz#1457201)
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ widget/gtk/nsWindow.cpp | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 02380900eeb8..54b9d76b3c2f 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3785,15 +3785,17 @@ nsWindow::Create(nsIWidget* aParent,
+             else {
+                 switch (aInitData->mPopupHint) {
+                     case ePopupTypeMenu:
+-                        gtkTypeHint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
++                        // Use GDK_WINDOW_TYPE_HINT_UTILITY on Wayland which
++                        // guides Gtk to create the popup as subsurface
++                        // instead of xdg_shell popup (rhbz#1457201).
++                        gtkTypeHint = mIsX11Display ? GDK_WINDOW_TYPE_HINT_POPUP_MENU :
++                                                      GDK_WINDOW_TYPE_HINT_UTILITY;
+                         break;
+                     case ePopupTypeTooltip:
+                         gtkTypeHint = GDK_WINDOW_TYPE_HINT_TOOLTIP;
+                         break;
+                     default:
+-                        gtkTypeHint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
+-                        //gtkTypeHint = GDK_WINDOW_TYPE_HINT_TOOLTIP;
+-                        //gtkTypeHint = GDK_WINDOW_TYPE_HINT_UTILITY;
++                        gtkTypeHint = GDK_WINDOW_TYPE_HINT_UTILITY;
+                         break;
+                 }
+             }
+-- 
+2.11.0
+
