@@ -129,6 +129,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
             file://wayland-patches/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland-patches/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
+            file://wayland-patches/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
            ', \
            '', d)}"
 
@@ -150,7 +151,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland-patches/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland-patches/frameless.patch \
             file://e10s.js \
-            file://wayland-patches/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
            ', \
            '', d)}"
 
