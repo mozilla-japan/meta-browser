@@ -121,6 +121,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland-patches/0008-Remove-unrealize-handler-rhbz-1467104.patch \
             file://wayland-patches/0001-Tweaked-wl_surface_damage-calls.patch \
             file://wayland-patches/0002-Fixed-rhbz-1464916-missing-popup-rendering.patch \
+            file://wayland-patches/0001-Don-t-get-xid-from-wayland-window.patch \
            ', \
            '', d)}"
 
