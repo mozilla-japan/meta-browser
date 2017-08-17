@@ -10,18 +10,18 @@ LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a6dca6a06efe93d70f711c0e"
 
 SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${PV}.source.tar.xz;name=archive \
+           file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://vendor.js \
            file://autoconfig.js \
            file://autoconfig.cfg \
-           file://avoid-running-config-status.patch \
-           file://remove-needless-windows-dependency.patch \
-           file://0041-Fix-a-broken-build-option-with-gl-provider.patch \
-           file://0042-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
-           file://firefox-50-fix-build-error-without-glx.patch \
-           file://0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
-           file://mozconfig \
+           file://fixes/avoid-running-config-status.patch \
+           file://fixes/remove-needless-windows-dependency.patch \
+           file://fixes/0041-Fix-a-broken-build-option-with-gl-provider.patch \
+           file://fixes/0042-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
+           file://fixes/firefox-50-fix-build-error-without-glx.patch \
+           file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            "
 
 SRC_URI[archive.md5sum] = "585e88d84f2e183dca1dee3235efe0d1"
