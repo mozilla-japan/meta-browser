@@ -24,8 +24,8 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://mozconfig \
            "
 
-SRC_URI[archive.md5sum] = "512594d84c9aec3fb094eb4bba10e441"
-SRC_URI[archive.sha256sum] = "a2f180e4109b15d86d58444134996c1d49eb52e7702d89510508fbd7bddb9381"
+SRC_URI[archive.md5sum] = "585e88d84f2e183dca1dee3235efe0d1"
+SRC_URI[archive.sha256sum] = "c16bc86d6cb8c2199ed1435ab80a9ae65f9324c820ea0eeb38bf89a97d253b5b"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
