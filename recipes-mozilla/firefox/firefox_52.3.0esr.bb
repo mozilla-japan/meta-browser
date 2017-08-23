@@ -215,19 +215,25 @@ FILES_${PN}-dbg += "${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/.debug \
                     ${bindir}/.debug"
 
 # We don't build XUL as system shared lib, so we can mark all libs as private
-PRIVATE_LIBS = "libmozjs.so \
-                libxpcom.so \
-                libnspr4.so \
-                libxul.so \
-                libmozalloc.so \
-                libplc4.so \
-                libplds4.so \
-                liblgpllibs.so \
-                libmozgtk.so"
+PRIVATE_LIBS = " \
+    libmozjs.so \
+    libxpcom.so \
+    libnspr4.so \
+    libxul.so \
+    libmozalloc.so \
+    libplc4.so \
+    libplds4.so \
+    liblgpllibs.so \
+    libmozgtk.so \
+    libmozwayland.so \
+    libmozsqlite3.so \
+    libclearkey.so \
+"
 
 # mark libraries also provided by nss as private too
 PRIVATE_LIBS += " \
     libfreebl3.so \
+    libfreeblpriv3.so \
     libnss3.so \
     libnssckbi.so \
     libsmime3.so \
