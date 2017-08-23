@@ -148,7 +148,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
             file://wayland/0040-GLContextPrividerEGL-Remove-needless-code.patch \
             file://wayland/0001-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/0002-Add-workaround-for-eglDestroyImageKHR-SEGV.patch \
+            file://wayland/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland/frameless.patch \
