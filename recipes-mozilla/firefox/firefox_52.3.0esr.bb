@@ -43,6 +43,7 @@ PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
+PACKAGECONFIG[webgl] = ",,,"
 
 # Stransky's wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
@@ -167,9 +168,15 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ', \
            '', d)}"
 
+SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'webgl', \
+           'file://webgl.js', '', d)}"
+
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
         bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
+    if bb.utils.contains('PACKAGECONFIG', 'webgl', True, False, d):
+        if bb.utils.contains_any('PACKAGECONFIG', 'glx egl', False, True, d):
+            bb.warn("%s: WebGL won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
 }
 addtask check_variables before do_configure
 
@@ -190,6 +197,9 @@ do_install_append() {
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/e10s.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+    fi
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'webgl', '1', '', d)}" ]; then
+        install -m 0644 ${WORKDIR}/webgl.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
     fi
 
     # Fix ownership of files
