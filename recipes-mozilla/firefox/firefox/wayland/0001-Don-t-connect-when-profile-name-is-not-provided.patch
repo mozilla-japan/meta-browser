@@ -1,0 +1,31 @@
+From e57751079f13b54f04b74879286ae55c57a4ae16 Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Thu, 24 Aug 2017 15:59:15 +0900
+Subject: [PATCH] Don't connect when profile name is not provided
+
+Empty profile name causes SEGV because it makes the following dbus interface name:
+
+org.mozilla.firefox.
+
+This is wrong interface name.
+It must not terminate period.
+---
+ toolkit/components/remote/nsGTKRemoteService.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/toolkit/components/remote/nsGTKRemoteService.cpp b/toolkit/components/remote/nsGTKRemoteService.cpp
+index d0c480e0c542..de37ca1f28d5 100644
+--- a/toolkit/components/remote/nsGTKRemoteService.cpp
++++ b/toolkit/components/remote/nsGTKRemoteService.cpp
+@@ -338,6 +338,8 @@ nsGTKRemoteService::Connect(const char* aAppName, const char* aProfileName)
+     // We're already connected so we don't need to reconnect
+     return true;
+   }
++  if (strlen(aProfileName) == 0)
++    return false;
+ 
+   mConnection = already_AddRefed<DBusConnection>(
+     dbus_bus_get(DBUS_BUS_SESSION, nullptr));
+-- 
+2.13.5
+

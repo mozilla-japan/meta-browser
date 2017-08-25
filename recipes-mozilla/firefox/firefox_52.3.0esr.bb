@@ -134,6 +134,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
             file://wayland/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
+            file://wayland/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
            ', \
            '', d)}"
 
