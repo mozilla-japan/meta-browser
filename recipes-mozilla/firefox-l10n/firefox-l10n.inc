@@ -18,6 +18,7 @@ DL_DIR_append = "/${PN}-${PV}"
 
 SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/linux-i686/xpi/${LANGUAGE}.xpi"
 S = "${WORKDIR}"
+MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit allarch
 
@@ -39,8 +40,8 @@ do_install() {
 
     xpi-pack ${LANGUAGE} ${EXTENSION}.xpi
 
-    mkdir -p ${D}${libdir}/firefox/browser/extensions/
-    install -m 0644 ${EXTENSION}.xpi ${D}${libdir}/firefox/browser/extensions/${EXTENSION}.xpi
+    mkdir -p ${D}${libdir}/firefox-${MOZ_APP_BASE_VERSION}/browser/extensions/
+    install -m 0644 ${EXTENSION}.xpi ${D}${libdir}/firefox-${MOZ_APP_BASE_VERSION}/browser/extensions/${EXTENSION}.xpi
 }
 
-FILES_${PN} += "${libdir}/firefox"
+FILES_${PN} += "${libdir}/firefox-${MOZ_APP_BASE_VERSION}"
