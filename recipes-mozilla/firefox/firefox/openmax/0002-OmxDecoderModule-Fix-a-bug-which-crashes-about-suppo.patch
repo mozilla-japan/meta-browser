@@ -1,4 +1,4 @@
-From d70df2a8a2aae7b5c33d5d047fe56047082eaefa Mon Sep 17 00:00:00 2001
+From aa13cd2ee1c37f56a60da197fb44ee7a5a3bb8e3 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Thu, 11 May 2017 14:13:54 +0900
 Subject: [PATCH 2/2] OmxDecoderModule: Fix a bug which crashes about:support
@@ -15,7 +15,7 @@ Signed-off-by: Takuro Ashie <ashie@clear-code.com>
  3 files changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index 33f9dad..66c0df2 100644
+index 33f9dad303f5..66c0df288a02 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
 @@ -96,10 +96,12 @@ protected:
@@ -41,7 +41,7 @@ index 33f9dad..66c0df2 100644
    RefPtr<InitPromise> p = mInitPromise.Ensure(__func__);
    RefPtr<OmxDataDecoder> self = this;
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
-index ea75b2a..ed8fe0e 100644
+index ea75b2a2ac75..ed8fe0e6d693 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.h
 +++ b/dom/media/platforms/omx/OmxDataDecoder.h
 @@ -61,6 +61,7 @@ protected:
@@ -53,7 +53,7 @@ index ea75b2a..ed8fe0e 100644
                   layers::ImageContainer* aImageContainer);
  
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 16cb3bf..3088b5b 100644
+index 16cb3bff80b4..3088b5bb36b8 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
 @@ -39,6 +39,7 @@ already_AddRefed<MediaDataDecoder>
@@ -73,5 +73,5 @@ index 16cb3bf..3088b5b 100644
                                                        nullptr);
    return decoder.forget();
 -- 
-1.9.1
+2.11.0
 

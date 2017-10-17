@@ -1,17 +1,18 @@
-From 8bcde12af975eeb736acb95266bb790c43e839b2 Mon Sep 17 00:00:00 2001
-From: Takuro Ashie <ashie@homa.ne.jp>
-Date: Wed, 30 Nov 2016 17:29:52 +0900
-Subject: [PATCH] Add initial implementation of PureOmxPlatformLayer
+From 123ea7bb24d10524601717dd8e2a03e601ed0785 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Thu, 11 May 2017 14:08:05 +0900
+Subject: [PATCH 1/2] Add initial implementation of PureOmxPlatformLayer
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
 libraries directly.
 
-Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
+Signed-off-by: Takuro Ashie <ashie@clear-code.com>
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
 ---
  dom/media/MediaPrefs.h                           |   3 +
  dom/media/platforms/PDMFactory.cpp               |  12 +
  dom/media/platforms/moz.build                    |  12 +-
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 110 ++++++
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 111 ++++++
  dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
  dom/media/platforms/omx/OmxDecoderModule.cpp     |  24 ++
  dom/media/platforms/omx/OmxDecoderModule.h       |   6 +
@@ -21,7 +22,7 @@ Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
  dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
  dom/media/platforms/omx/moz.build                |   9 +-
  modules/libpref/init/all.js                      |   1 +
- 13 files changed, 801 insertions(+), 2 deletions(-)
+ 13 files changed, 802 insertions(+), 2 deletions(-)
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
  create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
@@ -29,7 +30,7 @@ Signed-off-by: Takuro Ashie <ashie@homa.ne.jp>
  create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.h
 
 diff --git a/dom/media/MediaPrefs.h b/dom/media/MediaPrefs.h
-index 62b8fc4..67dc517 100644
+index 62b8fc47b091..67dc5177aece 100644
 --- a/dom/media/MediaPrefs.h
 +++ b/dom/media/MediaPrefs.h
 @@ -113,6 +113,9 @@ private:
@@ -43,7 +44,7 @@ index 62b8fc4..67dc517 100644
    DECL_MEDIA_PREF("media.ffmpeg.enabled",                     PDMFFmpegEnabled, bool, true);
    DECL_MEDIA_PREF("media.libavcodec.allow-obsolete",          LibavcodecAllowObsolete, bool, false);
 diff --git a/dom/media/platforms/PDMFactory.cpp b/dom/media/platforms/PDMFactory.cpp
-index 598f947..962842a 100644
+index adaa083bcbf2..c51ffb686b9e 100644
 --- a/dom/media/platforms/PDMFactory.cpp
 +++ b/dom/media/platforms/PDMFactory.cpp
 @@ -24,6 +24,9 @@
@@ -56,7 +57,7 @@ index 598f947..962842a 100644
  #include "GMPDecoderModule.h"
  
  #include "mozilla/CDMProxy.h"
-@@ -69,6 +72,9 @@ public:
+@@ -67,6 +70,9 @@ public:
  #ifdef MOZ_APPLEMEDIA
      AppleDecoderModule::Init();
  #endif
@@ -66,7 +67,7 @@ index 598f947..962842a 100644
  #ifdef MOZ_FFVPX
      FFVPXRuntimeLinker::Init();
  #endif
-@@ -381,6 +387,12 @@ PDMFactory::CreatePDMs()
+@@ -382,6 +388,12 @@ PDMFactory::CreatePDMs()
      mWMFFailedToLoad = MediaPrefs::DecoderDoctorWMFDisabledIsFailure();
    }
  #endif
@@ -80,7 +81,7 @@ index 598f947..962842a 100644
    if (MediaPrefs::PDMFFVPXEnabled()) {
      m = FFVPXRuntimeLinker::CreateDecoderModule();
 diff --git a/dom/media/platforms/moz.build b/dom/media/platforms/moz.build
-index 310820c..3b38515 100644
+index 310820c91225..3b385155ad85 100644
 --- a/dom/media/platforms/moz.build
 +++ b/dom/media/platforms/moz.build
 @@ -4,6 +4,8 @@
@@ -118,10 +119,10 @@ index 310820c..3b38515 100644
      ]
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 new file mode 100644
-index 0000000..44f9094
+index 000000000000..78f951f30f63
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,111 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -147,8 +148,9 @@ index 0000000..44f9094
 +  LinkStatus_INIT;
 +
 +const char* OmxCoreLibLinker::sLibNames[] = {
-+  "/usr/local/lib/libomxr_core.so", // Renesas (R-Car, RZ/G): Our first target
-+  "/opt/vc/lib/libopenmaxil.so", // Raspberry Pi: Our next target
++  "/usr/local/lib/libomxr_core.so", // Renesas (RZ/G): Our first target
++  "/usr/lib/libomxr_core.so", // Renesas (R-Car): Our second target
++  "/opt/vc/lib/libopenmaxil.so", // Raspberry Pi: Our postponed target
 +  "libomxil-bellagio.so.0", // Bellagio: An OSS implementation of OpenMAX IL
 +};
 +
@@ -234,7 +236,7 @@ index 0000000..44f9094
 +} // namespace mozilla
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.h b/dom/media/platforms/omx/OmxCoreLibLinker.h
 new file mode 100644
-index 0000000..389a156
+index 000000000000..389a156bd412
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.h
 @@ -0,0 +1,38 @@
@@ -277,7 +279,7 @@ index 0000000..389a156
 +
 +#endif // __OmxCoreLibLinker_h__
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 9a3c2f9..16cb3bf 100644
+index 9a3c2f929a6c..16cb3bff80b4 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
 @@ -9,8 +9,32 @@
@@ -314,7 +316,7 @@ index 9a3c2f9..16cb3bf 100644
  OmxDecoderModule::CreateVideoDecoder(const CreateDecoderParams& aParams)
  {
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.h b/dom/media/platforms/omx/OmxDecoderModule.h
-index 432368a..f62f522 100644
+index 432368a69e4a..f62f522360ae 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.h
 +++ b/dom/media/platforms/omx/OmxDecoderModule.h
 @@ -11,8 +11,14 @@
@@ -334,7 +336,7 @@ index 432368a..f62f522 100644
  
 diff --git a/dom/media/platforms/omx/OmxFunctionList.h b/dom/media/platforms/omx/OmxFunctionList.h
 new file mode 100644
-index 0000000..e1e92bf
+index 000000000000..e1e92bfe6522
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxFunctionList.h
 @@ -0,0 +1,13 @@
@@ -352,7 +354,7 @@ index 0000000..e1e92bf
 +OMX_FUNC(OMX_SetupTunnel)
 +OMX_FUNC(OMX_GetContentPipe)
 diff --git a/dom/media/platforms/omx/OmxPlatformLayer.cpp b/dom/media/platforms/omx/OmxPlatformLayer.cpp
-index d1f4314..248b292 100644
+index d1f43144d5d1..248b292dc9bd 100644
 --- a/dom/media/platforms/omx/OmxPlatformLayer.cpp
 +++ b/dom/media/platforms/omx/OmxPlatformLayer.cpp
 @@ -8,6 +8,11 @@
@@ -393,7 +395,7 @@ index d1f4314..248b292 100644
  bool
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 0000000..35f7aeb
+index 000000000000..35f7aeb54c69
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 @@ -0,0 +1,438 @@
@@ -837,7 +839,7 @@ index 0000000..35f7aeb
 +}
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.h b/dom/media/platforms/omx/PureOmxPlatformLayer.h
 new file mode 100644
-index 0000000..2c68d07
+index 000000000000..2c68d07230d7
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.h
 @@ -0,0 +1,115 @@
@@ -957,7 +959,7 @@ index 0000000..2c68d07
 +
 +#endif // PureOmxPlatformLayer_h_
 diff --git a/dom/media/platforms/omx/moz.build b/dom/media/platforms/omx/moz.build
-index 9f641d9..59f4c50 100644
+index 9f641d9379fe..59f4c504ac97 100644
 --- a/dom/media/platforms/omx/moz.build
 +++ b/dom/media/platforms/omx/moz.build
 @@ -4,6 +4,8 @@
@@ -991,11 +993,11 @@ index 9f641d9..59f4c50 100644
  
  if CONFIG['GNU_CXX']:
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
-index aadd877..3a08856 100644
+index 4bad70b8fdb5..9f2989fdca26 100644
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -362,6 +362,7 @@ pref("media.windows-media-foundation.allow-d3d11-dxva", true);
- pref("media.wmf.disable-d3d11-for-dlls", "igd10iumd32.dll: 20.19.15.4444, 20.19.15.4424, 20.19.15.4409, 20.19.15.4390, 20.19.15.4380, 20.19.15.4360, 10.18.10.4358, 20.19.15.4331, 20.19.15.4312, 20.19.15.4300, 10.18.15.4281, 10.18.15.4279, 10.18.10.4276, 10.18.15.4268, 10.18.15.4256, 10.18.10.4252, 10.18.15.4248, 10.18.14.4112, 10.18.10.3958, 10.18.10.3496, 10.18.10.3431, 10.18.10.3412, 10.18.10.3355, 9.18.10.3234, 9.18.10.3071, 9.18.10.3055, 9.18.10.3006; igd10umd32.dll: 9.17.10.4229, 9.17.10.3040, 9.17.10.2857, 8.15.10.2274, 8.15.10.2272, 8.15.10.2246, 8.15.10.1840, 8.15.10.1808; igd10umd64.dll: 9.17.10.4229, 9.17.10.2857, 10.18.10.3496; isonyvideoprocessor.dll: 4.1.2247.8090, 4.1.2153.6200; tosqep.dll: 1.2.15.526, 1.1.12.201, 1.0.11.318, 1.0.11.215, 1.0.10.1224; tosqep64.dll: 1.1.12.201, 1.0.11.215; nvwgf2um.dll: 10.18.13.6510, 10.18.13.5891, 10.18.13.5887, 10.18.13.5582, 10.18.13.5382, 9.18.13.4195, 9.18.13.3165; atidxx32.dll: 21.19.151.3, 21.19.137.1, 21.19.134.1, 20.19.0.32837, 20.19.0.32832, 8.17.10.682, 8.17.10.671, 8.17.10.661, 8.17.10.648, 8.17.10.644, 8.17.10.625, 8.17.10.605, 8.17.10.581, 8.17.10.569, 8.17.10.560, 8.17.10.545, 8.17.10.539, 8.17.10.531, 8.17.10.525, 8.17.10.520, 8.17.10.519, 8.17.10.514, 8.17.10.511, 8.17.10.494, 8.17.10.489, 8.17.10.483, 8.17.10.453, 8.17.10.451, 8.17.10.441, 8.17.10.436, 8.17.10.432, 8.17.10.425, 8.17.10.418, 8.17.10.414, 8.17.10.401, 8.17.10.395, 8.17.10.385, 8.17.10.378, 8.17.10.362, 8.17.10.355, 8.17.10.342, 8.17.10.331, 8.17.10.318, 8.17.10.310, 8.17.10.286, 8.17.10.269, 8.17.10.261, 8.17.10.247, 8.17.10.240, 8.15.10.212; atidxx64.dll: 21.19.151.3, 21.19.137.1, 21.19.134.1, 20.19.0.32832, 8.17.10.682, 8.17.10.661, 8.17.10.644, 8.17.10.625; nvumdshim.dll: 10.18.13.6822");
+@@ -359,6 +359,7 @@ pref("media.windows-media-foundation.allow-d3d11-dxva", true);
+ pref("media.wmf.disable-d3d11-for-dlls", "igd11dxva64.dll: 20.19.15.4463, 20.19.15.4454, 20.19.15.4444, 20.19.15.4416, 20.19.15.4404, 20.19.15.4390, 20.19.15.4380, 20.19.15.4377, 20.19.15.4364, 20.19.15.4360, 20.19.15.4352, 20.19.15.4331, 20.19.15.4326, 20.19.15.4300; igd10iumd32.dll: 20.19.15.4444, 20.19.15.4424, 20.19.15.4409, 20.19.15.4390, 20.19.15.4380, 20.19.15.4360, 10.18.10.4358, 20.19.15.4331, 20.19.15.4312, 20.19.15.4300, 10.18.15.4281, 10.18.15.4279, 10.18.10.4276, 10.18.15.4268, 10.18.15.4256, 10.18.10.4252, 10.18.15.4248, 10.18.14.4112, 10.18.10.3958, 10.18.10.3496, 10.18.10.3431, 10.18.10.3412, 10.18.10.3355, 9.18.10.3234, 9.18.10.3071, 9.18.10.3055, 9.18.10.3006; igd10umd32.dll: 9.17.10.4229, 9.17.10.3040, 9.17.10.2857, 8.15.10.2274, 8.15.10.2272, 8.15.10.2246, 8.15.10.1840, 8.15.10.1808; igd10umd64.dll: 9.17.10.4229, 9.17.10.2857, 10.18.10.3496; isonyvideoprocessor.dll: 4.1.2247.8090, 4.1.2153.6200; tosqep.dll: 1.2.15.526, 1.1.12.201, 1.0.11.318, 1.0.11.215, 1.0.10.1224; tosqep64.dll: 1.1.12.201, 1.0.11.215; nvwgf2um.dll: 10.18.13.6510, 10.18.13.5891, 10.18.13.5887, 10.18.13.5582, 10.18.13.5382, 9.18.13.4195, 9.18.13.3165; atidxx32.dll: 21.19.151.3, 21.19.142.257, 21.19.137.514, 21.19.137.1, 21.19.134.1, 21.19.128.7, 21.19.128.4, 20.19.0.32837, 20.19.0.32832, 8.17.10.682, 8.17.10.671, 8.17.10.661, 8.17.10.648, 8.17.10.644, 8.17.10.625, 8.17.10.605, 8.17.10.581, 8.17.10.569, 8.17.10.560, 8.17.10.545, 8.17.10.539, 8.17.10.531, 8.17.10.525, 8.17.10.520, 8.17.10.519, 8.17.10.514, 8.17.10.511, 8.17.10.494, 8.17.10.489, 8.17.10.483, 8.17.10.453, 8.17.10.451, 8.17.10.441, 8.17.10.436, 8.17.10.432, 8.17.10.425, 8.17.10.418, 8.17.10.414, 8.17.10.401, 8.17.10.395, 8.17.10.385, 8.17.10.378, 8.17.10.362, 8.17.10.355, 8.17.10.342, 8.17.10.331, 8.17.10.318, 8.17.10.310, 8.17.10.286, 8.17.10.269, 8.17.10.261, 8.17.10.247, 8.17.10.240, 8.15.10.212; atidxx64.dll: 21.19.151.3, 21.19.142.257, 21.19.137.514, 21.19.137.1, 21.19.134.1, 21.19.128.7, 21.19.128.4, 20.19.0.32832, 8.17.10.682, 8.17.10.661, 8.17.10.644, 8.17.10.625; nvumdshim.dll: 10.18.13.6822");
  pref("media.wmf.disable-d3d9-for-dlls", "igdumd64.dll: 8.15.10.2189, 8.15.10.2119, 8.15.10.2104, 8.15.10.2102, 8.771.1.0; atiumd64.dll: 7.14.10.833, 7.14.10.867, 7.14.10.885, 7.14.10.903, 7.14.10.911, 8.14.10.768, 9.14.10.1001, 9.14.10.1017, 9.14.10.1080, 9.14.10.1128, 9.14.10.1162, 9.14.10.1171, 9.14.10.1183, 9.14.10.1197, 9.14.10.945, 9.14.10.972, 9.14.10.984, 9.14.10.996");
  #endif
 +pref("media.pdm-omx.enabled", false);
@@ -1003,5 +1005,5 @@ index aadd877..3a08856 100644
  #if defined(XP_MACOSX)
  pref("media.ffmpeg.enabled", false);
 -- 
-1.9.1
+2.11.0
 
