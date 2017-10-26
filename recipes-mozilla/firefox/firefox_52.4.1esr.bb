@@ -137,6 +137,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
             file://wayland/0001-Remove-unused-show_shell-static-function.patch \
             file://wayland/0001-Wayland-Fix-a-crash-which-causes-when-there-is-no-ke.patch \
+            file://wayland/0001-Wayland-Fix-a-crash-on-starting-video-playback-of-We.patch \
            ', \
            '', d)}"
 
