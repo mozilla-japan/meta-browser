@@ -2,7 +2,7 @@
 # Released under the MIT license (see packages/COPYING)
 
 DESCRIPTION ?= "Browser made by mozilla"
-DEPENDS += "alsa-lib curl startup-notification libevent cairo libnotify \
+DEPENDS += "curl startup-notification libevent cairo libnotify \
             virtual/libgl pulseaudio yasm-native icu"
 RDEPENDS_${PN}-dev = "dbus"
 
@@ -38,7 +38,10 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
 
-PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
+PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d)} \
+                   ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)} \
+"
+PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
