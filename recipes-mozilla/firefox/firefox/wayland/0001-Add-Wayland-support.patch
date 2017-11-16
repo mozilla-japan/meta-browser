@@ -1,0 +1,5194 @@
+From f807d7910d08e8b70dac0e5a6d5244a239cf61b3 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Fri, 17 Mar 2017 18:17:18 +0900
+Subject: [PATCH] Add Wayland support
+
+The original patches are maintained at:
+
+  https://github.com/webdino/gecko-dev/tree/esr52.2-wayland-stransky
+
+which is ported from
+
+  https://github.com/stransky/gecko-dev/
+
+This patch contains following changes:
+
+9323218 Don't get xid from wayland window
+5af2b53 Fixed rhbz#1464916 - missing popup rendering
+700f685 Tweaked wl_surface_damage() calls
+85efab0 Reverted commit 32899bf0d996dbe1008bd9abd79724a8217fb6b8 as it fixes nothing
+bf57fcf Remove unrealize handler (rhbz#1467104)
+04a93a0 Destroy GdkWindow owned by mozcontainer when unrealize (rhbz#1467104)
+60caf27 Map Wayland subsurface only when GdkWindow is already mapped
+f4bb644 Set damage region for wl_surface after wl_buffer attach, rhbz#1464916
+8929b47 Added missing gtk_widget_input_shape_combine_region linkage (rhbz#1466377), thanks to Hiroshi Hatake
+1c0d1bc Fixed mouse transparency for popups (rhbz#1466377)
+8734e5f Use subsurfaces for popup creation (rhbz#1457201)
+0517125 Fixed rendering of noautohide panels (rhbz#1466377)
+45468c7 Don't explicitly grab on Wayland (use only implicit grab), see mozbz#1377084 for details
+fdaa1e2 Removed the gdk_seat_* code - let's solve https://bugzilla.mozilla.org/show_bug.cgi?id=1377084 first
+5173972 Don't call gdk_x11_window_get_xid() from LOG() under wayland
+63431a1 Fixed rhbz#1464017 - [Wayland] Hamburger menu popup and other panels does not render transparent background
+db41102 Fixed error handling for posix_fallocate and formatting, by Hiroshi Hatake
+4a4658d Fixed error handling for posix_fallocate/ftruncate, by Hiroshi Hatake
+7dc327e Fixed fullscreen on Weston
+2dc5442 Revert "Fix a bug which cannot set to fullscreen on Wayland"
+5e8a8ff Fixed clipboard crashes after browser start, rhbz#1455915
+26e809e Don't crash when we're missing clipboard data, rhbz#1455915
+4db6a75 Fix a bug which cannot set to fullscreen on Wayland
+88e0f69 Fix setting up shellHasCSD flag position
+c4cb153 Use wl_display_dispatch_queue_pending() to fetch wayland events and run the loop with 60fps
+6dd1e55 Call wl_display_roundtrip() twice to ensure we have valid data offer
+a3bdd3e Fixed wayland surface mapping - create wayland surface when we actually need to draw into it
+9628d52 Code clean-up - distinguish between wl_display and nsWaylandDisplay
+28b21db Reworked multi-thread rendering code - provided nsWaylandDisplay for each thread which is using wayland and make that code thread safe
+d6858b4 Fixed freeze at browser quit and fixed wayland rendering from different threads
+b122ede Fixed hang up at browser quit
+a5f7ede Better wayland shutdown
+22cf411 Better wayland shutdown
+2f7ff95 fixed default profile name
+3c01cf4 Fixed dbus params
+6bb1a3f Build fix
+eb24319 Revert "Build fixes for destructor argument mismatch"
+c99d526 Build fixes for destructor argument mismatch
+38caaba Removed unused files
+1f049e4 tweaking
+f787523 tab replacement
+bcb1029 in-place dbus
+b367eb7 WIP - DBus remote backend
+0c88e1f replace
+fc718cc Added D-Bus remote files
+f2c1204 Disabled broadway backend (does not work) and enabled XRemote on Wayland
+0fd58c27 Fixed crash when pasted to clipboard
+53c51c7 Removed old comments
+cac7a44 Removed ImageBuffer and draw directly to wayland back buffer
+1612fdd Moved wayland loop to Compositor thread
+33b23c4 Force release unused back-buffers
+781dc82 Don't read wayland events when poll fails
+a773cdb Optimized back buffer buffer switches
+2a486a1 tabs replacement
+d6a8fb5 WindowSurfaceWayland refactorization
+536acc4 Removed event queue from mozcontainer
+83f62d6 Updated configure script according to mozbz#1299083
+6b7c8ec Improved wayland configure defines
+55a5167 Don't install libmozwayland when wayland is disabled
+deb18b8 Use MOZ_WAYLAND instead of GDK_WINDOWING_WAYLAND
+31cebb9 Added --enable-wayland configure option
+a74791b WIP - Added build config when wayland is not enabled on host system
+2ed206c Added clipboard patch from mozbz#1282015
+42de349 Link wayland run-time and provide fallback library when wayland is not present
+0cc04cb Removed NS_NATIVE_COMPOSITOR_DISPLAY_X11
+d818ddf Removed unused code
+9419575 Removed wayland-client from libxul.so
+c97362d fixed crash at browser end
+1d5743c Import updated mozcontainer.cpp, gfxPlatform.cpp patch
+8c96a9d Fixed timestamps
+0ef1922 Fixed CurrentX11TimeGetter usage, fixed WindowSurfaceWayland removal
+94f7d3d Added wayland lib wrapper
+c03f4ba Fixed flickering when wl_buffer is altered
+7d076d03 Create .mozconfig
+4cdeb9d fixed rendering via. frame callback
+3d02232 Dynamically resize wl_buffer according to attached widget
+5a1280c9 Removed debug Dump() code
+7db53e8 Debug version
+810af34 build fix
+779454d Added wayland patch
+
+Signed-off-by: Takuro Ashie <ashie@clear-code.com>
+---
+ .mozconfig                                       |  18 +
+ browser/installer/package-manifest.in            |   3 +
+ config/system-headers                            |   1 +
+ dom/ipc/ContentChild.cpp                         |  39 +-
+ gfx/gl/GLContextProviderGLX.cpp                  |   7 +-
+ gfx/thebes/gfxFcPlatformFontList.cpp             |  16 +-
+ mozglue/misc/TimeStamp.h                         |   4 +-
+ toolkit/components/remote/moz.build              |   1 -
+ toolkit/components/remote/nsGTKRemoteService.cpp | 179 ++++++-
+ toolkit/components/remote/nsGTKRemoteService.h   |  34 +-
+ toolkit/components/remote/nsXRemoteService.cpp   |  10 +-
+ toolkit/components/remote/nsXRemoteService.h     |   5 +-
+ toolkit/library/moz.build                        |   5 +
+ toolkit/moz.configure                            |  17 +-
+ toolkit/xre/nsAppRunner.cpp                      |  33 +-
+ widget/gtk/WindowSurfaceProvider.cpp             |  63 ++-
+ widget/gtk/WindowSurfaceProvider.h               |  24 +-
+ widget/gtk/WindowSurfaceWayland.cpp              | 628 +++++++++++++++++++++++
+ widget/gtk/WindowSurfaceWayland.h                | 136 +++++
+ widget/gtk/X11CompositorWidget.cpp               |  47 +-
+ widget/gtk/moz.build                             |  10 +
+ widget/gtk/mozcontainer.c                        | 159 +++++-
+ widget/gtk/mozcontainer.h                        |  22 +-
+ widget/gtk/mozgtk/mozgtk.c                       |  11 +-
+ widget/gtk/mozwayland/moz.build                  |  15 +
+ widget/gtk/mozwayland/mozwayland.c               | 273 ++++++++++
+ widget/gtk/nsClipboard.cpp                       | 517 ++++---------------
+ widget/gtk/nsClipboard.h                         |  42 +-
+ widget/gtk/nsClipboardWayland.cpp                | 448 ++++++++++++++++
+ widget/gtk/nsClipboardWayland.h                  |  53 ++
+ widget/gtk/nsClipboardX11.cpp                    | 309 +++++++++++
+ widget/gtk/nsClipboardX11.h                      |  68 +++
+ widget/gtk/nsNativeThemeGTK.cpp                  |  32 +-
+ widget/gtk/nsNativeThemeGTK.h                    |   1 +
+ widget/gtk/nsScreenGtk.cpp                       |  10 +-
+ widget/gtk/nsWindow.cpp                          | 199 +++++--
+ widget/gtk/nsWindow.h                            |   8 +
+ widget/xremoteclient/XRemoteClient.cpp           | 223 +++++---
+ widget/xremoteclient/XRemoteClient.h             |  16 +-
+ widget/xremoteclient/moz.build                   |   2 +
+ 40 files changed, 3064 insertions(+), 624 deletions(-)
+ create mode 100644 .mozconfig
+ create mode 100644 widget/gtk/WindowSurfaceWayland.cpp
+ create mode 100644 widget/gtk/WindowSurfaceWayland.h
+ create mode 100644 widget/gtk/mozwayland/moz.build
+ create mode 100644 widget/gtk/mozwayland/mozwayland.c
+ create mode 100644 widget/gtk/nsClipboardWayland.cpp
+ create mode 100644 widget/gtk/nsClipboardWayland.h
+ create mode 100644 widget/gtk/nsClipboardX11.cpp
+ create mode 100644 widget/gtk/nsClipboardX11.h
+
+diff --git a/.mozconfig b/.mozconfig
+new file mode 100644
+index 0000000..0389b40
+--- /dev/null
++++ b/.mozconfig
+@@ -0,0 +1,18 @@
++. $topsrcdir/browser/config/mozconfig
++
++ac_add_options --enable-default-toolkit=cairo-gtk3-wayland
++
++mk_add_options BUILD_OFFICIAL=1
++mk_add_options MOZILLA_OFFICIAL=1
++mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/objdir
++mk_add_options AUTOCLOBBER=1
++
++ac_add_options --disable-crashreporter
++ac_add_options --without-system-nspr
++ac_add_options --without-system-nss
++
++ac_add_options --enable-debug
++ac_add_options --disable-optimize
++
++ac_add_options --enable-release
++ac_add_options --disable-tests
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+index 6e50017..0dad63a 100644
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -107,6 +107,9 @@
+ #ifdef MOZ_GTK3
+ @BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
+ @BINPATH@/gtk2/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
++#ifdef MOZ_WAYLAND
++@BINPATH@/@DLL_PREFIX@mozwayland@DLL_SUFFIX@
++#endif
+ #endif
+ 
+ [browser]
+diff --git a/config/system-headers b/config/system-headers
+index be3162f..74a52ab 100644
+--- a/config/system-headers
++++ b/config/system-headers
+@@ -489,6 +489,7 @@ gdk/gdkkeysyms.h
+ gdk/gdkprivate.h
+ gdk/gdkx.h
+ gdk/gdkdirectfb.h
++gdk/gdkwayland.h
+ gdk-pixbuf/gdk-pixbuf.h
+ Gestalt.h
+ getopt.h
+diff --git a/dom/ipc/ContentChild.cpp b/dom/ipc/ContentChild.cpp
+index 6bf8e71..bee6aa1 100644
+--- a/dom/ipc/ContentChild.cpp
++++ b/dom/ipc/ContentChild.cpp
+@@ -521,6 +521,43 @@ NS_INTERFACE_MAP_BEGIN(ContentChild)
+   NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIContentChild)
+ NS_INTERFACE_MAP_END
+ 
++#ifdef MOZ_WIDGET_GTK
++static char* detectDisplay(void)
++{
++  bool tryX11 = false;
++  bool tryWayland = false;
++  bool tryBroadway = false;
++
++  // Honor user backend selection
++  const char *backend = PR_GetEnv("GDK_BACKEND");
++  if (!backend || strstr(backend, "*")) {
++    // Try all backends
++    tryX11 = true;
++    tryWayland = true;
++    tryBroadway = true;
++  } else if (backend) {
++    if (strstr(backend, "x11"))
++      tryX11 = true;
++    if (strstr(backend, "wayland"))
++      tryWayland = true;
++    if (strstr(backend, "broadway"))
++      tryBroadway = true;
++  }
++
++  char *display_name;
++  if (tryX11 && (display_name = PR_GetEnv("DISPLAY"))) {
++    return display_name;
++  } else if (tryWayland && (display_name = PR_GetEnv("WAYLAND_DISPLAY"))) {
++    return display_name;
++  } else if (tryBroadway && (display_name = PR_GetEnv("BROADWAY_DISPLAY"))) {
++    return display_name;
++  }
++
++  printf_stderr("Error: GDK_BACKEND does not match available displays\n");
++  return nullptr;
++}
++#endif // MOZ_WIDGET_GTK
++
+ bool
+ ContentChild::Init(MessageLoop* aIOLoop,
+                    base::ProcessId aParentPid,
+@@ -532,7 +569,7 @@ ContentChild::Init(MessageLoop* aIOLoop,
+   // to use, and when starting under XWayland, it may choose to start with
+   // the wayland backend instead of the x11 backend.
+   // The DISPLAY environment variable is normally set by the parent process.
+-  char* display_name = PR_GetEnv("DISPLAY");
++  char* display_name = detectDisplay();
+   if (display_name) {
+     int argc = 3;
+     char option_name[] = "--display";
+diff --git a/gfx/gl/GLContextProviderGLX.cpp b/gfx/gl/GLContextProviderGLX.cpp
+index 9a1157f..44cb61f 100644
+--- a/gfx/gl/GLContextProviderGLX.cpp
++++ b/gfx/gl/GLContextProviderGLX.cpp
+@@ -67,6 +67,12 @@ HasExtension(const char* aExtensions, const char* aRequiredExtension)
+ bool
+ GLXLibrary::EnsureInitialized()
+ {
++#ifdef MOZ_WIDGET_GTK
++    if (!GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++        return false;
++    }
++#endif
++
+     if (mInitialized) {
+         return true;
+     }
+@@ -1418,4 +1424,3 @@ GLContextProviderGLX::Shutdown()
+ 
+ } /* namespace gl */
+ } /* namespace mozilla */
+-
+diff --git a/gfx/thebes/gfxFcPlatformFontList.cpp b/gfx/thebes/gfxFcPlatformFontList.cpp
+index 601e7a9..1349898 100644
+--- a/gfx/thebes/gfxFcPlatformFontList.cpp
++++ b/gfx/thebes/gfxFcPlatformFontList.cpp
+@@ -772,13 +772,15 @@ PreparePattern(FcPattern* aPattern, bool aIsPrinterFont)
+ #endif
+ 
+ #ifdef MOZ_X11
+-        FcValue value;
+-        int lcdfilter;
+-        if (FcPatternGet(aPattern, FC_LCD_FILTER, 0, &value)
+-                == FcResultNoMatch &&
+-            GetXftInt(DefaultXDisplay(), "lcdfilter", &lcdfilter)) {
+-            FcPatternAddInteger(aPattern, FC_LCD_FILTER, lcdfilter);
+-        }
++       if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++           FcValue value;
++           int lcdfilter;
++           if (FcPatternGet(aPattern, FC_LCD_FILTER, 0, &value)
++               == FcResultNoMatch &&
++               GetXftInt(DefaultXDisplay(), "lcdfilter", &lcdfilter)) {
++               FcPatternAddInteger(aPattern, FC_LCD_FILTER, lcdfilter);
++           }
++       }
+ #endif
+     }
+ 
+diff --git a/mozglue/misc/TimeStamp.h b/mozglue/misc/TimeStamp.h
+index a1a0eb3..196359a 100644
+--- a/mozglue/misc/TimeStamp.h
++++ b/mozglue/misc/TimeStamp.h
+@@ -405,9 +405,11 @@ public:
+    * on platforms that support vsync aligned refresh drivers / compositors
+    * Verified true as of Jan 31, 2015: B2G and OS X
+    * False on Windows 7
++   * Wayland/GTK event time also uses CLOCK_MONOTONIC.
+    * UNTESTED ON OTHER PLATFORMS
+    */
+-#if defined(MOZ_WIDGET_GONK) || defined(XP_DARWIN)
++#if defined(MOZ_WIDGET_GONK) || defined(XP_DARWIN) || \
++    defined(MOZ_WIDGET_GTK)
+   static TimeStamp FromSystemTime(int64_t aSystemTime)
+   {
+     static_assert(sizeof(aSystemTime) == sizeof(TimeStampValue),
+diff --git a/toolkit/components/remote/moz.build b/toolkit/components/remote/moz.build
+index faa119e..50b13b7 100644
+--- a/toolkit/components/remote/moz.build
++++ b/toolkit/components/remote/moz.build
+@@ -13,7 +13,6 @@ XPIDL_MODULE = 'toolkitremote'
+ SOURCES += [
+     'nsXRemoteService.cpp',
+ ]
+-
+ if 'gtk' in CONFIG['MOZ_WIDGET_TOOLKIT']:
+     SOURCES += [
+         'nsGTKRemoteService.cpp',
+diff --git a/toolkit/components/remote/nsGTKRemoteService.cpp b/toolkit/components/remote/nsGTKRemoteService.cpp
+index 860efe0..52dae40 100644
+--- a/toolkit/components/remote/nsGTKRemoteService.cpp
++++ b/toolkit/components/remote/nsGTKRemoteService.cpp
+@@ -20,11 +20,17 @@
+ #include "nsIWidget.h"
+ #include "nsIAppShellService.h"
+ #include "nsAppShellCID.h"
++#include "nsPrintfCString.h"
+ 
+ #include "nsCOMPtr.h"
+ 
+ #include "nsGTKToolkit.h"
+ 
++#ifdef ENABLE_REMOTE_DBUS
++#include <dbus/dbus.h>
++#include <dbus/dbus-glib-lowlevel.h>
++#endif
++
+ NS_IMPL_ISUPPORTS(nsGTKRemoteService,
+                   nsIRemoteService,
+                   nsIObserver)
+@@ -37,14 +43,24 @@ nsGTKRemoteService::Startup(const char* aAppName, const char* aProfileName)
+ 
+   if (mServerWindow) return NS_ERROR_ALREADY_INITIALIZED;
+ 
+-  XRemoteBaseStartup(aAppName, aProfileName);
+-
+   mServerWindow = gtk_invisible_new();
+   gtk_widget_realize(mServerWindow);
+-  HandleCommandsFor(mServerWindow, nullptr);
+ 
+-  for (auto iter = mWindows.Iter(); !iter.Done(); iter.Next()) {
+-    HandleCommandsFor(iter.Key(), iter.UserData());
++  mIsX11Display = GDK_IS_X11_DISPLAY(gdk_display_get_default());
++#ifdef ENABLE_REMOTE_DBUS
++  if (!mIsX11Display) {
++    if (!Connect(aAppName, aProfileName))
++      return NS_ERROR_FAILURE;
++  } else
++#endif
++  {
++    XRemoteBaseStartup(aAppName, aProfileName);
++
++    HandleCommandsFor(mServerWindow, nullptr);
++
++    for (auto iter = mWindows.Iter(); !iter.Done(); iter.Next()) {
++      HandleCommandsFor(iter.Key(), iter.UserData());
++    }
+   }
+ 
+   return NS_OK;
+@@ -78,7 +94,7 @@ nsGTKRemoteService::RegisterWindow(mozIDOMWindow* aWindow)
+   mWindows.Put(widget, weak);
+ 
+   // If Startup() has already been called, immediately register this window.
+-  if (mServerWindow) {
++  if (mServerWindow && mIsX11Display) {
+     HandleCommandsFor(widget, weak);
+   }
+ 
+@@ -154,6 +170,157 @@ nsGTKRemoteService::HandlePropertyChange(GtkWidget *aWidget,
+   return FALSE;
+ }
+ 
++#ifdef ENABLE_REMOTE_DBUS
++
++void nsGTKRemoteService::OpenURL(const char *aCommandLine, int aLength)
++{
++  HandleCommandLine(aCommandLine, nullptr, 0);
++}
++
++#define MOZILLA_REMOTE_OBJECT       "/org/mozilla/Firefox/Remote"
++
++const char* introspect_xml =
++"<!DOCTYPE node PUBLIC \"-//freedesktop//DTD D-BUS Object Introspection 1.0//EN\"\n"
++"\"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
++"<node>\n"
++" <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
++"   <method name=\"Introspect\">\n"
++"     <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
++"   </method>\n"
++" </interface>\n"
++" <interface name=\"org.mozilla.firefox\">\n"
++"   <method name=\"OpenURL\">\n"
++"     <arg name=\"url\" direction=\"in\" type=\"s\"/>\n"
++"   </method>\n"
++" </interface>\n"
++"</node>\n";
++
++DBusHandlerResult
++nsGTKRemoteService::Introspect(DBusMessage *msg)
++{
++  DBusMessage *reply;
++
++  reply = dbus_message_new_method_return(msg);
++  if (!reply)
++    return DBUS_HANDLER_RESULT_NEED_MEMORY;
++
++  dbus_message_append_args(reply,
++      DBUS_TYPE_STRING, &introspect_xml,
++      DBUS_TYPE_INVALID);
++
++  dbus_connection_send(mConnection, reply, NULL);
++  dbus_message_unref(reply);
++
++  return DBUS_HANDLER_RESULT_HANDLED;
++}
++
++DBusHandlerResult
++nsGTKRemoteService::OpenURL(DBusMessage *msg)
++{
++  DBusMessage *reply = nullptr;
++  const char  *commandLine;
++  int          length;
++
++  if (!dbus_message_get_args(msg, nullptr, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
++       &commandLine, &length, DBUS_TYPE_INVALID) || length == 0) {
++    reply = dbus_message_new_error(msg, "org.mozilla.firefox.Error",
++                                   "Wrong argument");
++  } else {
++    OpenURL(commandLine, length);
++    reply = dbus_message_new_method_return(msg);
++  }
++
++  dbus_connection_send(mConnection, reply, NULL);
++  dbus_message_unref(reply);
++
++  return DBUS_HANDLER_RESULT_HANDLED;
++}
++
++DBusHandlerResult
++nsGTKRemoteService::HandleDBusMessage(DBusConnection *aConnection, DBusMessage *msg)
++{
++  NS_ASSERTION(mConnection == aConnection, "Wrong D-Bus connection.");
++
++  const char *method = dbus_message_get_member(msg);
++  const char *iface = dbus_message_get_interface(msg);
++
++  if ((strcmp("Introspect", method) == 0) &&
++     (strcmp("org.freedesktop.DBus.Introspectable", iface) == 0)) {
++    return Introspect(msg);
++  }
++
++  if ((strcmp("OpenURL", method) == 0) &&
++    (strcmp("org.mozilla.firefox", iface) == 0)) {
++    return OpenURL(msg);
++  }
++
++  return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
++}
++
++void
++nsGTKRemoteService::UnregisterDBusInterface(DBusConnection *aConnection)
++{
++  NS_ASSERTION(mConnection == aConnection, "Wrong D-Bus connection.");
++  // Not implemented
++}
++
++static DBusHandlerResult
++message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data)
++{
++  auto interface = static_cast<nsGTKRemoteService*>(user_data);
++  return interface->HandleDBusMessage(conn, msg);
++}
++
++static void
++unregister(DBusConnection *conn, void *user_data)
++{
++  auto interface = static_cast<nsGTKRemoteService*>(user_data);
++  interface->UnregisterDBusInterface(conn);
++}
++
++static DBusObjectPathVTable remoteHandlersTable = {
++  .unregister_function  = unregister,
++  .message_function = message_handler,
++};
++
++bool
++nsGTKRemoteService::Connect(const char* aAppName, const char* aProfileName)
++{
++  if (mConnection && dbus_connection_get_is_connected(mConnection)) {
++    // We're already connected so we don't need to reconnect
++    return true;
++  }
++
++  mConnection = already_AddRefed<DBusConnection>(
++    dbus_bus_get(DBUS_BUS_SESSION, nullptr));
++  if (!mConnection)
++    return false;
++
++  dbus_connection_set_exit_on_disconnect(mConnection, false);
++
++  nsAutoCString interfaceName;
++  interfaceName = nsPrintfCString("org.mozilla.%s.%s", aAppName, aProfileName);
++
++  int ret = dbus_bus_request_name(mConnection, interfaceName.get(),
++                                  DBUS_NAME_FLAG_DO_NOT_QUEUE, nullptr);
++  // The interface is already owned - there is another application/profile
++  // instance already running.
++  if (ret == -1) {
++    dbus_connection_unref(mConnection);
++    mConnection = nullptr;
++    return false;
++  }
++
++  if (!dbus_connection_register_object_path(mConnection, MOZILLA_REMOTE_OBJECT,
++                                            &remoteHandlersTable, this)) {
++    dbus_connection_unref(mConnection);
++    mConnection = nullptr;
++    return false;
++  }
++
++  return true;
++}
++#endif
+ 
+ // {C0773E90-5799-4eff-AD03-3EBCD85624AC}
+ #define NS_REMOTESERVICE_CID \
+diff --git a/toolkit/components/remote/nsGTKRemoteService.h b/toolkit/components/remote/nsGTKRemoteService.h
+index 034a77a..ce6154b 100644
+--- a/toolkit/components/remote/nsGTKRemoteService.h
++++ b/toolkit/components/remote/nsGTKRemoteService.h
+@@ -8,6 +8,10 @@
+ #ifndef __nsGTKRemoteService_h__
+ #define __nsGTKRemoteService_h__
+ 
++#if defined(MOZ_WAYLAND) && defined(MOZ_ENABLE_DBUS)
++#define ENABLE_REMOTE_DBUS 1
++#endif
++
+ #include <gdk/gdk.h>
+ #include <gdk/gdkx.h>
+ #include <gtk/gtk.h>
+@@ -15,6 +19,10 @@
+ #include "nsInterfaceHashtable.h"
+ #include "nsXRemoteService.h"
+ #include "mozilla/Attributes.h"
++#ifdef ENABLE_REMOTE_DBUS
++#include "mozilla/ipc/DBusConnectionRefPtr.h"
++#endif
++
+ 
+ class nsGTKRemoteService final : public nsXRemoteService
+ {
+@@ -24,8 +32,15 @@ public:
+   NS_DECL_NSIREMOTESERVICE
+ 
+ 
+-  nsGTKRemoteService() :
+-    mServerWindow(nullptr) { }
++  nsGTKRemoteService() 
++    : mServerWindow(nullptr)
++#ifdef ENABLE_REMOTE_DBUS
++    , mConnection(nullptr)
++#endif    
++    { }
++
++    DBusHandlerResult HandleDBusMessage(DBusConnection *aConnection, DBusMessage *msg);
++    void UnregisterDBusInterface(DBusConnection *aConnection);
+ 
+ private:
+   ~nsGTKRemoteService() { }
+@@ -42,8 +57,21 @@ private:
+   virtual void SetDesktopStartupIDOrTimestamp(const nsACString& aDesktopStartupID,
+                                               uint32_t aTimestamp) override;
+ 
++#ifdef ENABLE_REMOTE_DBUS
++  void OpenURL(const char *aCommandLine, int aLength);
++
++  DBusHandlerResult OpenURL(DBusMessage *msg);
++  DBusHandlerResult Introspect(DBusMessage *msg);
++
++  bool Connect(const char* aAppName, const char* aProfileName);
++#endif
++
+   nsInterfaceHashtable<nsPtrHashKey<GtkWidget>, nsIWeakReference> mWindows;
+-  GtkWidget* mServerWindow;  
++  GtkWidget* mServerWindow;
++  bool       mIsX11Display;
++#ifdef ENABLE_REMOTE_DBUS
++  RefPtr<DBusConnection> mConnection;
++#endif
+ };
+ 
+ #endif // __nsGTKRemoteService_h__
+diff --git a/toolkit/components/remote/nsXRemoteService.cpp b/toolkit/components/remote/nsXRemoteService.cpp
+index 41a40e4..10fa3af 100644
+--- a/toolkit/components/remote/nsXRemoteService.cpp
++++ b/toolkit/components/remote/nsXRemoteService.cpp
+@@ -237,7 +237,7 @@ nsXRemoteService::HandleNewProperty(XID aWindowId, Display* aDisplay,
+ }
+ 
+ const char*
+-nsXRemoteService::HandleCommandLine(char* aBuffer, nsIDOMWindow* aWindow,
++nsXRemoteService::HandleCommandLine(const char* aBuffer, nsIDOMWindow* aWindow,
+                                     uint32_t aTimestamp)
+ {
+   nsresult rv;
+@@ -253,8 +253,8 @@ nsXRemoteService::HandleCommandLine(char* aBuffer, nsIDOMWindow* aWindow,
+   // [argc][offsetargv0][offsetargv1...]<workingdir>\0<argv[0]>\0argv[1]...\0
+   // (offset is from the beginning of the buffer)
+ 
+-  int32_t argc = TO_LITTLE_ENDIAN32(*reinterpret_cast<int32_t*>(aBuffer));
+-  char *wd   = aBuffer + ((argc + 1) * sizeof(int32_t));
++  int32_t argc = TO_LITTLE_ENDIAN32(*reinterpret_cast<const int32_t*>(aBuffer));
++  const char *wd   = aBuffer + ((argc + 1) * sizeof(int32_t));
+ 
+   nsCOMPtr<nsIFile> lf;
+   rv = NS_NewNativeLocalFile(nsDependentCString(wd), true,
+@@ -264,10 +264,10 @@ nsXRemoteService::HandleCommandLine(char* aBuffer, nsIDOMWindow* aWindow,
+ 
+   nsAutoCString desktopStartupID;
+ 
+-  char **argv = (char**) malloc(sizeof(char*) * argc);
++  const char **argv = (const char**) malloc(sizeof(char*) * argc);
+   if (!argv) return "509 internal error";
+ 
+-  int32_t  *offset = reinterpret_cast<int32_t*>(aBuffer) + 1;
++  const int32_t  *offset = reinterpret_cast<const int32_t*>(aBuffer) + 1;
+ 
+   for (int i = 0; i < argc; ++i) {
+     argv[i] = aBuffer + TO_LITTLE_ENDIAN32(offset[i]);
+diff --git a/toolkit/components/remote/nsXRemoteService.h b/toolkit/components/remote/nsXRemoteService.h
+index 7186336..0930f2a 100644
+--- a/toolkit/components/remote/nsXRemoteService.h
++++ b/toolkit/components/remote/nsXRemoteService.h
+@@ -39,10 +39,11 @@ protected:
+ 
+     void HandleCommandsFor(Window aWindowId);
+     static nsXRemoteService *sRemoteImplementation;
++    static const char* HandleCommandLine(const char* aBuffer, nsIDOMWindow* aWindow,
++                                         uint32_t aTimestamp);
++
+ private:
+     void EnsureAtoms();
+-    static const char* HandleCommandLine(char* aBuffer, nsIDOMWindow* aWindow,
+-                                         uint32_t aTimestamp);
+ 
+     virtual void SetDesktopStartupIDOrTimestamp(const nsACString& aDesktopStartupID,
+                                                 uint32_t aTimestamp) = 0;
+diff --git a/toolkit/library/moz.build b/toolkit/library/moz.build
+index a9bdf12..9f4f733 100644
+--- a/toolkit/library/moz.build
++++ b/toolkit/library/moz.build
+@@ -135,6 +135,11 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gtk3':
+         'mozgtk_stub',
+     ]
+ 
++if CONFIG['MOZ_WAYLAND']:
++    USE_LIBS += [
++        'mozwayland',
++    ]
++
+ if CONFIG['MOZ_JPROF']:
+     USE_LIBS += [
+         'jprof',
+diff --git a/toolkit/moz.configure b/toolkit/moz.configure
+index 1a8c5b1..72bc231 100644
+--- a/toolkit/moz.configure
++++ b/toolkit/moz.configure
+@@ -112,7 +112,7 @@ set_config('L10NBASEDIR', l10n_base)
+ # reason.
+ option('--enable-default-toolkit', nargs=1,
+        choices=('cairo-windows', 'cairo-gtk2', 'cairo-gtk2-x11', 'cairo-gtk3',
+-                'cairo-cocoa', 'cairo-uikit', 'cairo-android',
++                'cairo-gtk3-wayland', 'cairo-cocoa', 'cairo-uikit', 'cairo-android',
+                 'cairo-gonk'),
+        help='Select default toolkit')
+ 
+@@ -135,7 +135,7 @@ def toolkit(value, target):
+         else:
+             platform_choices = ('cairo-android',)
+     else:
+-        platform_choices = ('cairo-gtk3', 'cairo-gtk2', 'cairo-gtk2-x11')
++        platform_choices = ('cairo-gtk3', 'cairo-gtk3-wayland', 'cairo-gtk2', 'cairo-gtk2-x11')
+ 
+     if value:
+         if value[0] not in platform_choices:
+@@ -145,11 +145,16 @@ def toolkit(value, target):
+ 
+     return platform_choices[0]
+ 
++@depends(toolkit)
++def wayland(toolkit):
++    return toolkit == 'cairo-gtk3-wayland'
+ 
+ @depends(toolkit)
+ def toolkit(toolkit):
+     if toolkit == 'cairo-gtk2-x11':
+         widget_toolkit = 'gtk2'
++    elif toolkit == 'cairo-gtk3-wayland' :
++        widget_toolkit = 'gtk3'
+     else:
+         widget_toolkit = toolkit.replace('cairo-', '')
+     return widget_toolkit
+@@ -194,6 +199,14 @@ set_config('MOZ_X11', x11)
+ set_define('MOZ_X11', x11)
+ add_old_configure_assignment('MOZ_X11', x11)
+ 
++# Wayland support
++# ==============================================================
++wayland_headers = pkg_check_modules('MOZ_WAYLAND', 'gtk+-wayland-3.0 >= 3.22',
++                                    when=wayland)
++
++set_config('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
++set_define('MOZ_WAYLAND', depends_if(wayland_headers)(lambda _: True))
++
+ # GL Provider
+ # ==============================================================
+ option('--with-gl-provider', nargs=1, help='Set GL provider backend type')
+diff --git a/toolkit/xre/nsAppRunner.cpp b/toolkit/xre/nsAppRunner.cpp
+index 4979e16..19cdcc1 100644
+--- a/toolkit/xre/nsAppRunner.cpp
++++ b/toolkit/xre/nsAppRunner.cpp
+@@ -246,6 +246,9 @@ nsString gAbsoluteArgv0Path;
+ #include <pango/pangofc-fontmap.h>
+ #endif
+ #include <gtk/gtk.h>
++#ifdef MOZ_WAYLAND
++#include <gdk/gdkwayland.h>
++#endif
+ #ifdef MOZ_X11
+ #include <gdk/gdkx.h>
+ #endif /* MOZ_X11 */
+@@ -2879,7 +2882,6 @@ static const char* detectDisplay(void)
+ {
+   bool tryX11 = false;
+   bool tryWayland = false;
+-  bool tryBroadway = false;
+ 
+   // Honor user backend selection
+   const char *backend = PR_GetEnv("GDK_BACKEND");
+@@ -2887,24 +2889,24 @@ static const char* detectDisplay(void)
+     // Try all backends
+     tryX11 = true;
+     tryWayland = true;
+-    tryBroadway = true;
+   } else if (backend) {
+     if (strstr(backend, "x11"))
+       tryX11 = true;
++#ifdef MOZ_WAYLAND
+     if (strstr(backend, "wayland"))
+       tryWayland = true;
+-    if (strstr(backend, "broadway"))
+-      tryBroadway = true;
++#endif
+   }
+ 
+   const char *display_name;
+   if (tryX11 && (display_name = PR_GetEnv("DISPLAY"))) {
+     return display_name;
+-  } else if (tryWayland && (display_name = PR_GetEnv("WAYLAND_DISPLAY"))) {
+-    return display_name;
+-  } else if (tryBroadway && (display_name = PR_GetEnv("BROADWAY_DISPLAY"))) {
++  }
++#ifdef MOZ_WAYLAND
++  if (tryWayland && (display_name = PR_GetEnv("WAYLAND_DISPLAY"))) {
+     return display_name;
+   }
++#endif
+ 
+   PR_fprintf(PR_STDERR, "Error: GDK_BACKEND does not match available displays\n");
+   return nullptr;
+@@ -3785,9 +3787,14 @@ XREMain::XRE_mainStartup(bool* aExitFlag)
+     if (saveDisplayArg) {
+       SaveWordToEnv("DISPLAY", nsDependentCString(display_name));
+     }
+-  } else {
+-    mDisableRemote = true;
+   }
++#ifdef MOZ_WAYLAND
++  else if (GDK_IS_WAYLAND_DISPLAY(mGdkDisplay)) {
++    if (saveDisplayArg) {
++      SaveWordToEnv("WAYLAND_DISPLAY", nsDependentCString(display_name));
++    }
++  }
++#endif
+ #endif
+ #ifdef MOZ_ENABLE_XREMOTE
+   // handle --remote now that xpcom is fired up
+@@ -3825,6 +3832,14 @@ XREMain::XRE_mainStartup(bool* aExitFlag)
+       }
+     }
+ 
++    if (!profile) {
++#ifdef MOZ_DEV_EDITION
++      profile = "dev-edition-default";
++#else
++      profile = "default";
++#endif
++    }
++
+     nsCOMPtr<nsIFile> mutexDir;
+     rv = GetSpecialSystemDirectory(OS_TemporaryDirectory, getter_AddRefs(mutexDir));
+     if (NS_SUCCEEDED(rv)) {
+diff --git a/widget/gtk/WindowSurfaceProvider.cpp b/widget/gtk/WindowSurfaceProvider.cpp
+index 526fe6a..e3f848e 100644
+--- a/widget/gtk/WindowSurfaceProvider.cpp
++++ b/widget/gtk/WindowSurfaceProvider.cpp
+@@ -11,6 +11,9 @@
+ #include "WindowSurfaceX11Image.h"
+ #include "WindowSurfaceX11SHM.h"
+ #include "WindowSurfaceXRender.h"
++#ifdef MOZ_WAYLAND
++#include "WindowSurfaceWayland.h"
++#endif
+ 
+ namespace mozilla {
+ namespace widget {
+@@ -19,11 +22,15 @@ using namespace mozilla::gfx;
+ using namespace mozilla::layers;
+ 
+ WindowSurfaceProvider::WindowSurfaceProvider()
+-    : mXDisplay(nullptr)
++    : mIsX11Display(false)
++    , mXDisplay(nullptr)
+     , mXWindow(0)
+     , mXVisual(nullptr)
+     , mXDepth(0)
+     , mWindowSurface(nullptr)
++#ifdef MOZ_WAYLAND
++    , mWidget(nullptr)
++#endif
+ {
+ }
+ 
+@@ -43,7 +50,17 @@ void WindowSurfaceProvider::Initialize(
+   mXWindow = aWindow;
+   mXVisual = aVisual;
+   mXDepth = aDepth;
++  mIsX11Display = true;
+ }
++
++#ifdef MOZ_WAYLAND
++void WindowSurfaceProvider::Initialize(nsWindow *aWidget)
++{
++  mWidget = aWidget;
++  mIsX11Display = aWidget->IsX11Display();
++}
++#endif
++
+ void WindowSurfaceProvider::CleanupResources()
+ {
+   mWindowSurface = nullptr;
+@@ -52,30 +69,38 @@ void WindowSurfaceProvider::CleanupResources()
+ UniquePtr<WindowSurface>
+ WindowSurfaceProvider::CreateWindowSurface()
+ {
+-  // We should be initialized
+-  MOZ_ASSERT(mXDisplay);
+-
+-  // Blit to the window with the following priority:
+-  // 1. XRender (iff XRender is enabled && we are in-process)
+-  // 2. MIT-SHM
+-  // 3. XPutImage
++#ifdef MOZ_WAYLAND
++  if (!mIsX11Display) {
++    LOGDRAW(("Drawing to nsWindow %p using wl_surface\n", (void*)this));
++    return MakeUnique<WindowSurfaceWayland>(mWidget);
++  } else
++#endif
++  {
++    // We should be initialized
++    MOZ_ASSERT(mXDisplay);
++
++    // Blit to the window with the following priority:
++    // 1. XRender (iff XRender is enabled && we are in-process)
++    // 2. MIT-SHM
++    // 3. XPutImage
+ 
+ #ifdef MOZ_WIDGET_GTK
+-  if (gfxVars::UseXRender()) {
+-    LOGDRAW(("Drawing to nsWindow %p using XRender\n", (void*)this));
+-    return MakeUnique<WindowSurfaceXRender>(mXDisplay, mXWindow, mXVisual, mXDepth);
+-  }
++    if (gfxVars::UseXRender()) {
++      LOGDRAW(("Drawing to nsWindow %p using XRender\n", (void*)this));
++      return MakeUnique<WindowSurfaceXRender>(mXDisplay, mXWindow, mXVisual, mXDepth);
++    }
+ #endif // MOZ_WIDGET_GTK
+ 
+ #ifdef MOZ_HAVE_SHMIMAGE
+-  if (nsShmImage::UseShm()) {
+-    LOGDRAW(("Drawing to nsWindow %p using MIT-SHM\n", (void*)this));
+-    return MakeUnique<WindowSurfaceX11SHM>(mXDisplay, mXWindow, mXVisual, mXDepth);
+-  }
++    if (nsShmImage::UseShm()) {
++      LOGDRAW(("Drawing to nsWindow %p using MIT-SHM\n", (void*)this));
++      return MakeUnique<WindowSurfaceX11SHM>(mXDisplay, mXWindow, mXVisual, mXDepth);
++    }
+ #endif // MOZ_HAVE_SHMIMAGE
+ 
+-  LOGDRAW(("Drawing to nsWindow %p using XPutImage\n", (void*)this));
+-  return MakeUnique<WindowSurfaceX11Image>(mXDisplay, mXWindow, mXVisual, mXDepth);
++    LOGDRAW(("Drawing to nsWindow %p using XPutImage\n", (void*)this));
++    return MakeUnique<WindowSurfaceX11Image>(mXDisplay, mXWindow, mXVisual, mXDepth);
++  }
+ }
+ 
+ already_AddRefed<gfx::DrawTarget>
+@@ -93,7 +118,7 @@ WindowSurfaceProvider::StartRemoteDrawingInRegion(LayoutDeviceIntRegion& aInvali
+ 
+   *aBufferMode = BufferMode::BUFFER_NONE;
+   RefPtr<DrawTarget> dt = nullptr;
+-  if (!(dt = mWindowSurface->Lock(aInvalidRegion)) &&
++  if (!(dt = mWindowSurface->Lock(aInvalidRegion)) && mIsX11Display &&
+       !mWindowSurface->IsFallback()) {
+     gfxWarningOnce() << "Failed to lock WindowSurface, falling back to XPutImage backend.";
+     mWindowSurface = MakeUnique<WindowSurfaceX11Image>(mXDisplay, mXWindow, mXVisual, mXDepth);
+diff --git a/widget/gtk/WindowSurfaceProvider.h b/widget/gtk/WindowSurfaceProvider.h
+index 73b2303..ef03a54 100644
+--- a/widget/gtk/WindowSurfaceProvider.h
++++ b/widget/gtk/WindowSurfaceProvider.h
+@@ -11,9 +11,15 @@
+ #include "mozilla/gfx/Types.h"
+ #include "mozilla/gfx/2D.h"
+ #include "Units.h"
++#include <gdk/gdk.h>
++#ifdef MOZ_WAYLAND
++#include <gdk/gdkwayland.h>
++#endif
+ 
+ #include <X11/Xlib.h> // for Window, Display, Visual, etc.
+ 
++class nsWindow;
++
+ namespace mozilla {
+ namespace widget {
+ 
+@@ -39,6 +45,10 @@ public:
+       Visual* aVisual,
+       int aDepth);
+ 
++#ifdef MOZ_WAYLAND
++   void Initialize(nsWindow *aWidget);
++#endif
++
+   /**
+    * Releases any surfaces created by this provider.
+    * This is used by X11CompositorWidget to get rid
+@@ -55,12 +65,16 @@ public:
+ private:
+   UniquePtr<WindowSurface> CreateWindowSurface();
+ 
+-  Display*  mXDisplay;
+-  Window    mXWindow;
+-  Visual*   mXVisual;
+-  int       mXDepth;
+-
++  // Can we access X?
++  bool        mIsX11Display;
++  Display*    mXDisplay;
++  Window      mXWindow;
++  Visual*     mXVisual;
++  int         mXDepth;
+   UniquePtr<WindowSurface> mWindowSurface;
++#ifdef MOZ_WAYLAND
++  nsWindow*   mWidget;
++#endif
+ };
+ 
+ }  // namespace widget
+diff --git a/widget/gtk/WindowSurfaceWayland.cpp b/widget/gtk/WindowSurfaceWayland.cpp
+new file mode 100644
+index 0000000..e4ae230
+--- /dev/null
++++ b/widget/gtk/WindowSurfaceWayland.cpp
+@@ -0,0 +1,628 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
++ *
++ * This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "WindowSurfaceWayland.h"
++
++#include "base/message_loop.h"          // for MessageLoop
++#include "base/task.h"                  // for NewRunnableMethod, etc
++#include "nsPrintfCString.h"
++#include "mozilla/gfx/2D.h"
++#include "mozilla/gfx/Tools.h"
++#include "gfxPlatform.h"
++#include "mozcontainer.h"
++#include "nsCOMArray.h"
++#include "mozilla/StaticMutex.h"
++
++#include <gdk/gdkwayland.h>
++#include <sys/mman.h>
++#include <assert.h>
++#include <fcntl.h>
++#include <errno.h>
++
++namespace mozilla {
++namespace widget {
++
++static nsCOMArray<nsWaylandDisplay> gWaylandDisplays;
++static StaticMutex gWaylandDisplaysMutex;
++
++// Each thread which is using wayland connection (wl_display) has to operate
++// its own wl_event_queue on it while main thread is handled by Gtk main loop.
++// nsWaylandDisplay is our interface to wayland server, it provides wayland
++// global objects we need (wl_display, wl_shm) and operates wl_event_queue on
++// compositor thread.
++
++static nsWaylandDisplay* WaylandDisplayGet(wl_display *aDisplay);
++static void WaylandDisplayRelease(wl_display *aDisplay);
++static void WaylandDisplayLoop(wl_display *aDisplay);
++
++#define EVENT_LOOP_DELAY (1000/60)
++
++// Get WaylandDisplay for given wl_display and actual calling thread.
++static nsWaylandDisplay*
++WaylandDisplayGetLocked(wl_display *aDisplay, const StaticMutexAutoLock&)
++{
++  nsWaylandDisplay* waylandDisplay = nullptr;
++
++  int len = gWaylandDisplays.Count();
++  for (int i = 0; i < len; i++) {
++    if (gWaylandDisplays[i]->Matches(aDisplay)) {
++      waylandDisplay = gWaylandDisplays[i];
++      break;
++    }
++  }
++
++  if (!waylandDisplay) {
++    waylandDisplay = new nsWaylandDisplay(aDisplay);
++    gWaylandDisplays.AppendObject(waylandDisplay);
++  }
++
++  NS_ADDREF(waylandDisplay);
++  return waylandDisplay;
++}
++
++static nsWaylandDisplay*
++WaylandDisplayGet(wl_display *aDisplay)
++{
++  StaticMutexAutoLock lock(gWaylandDisplaysMutex);
++  return WaylandDisplayGetLocked(aDisplay, lock);
++}
++
++static bool
++WaylandDisplayReleaseLocked(wl_display *aDisplay,
++                            const StaticMutexAutoLock&)
++{
++  int len = gWaylandDisplays.Count();
++  for (int i = 0; i < len; i++) {
++    if (gWaylandDisplays[i]->Matches(aDisplay)) {
++      int rc = gWaylandDisplays[i]->Release();
++      // nsCOMArray::AppendObject()/RemoveObjectAt() also call AddRef()/Release()
++      // so remove WaylandDisplay when ref count is 1.
++      if (rc == 1) {
++        gWaylandDisplays.RemoveObjectAt(i);
++      }
++      return true;
++    }
++  }
++  MOZ_ASSERT(false, "Missing nsWaylandDisplay for this thread!");
++  return false;
++}
++
++static void
++WaylandDisplayRelease(wl_display *aDisplay)
++{
++  StaticMutexAutoLock lock(gWaylandDisplaysMutex);
++  WaylandDisplayReleaseLocked(aDisplay, lock);
++}
++
++static void
++WaylandDisplayLoopLocked(wl_display* aDisplay,
++                         const StaticMutexAutoLock&)
++{
++  int len = gWaylandDisplays.Count();
++  for (int i = 0; i < len; i++) {
++    if (gWaylandDisplays[i]->Matches(aDisplay)) {
++      if (gWaylandDisplays[i]->DisplayLoop()) {
++        MessageLoop::current()->PostDelayedTask(
++            NewRunnableFunction(&WaylandDisplayLoop, aDisplay), EVENT_LOOP_DELAY);
++      }
++      break;
++    }
++  }
++}
++
++static void
++WaylandDisplayLoop(wl_display* aDisplay)
++{
++  MOZ_ASSERT(!NS_IsMainThread());
++  StaticMutexAutoLock lock(gWaylandDisplaysMutex);
++  WaylandDisplayLoopLocked(aDisplay, lock);
++}
++
++static void
++global_registry_handler(void *data, wl_registry *registry, uint32_t id,
++                        const char *interface, uint32_t version)
++{
++  if (strcmp(interface, "wl_shm") == 0) {
++    auto interface = reinterpret_cast<nsWaylandDisplay *>(data);
++    auto shm = static_cast<wl_shm*>(
++        wl_registry_bind(registry, id, &wl_shm_interface, 1));
++    wl_proxy_set_queue((struct wl_proxy *)shm, interface->GetEventQueue());
++    interface->SetShm(shm);
++  }
++}
++
++static void
++global_registry_remover(void *data, wl_registry *registry, uint32_t id)
++{
++}
++
++static const struct wl_registry_listener registry_listener = {
++  global_registry_handler,
++  global_registry_remover
++};
++
++wl_event_queue*
++nsWaylandDisplay::GetEventQueue()
++{
++  return mEventQueue;
++}
++
++wl_shm*
++nsWaylandDisplay::GetShm()
++{
++  MOZ_ASSERT(mThreadId == PR_GetCurrentThread());
++
++  // wl_shm is not provided by Gtk so we need to query wayland directly
++  wl_registry* registry = wl_display_get_registry(mDisplay);
++  wl_registry_add_listener(registry, &registry_listener, this);
++
++  if (mEventQueue) {
++    wl_proxy_set_queue((struct wl_proxy *)registry, mEventQueue);
++    // We need two roundtrips here to get the registry info
++    wl_display_dispatch_queue(mDisplay, mEventQueue);
++    wl_display_roundtrip_queue(mDisplay, mEventQueue);
++    wl_display_roundtrip_queue(mDisplay, mEventQueue);
++  } else {
++    wl_display_dispatch(mDisplay);
++    wl_display_roundtrip(mDisplay);
++    wl_display_roundtrip(mDisplay);
++  }
++
++  MOZ_RELEASE_ASSERT(mShm, "Wayland registry query failed!");
++  return(mShm);
++}
++
++bool
++nsWaylandDisplay::DisplayLoop()
++{
++  wl_display_dispatch_queue_pending(mDisplay, mEventQueue);
++  return true;
++}
++
++bool
++nsWaylandDisplay::Matches(wl_display *aDisplay)
++{
++  return mThreadId == PR_GetCurrentThread() && aDisplay == mDisplay;
++}
++
++#ifdef DEBUG
++bool
++nsWaylandDisplay::MatchesThread()
++{
++  return mThreadId == PR_GetCurrentThread();
++}
++#endif
++
++NS_IMPL_ISUPPORTS(nsWaylandDisplay, nsISupports);
++
++nsWaylandDisplay::nsWaylandDisplay(wl_display *aDisplay)
++{
++  mThreadId = PR_GetCurrentThread();
++  mDisplay = aDisplay;
++
++  // gfx::SurfaceFormat::B8G8R8A8 is a basic Wayland format
++  // and should be always present.
++  mFormat = gfx::SurfaceFormat::B8G8R8A8;
++
++  if (NS_IsMainThread()) {
++    // Use default event queue in main thread operated by Gtk.
++    mEventQueue = nullptr;
++  } else {
++    mEventQueue = wl_display_create_queue(mDisplay);
++    MessageLoop::current()->PostTask(NewRunnableFunction(&WaylandDisplayLoop,
++                                                         mDisplay));
++  }
++}
++
++nsWaylandDisplay::~nsWaylandDisplay()
++{
++  MOZ_ASSERT(mThreadId == PR_GetCurrentThread());
++  if (mEventQueue) {
++    wl_event_queue_destroy(mEventQueue);
++    mEventQueue = nullptr;
++  }
++  mDisplay = nullptr;
++}
++
++int
++WaylandShmPool::CreateTemporaryFile(int aSize)
++{
++  const char* tmppath = getenv("XDG_RUNTIME_DIR");
++  MOZ_RELEASE_ASSERT(tmppath, "Missing XDG_RUNTIME_DIR env variable.");
++
++  nsPrintfCString tmpname("%s/weston-shared-XXXXXX", tmppath);
++
++  char* filename;
++  int fd = -1;
++  int ret = 0;
++
++  if (tmpname.GetMutableData(&filename)) {
++    fd = mkstemp(filename);
++    if (fd >= 0) {
++      int flags = fcntl(fd, F_GETFD);
++      if (flags >= 0) {
++        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
++      }
++    }
++  }
++
++  if (fd >= 0) {
++    unlink(tmpname.get());
++  } else {
++    printf_stderr("Unable to create mapping file %s\n", filename);
++    MOZ_CRASH();
++  }
++
++#ifdef HAVE_POSIX_FALLOCATE
++  do {
++    ret = posix_fallocate(fd, 0, aSize);
++  } while (ret == EINTR);
++  if (ret != 0) {
++    close(fd);
++  }
++#else
++  do {
++    ret = ftruncate(fd, aSize);
++  } while (ret < 0 && errno == EINTR);
++  if (ret < 0) {
++    close(fd);
++  }
++#endif
++  MOZ_RELEASE_ASSERT(ret == 0, "Mapping file allocation failed.");
++
++  return fd;
++}
++
++WaylandShmPool::WaylandShmPool(nsWaylandDisplay* aWaylandDisplay, int aSize)
++{
++  mAllocatedSize = aSize;
++
++  mShmPoolFd = CreateTemporaryFile(mAllocatedSize);
++  mImageData = mmap(nullptr, mAllocatedSize,
++                     PROT_READ | PROT_WRITE, MAP_SHARED, mShmPoolFd, 0);
++  MOZ_RELEASE_ASSERT(mImageData != MAP_FAILED,
++                     "Unable to map drawing surface!");
++
++  mShmPool = wl_shm_create_pool(aWaylandDisplay->GetShm(),
++                                mShmPoolFd, mAllocatedSize);
++  wl_proxy_set_queue((struct wl_proxy *)mShmPool, aWaylandDisplay->GetEventQueue());
++}
++
++bool
++WaylandShmPool::Resize(int aSize)
++{
++  // We do size increase only
++  if (aSize <= mAllocatedSize)
++    return true;
++
++  if (ftruncate(mShmPoolFd, aSize) < 0)
++    return false;
++
++#ifdef HAVE_POSIX_FALLOCATE
++  do {
++    errno = posix_fallocate(mShmPoolFd, 0, aSize);
++  } while (errno == EINTR);
++  if (errno != 0)
++    return false;
++#endif
++
++  wl_shm_pool_resize(mShmPool, aSize);
++
++  munmap(mImageData, mAllocatedSize);
++
++  mImageData = mmap(nullptr, aSize,
++                    PROT_READ | PROT_WRITE, MAP_SHARED, mShmPoolFd, 0);
++  if (mImageData == MAP_FAILED)
++    return false;
++
++  mAllocatedSize = aSize;
++  return true;
++}
++
++WaylandShmPool::~WaylandShmPool()
++{
++  munmap(mImageData, mAllocatedSize);
++  wl_shm_pool_destroy(mShmPool);
++  close(mShmPoolFd);
++}
++
++static void
++buffer_release(void *data, wl_buffer *buffer)
++{
++  auto surface = reinterpret_cast<WindowBackBuffer*>(data);
++  surface->Detach();
++}
++
++static const struct wl_buffer_listener buffer_listener = {
++  buffer_release
++};
++
++void WindowBackBuffer::Create(int aWidth, int aHeight)
++{
++  MOZ_ASSERT(!IsAttached(), "We can't resize attached buffers.");
++
++  int newBufferSize = aWidth*aHeight*BUFFER_BPP;
++  mShmPool.Resize(newBufferSize);
++
++  mWaylandBuffer = wl_shm_pool_create_buffer(mShmPool.GetShmPool(), 0,
++                                            aWidth, aHeight, aWidth*BUFFER_BPP,
++                                            WL_SHM_FORMAT_ARGB8888);
++  wl_proxy_set_queue((struct wl_proxy *)mWaylandBuffer,
++                     mWaylandDisplay->GetEventQueue());
++  wl_buffer_add_listener(mWaylandBuffer, &buffer_listener, this);
++
++  mWidth = aWidth;
++  mHeight = aHeight;
++}
++
++void WindowBackBuffer::Release()
++{
++  wl_buffer_destroy(mWaylandBuffer);
++  mWidth = mHeight = 0;
++}
++
++WindowBackBuffer::WindowBackBuffer(nsWaylandDisplay* aWaylandDisplay,
++                                   int aWidth, int aHeight)
++ : mShmPool(aWaylandDisplay, aWidth*aHeight*BUFFER_BPP)
++  ,mWaylandBuffer(nullptr)
++  ,mWidth(aWidth)
++  ,mHeight(aHeight)
++  ,mAttached(false)
++  ,mWaylandDisplay(aWaylandDisplay)
++{
++  Create(aWidth, aHeight);
++}
++
++WindowBackBuffer::~WindowBackBuffer()
++{
++  Release();
++}
++
++bool
++WindowBackBuffer::Resize(int aWidth, int aHeight)
++{
++  if (aWidth == mWidth && aHeight == mHeight)
++    return true;
++
++  Release();
++  Create(aWidth, aHeight);
++
++  return (mWaylandBuffer != nullptr);
++}
++
++void
++WindowBackBuffer::Attach(wl_surface* aSurface)
++{
++  wl_surface_attach(aSurface, mWaylandBuffer, 0, 0);
++  wl_surface_commit(aSurface);
++  wl_display_flush(mWaylandDisplay->GetDisplay());
++  mAttached = true;
++}
++
++void
++WindowBackBuffer::Detach()
++{
++  mAttached = false;
++}
++
++bool WindowBackBuffer::Sync(class WindowBackBuffer* aSourceBuffer)
++{
++  bool bufferSizeMatches = MatchSize(aSourceBuffer);
++  if (!bufferSizeMatches) {
++    Resize(aSourceBuffer->mWidth, aSourceBuffer->mHeight);
++  }
++
++  memcpy(mShmPool.GetImageData(), aSourceBuffer->mShmPool.GetImageData(),
++         aSourceBuffer->mWidth * aSourceBuffer->mHeight * BUFFER_BPP);
++  return true;
++}
++
++already_AddRefed<gfx::DrawTarget>
++WindowBackBuffer::Lock(const LayoutDeviceIntRegion& aRegion)
++{
++  gfx::IntRect bounds = aRegion.GetBounds().ToUnknownRect();
++  gfx::IntSize lockSize(bounds.XMost(), bounds.YMost());
++
++  return gfxPlatform::CreateDrawTargetForData(static_cast<unsigned char*>(mShmPool.GetImageData()),
++                                              lockSize,
++                                              BUFFER_BPP * mWidth,
++                                              mWaylandDisplay->GetSurfaceFormat());
++}
++
++static void
++frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time)
++{
++  auto surface = reinterpret_cast<WindowSurfaceWayland*>(data);
++  surface->FrameCallbackHandler();
++}
++
++static const struct wl_callback_listener frame_listener = {
++  frame_callback_handler
++};
++
++WindowSurfaceWayland::WindowSurfaceWayland(nsWindow *aWidget)
++  : mWidget(aWidget)
++  , mWaylandDisplay(WaylandDisplayGet(aWidget->GetWaylandDisplay()))
++  , mFrontBuffer(nullptr)
++  , mBackBuffer(nullptr)
++  , mFrameCallback(nullptr)
++  , mFrameCallbackSurface(nullptr)
++  , mDelayedCommit(false)
++  , mFullScreenDamage(false)
++  , mWaylandMessageLoop(MessageLoop::current())
++  , mIsMainThread(NS_IsMainThread())
++{
++}
++
++WindowSurfaceWayland::~WindowSurfaceWayland()
++{
++  delete mFrontBuffer;
++  delete mBackBuffer;
++
++  if (mFrameCallback) {
++    wl_callback_destroy(mFrameCallback);
++  }
++
++  if (!mIsMainThread) {
++    // We can be destroyed from main thread even though we was created/used
++    // in compositor thread. We have to unref/delete WaylandDisplay in compositor
++    // thread then.
++    mWaylandMessageLoop->PostTask(
++      NewRunnableFunction(&WaylandDisplayRelease, mWaylandDisplay->GetDisplay()));
++  } else {
++    WaylandDisplayRelease(mWaylandDisplay->GetDisplay());
++  }
++}
++
++WindowBackBuffer*
++WindowSurfaceWayland::GetBufferToDraw(int aWidth, int aHeight)
++{
++  if (!mFrontBuffer) {
++    mFrontBuffer = new WindowBackBuffer(mWaylandDisplay, aWidth, aHeight);
++    mBackBuffer = new WindowBackBuffer(mWaylandDisplay, aWidth, aHeight);
++    return mFrontBuffer;
++  }
++
++  if (!mFrontBuffer->IsAttached()) {
++    if (!mFrontBuffer->MatchSize(aWidth, aHeight)) {
++      mFrontBuffer->Resize(aWidth, aHeight);
++    }
++    return mFrontBuffer;
++  }
++
++  // Front buffer is used by compositor, draw to back buffer
++  if (mBackBuffer->IsAttached()) {
++    NS_WARNING("No drawing buffer available");
++    return nullptr;
++  }
++
++  MOZ_ASSERT(!mDelayedCommit,
++             "Uncommitted buffer switch, screen artifacts ahead.");
++
++  WindowBackBuffer *tmp = mFrontBuffer;
++  mFrontBuffer = mBackBuffer;
++  mBackBuffer = tmp;
++
++  if (mBackBuffer->MatchSize(aWidth, aHeight)) {
++    // Former front buffer has the same size as a requested one.
++    // Gecko may expect a content already drawn on screen so copy
++    // existing data to the new buffer.
++    mFrontBuffer->Sync(mBackBuffer);
++    // When buffer switches we need to damage whole screen
++    // (https://bugzilla.redhat.com/show_bug.cgi?id=1418260)
++    mFullScreenDamage = true;
++  } else {
++    // Former buffer has different size from the new request. Only resize
++    // the new buffer and leave geck to render new whole content.
++    mFrontBuffer->Resize(aWidth, aHeight);
++  }
++
++  return mFrontBuffer;
++}
++
++already_AddRefed<gfx::DrawTarget>
++WindowSurfaceWayland::Lock(const LayoutDeviceIntRegion& aRegion)
++{
++  MOZ_ASSERT(mIsMainThread == NS_IsMainThread());
++
++  // We allocate back buffer to widget size but return only
++  // portion requested by aRegion.
++  LayoutDeviceIntRect rect = mWidget->GetBounds();
++  WindowBackBuffer* buffer = GetBufferToDraw(rect.width,
++                                             rect.height);
++  if (!buffer) {
++    NS_WARNING("No drawing buffer available");
++    return nullptr;
++  }
++
++  return buffer->Lock(aRegion);
++}
++
++void
++WindowSurfaceWayland::Commit(const LayoutDeviceIntRegion& aInvalidRegion)
++{
++  MOZ_ASSERT(mIsMainThread == NS_IsMainThread());
++
++  wl_surface* waylandSurface = mWidget->GetWaylandSurface();
++  if (!waylandSurface) {
++    // Target window is already destroyed - don't bother to render there.
++    return;
++  }
++  wl_proxy_set_queue((struct wl_proxy *)waylandSurface,
++                     mWaylandDisplay->GetEventQueue());
++
++  if (mFullScreenDamage) {
++    LayoutDeviceIntRect rect = mWidget->GetBounds();
++    wl_surface_damage(waylandSurface, 0, 0, rect.width, rect.height);
++    mFullScreenDamage = false;
++  } else {
++    for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
++      const mozilla::LayoutDeviceIntRect &r = iter.Get();
++      wl_surface_damage(waylandSurface, r.x, r.y, r.width, r.height);
++    }
++  }
++
++  // Frame callback is always connected to concrete wl_surface. When the surface
++  // is unmapped/deleted the frame callback is newer called. Unfortunatelly
++  // we don't know if the frame callback is not going to be called.
++  // But our mozcontainer code deletes wl_surface when the GdkWindow is hidden
++  // creates a new one when is visible.
++  if (mFrameCallback && mFrameCallbackSurface == waylandSurface) {
++    // Do nothing here - we have a valid wl_surface and the buffer will be
++    // commited to compositor in next frame callback event.
++    mDelayedCommit = true;
++    return;
++  } else  {
++    if (mFrameCallback) {
++      // Delete frame callback connected to obsoleted wl_surface.
++      wl_callback_destroy(mFrameCallback);
++    }
++
++    mFrameCallback = wl_surface_frame(waylandSurface);
++    wl_callback_add_listener(mFrameCallback, &frame_listener, this);
++    mFrameCallbackSurface = waylandSurface;
++
++    // There's no pending frame callback so we can draw immediately
++    // and create frame callback for possible subsequent drawing.
++    mFrontBuffer->Attach(waylandSurface);
++    mDelayedCommit = false;
++  }
++}
++
++void
++WindowSurfaceWayland::FrameCallbackHandler()
++{
++  MOZ_ASSERT(mIsMainThread == NS_IsMainThread());
++
++  if (mFrameCallback) {
++    wl_callback_destroy(mFrameCallback);
++    mFrameCallback = nullptr;
++    mFrameCallbackSurface = nullptr;
++  }
++
++  if (mDelayedCommit) {
++    wl_surface* waylandSurface = mWidget->GetWaylandSurface();
++    if (!waylandSurface) {
++      // Target window is already destroyed - don't bother to render there.
++      NS_WARNING("No drawing buffer available");
++      return;
++    }
++    wl_proxy_set_queue((struct wl_proxy *)waylandSurface,
++                       mWaylandDisplay->GetEventQueue());
++
++    // Send pending surface to compositor and register frame callback
++    // for possible subsequent drawing.
++    mFrameCallback = wl_surface_frame(waylandSurface);
++    wl_callback_add_listener(mFrameCallback, &frame_listener, this);
++    mFrameCallbackSurface = waylandSurface;
++
++    mFrontBuffer->Attach(waylandSurface);
++    mDelayedCommit = false;
++  }
++}
++
++}  // namespace widget
++}  // namespace mozilla
+diff --git a/widget/gtk/WindowSurfaceWayland.h b/widget/gtk/WindowSurfaceWayland.h
+new file mode 100644
+index 0000000..bbc1572
+--- /dev/null
++++ b/widget/gtk/WindowSurfaceWayland.h
+@@ -0,0 +1,136 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
++ *
++ * This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef _MOZILLA_WIDGET_GTK_WINDOW_SURFACE_WAYLAND_H
++#define _MOZILLA_WIDGET_GTK_WINDOW_SURFACE_WAYLAND_H
++
++#include <prthread.h>
++
++namespace mozilla {
++namespace widget {
++
++// We support only 32bpp formats
++#define BUFFER_BPP 4
++
++// Our general connection to Wayland display server,
++// holds our display connection and runs event loop.
++class nsWaylandDisplay : public nsISupports {
++  NS_DECL_THREADSAFE_ISUPPORTS
++
++public:
++  nsWaylandDisplay(wl_display *aDisplay);
++
++  wl_shm*             GetShm();
++  wl_event_queue*     GetEventQueue();
++
++  void                SetShm(wl_shm* aShm)   { mShm = aShm; };
++  wl_display*         GetDisplay()           { return mDisplay; };
++  gfx::SurfaceFormat  GetSurfaceFormat()     { return mFormat; };
++  bool                DisplayLoop();
++  bool                Matches(wl_display *aDisplay);
++#ifdef DEBUG
++  bool                MatchesThread();
++#endif
++
++private:
++  virtual ~nsWaylandDisplay();
++
++  PRThread*           mThreadId;
++  gfx::SurfaceFormat  mFormat;
++  wl_shm*             mShm;
++  wl_event_queue*     mEventQueue;
++  wl_display*         mDisplay;
++};
++
++// Allocates and owns shared memory for Wayland drawing surfaces
++class WaylandShmPool {
++public:
++  WaylandShmPool(nsWaylandDisplay* aDisplay, int aSize);
++  ~WaylandShmPool();
++
++  bool                Resize(int aSize);
++  wl_shm_pool*        GetShmPool()    { return mShmPool;   };
++  void*               GetImageData()  { return mImageData; };
++
++private:
++  int CreateTemporaryFile(int aSize);
++
++  wl_shm_pool*        mShmPool;
++  int                 mShmPoolFd;
++  int                 mAllocatedSize;
++  void*               mImageData;
++};
++
++// Holds actual graphics data for wl_surface
++class WindowBackBuffer {
++public:
++  WindowBackBuffer(nsWaylandDisplay* aDisplay, int aWidth, int aHeight);
++  ~WindowBackBuffer();
++
++  already_AddRefed<gfx::DrawTarget> Lock(const LayoutDeviceIntRegion& aRegion);
++
++  void Attach(wl_surface* aSurface);
++  void Detach();
++  bool IsAttached() { return mAttached; }
++
++  bool Resize(int aWidth, int aHeight);
++  bool Sync(class WindowBackBuffer* aSourceBuffer);
++
++  bool MatchSize(int aWidth, int aHeight)
++  {
++    return aWidth == mWidth && aHeight == mHeight;
++  }
++  bool MatchSize(class WindowBackBuffer *aBuffer)
++  {
++    return aBuffer->mWidth == mWidth && aBuffer->mHeight == mHeight;
++  }
++
++private:
++  void Create(int aWidth, int aHeight);
++  void Release();
++
++  // WaylandShmPool provides actual shared memory we draw into
++  WaylandShmPool      mShmPool;
++
++  // wl_buffer is a wayland object that encapsulates the shared memory
++  // and passes it to wayland compositor by wl_surface object.
++  wl_buffer*          mWaylandBuffer;
++  int                 mWidth;
++  int                 mHeight;
++  bool                mAttached;
++  nsWaylandDisplay*   mWaylandDisplay;
++};
++
++// WindowSurfaceWayland is an abstraction for wl_surface
++// and related management
++class WindowSurfaceWayland : public WindowSurface {
++public:
++  WindowSurfaceWayland(nsWindow *aWidget);
++  ~WindowSurfaceWayland();
++
++  already_AddRefed<gfx::DrawTarget> Lock(const LayoutDeviceIntRegion& aRegion) override;
++  void                      Commit(const LayoutDeviceIntRegion& aInvalidRegion) final;
++  void                      FrameCallbackHandler();
++
++private:
++  WindowBackBuffer*         GetBufferToDraw(int aWidth, int aHeight);
++
++  nsWindow*                 mWidget;
++  nsWaylandDisplay*         mWaylandDisplay;
++  WindowBackBuffer*         mFrontBuffer;
++  WindowBackBuffer*         mBackBuffer;
++  wl_callback*              mFrameCallback;
++  wl_surface*               mFrameCallbackSurface;
++  bool                      mDelayedCommit;
++  bool                      mFullScreenDamage;
++  MessageLoop*              mWaylandMessageLoop;
++  bool                      mIsMainThread;
++};
++
++}  // namespace widget
++}  // namespace mozilla
++
++#endif // _MOZILLA_WIDGET_GTK_WINDOW_SURFACE_WAYLAND_H
+diff --git a/widget/gtk/X11CompositorWidget.cpp b/widget/gtk/X11CompositorWidget.cpp
+index 05113a0..c7d72be 100644
+--- a/widget/gtk/X11CompositorWidget.cpp
++++ b/widget/gtk/X11CompositorWidget.cpp
+@@ -24,23 +24,38 @@ X11CompositorWidget::X11CompositorWidget(const CompositorWidgetInitData& aInitDa
+     mXDisplay = aWindow->XDisplay();
+   } else {
+     mXDisplay = XOpenDisplay(aInitData.XDisplayString().get());
++#ifdef MOZ_WAYLAND
++    if (!mXDisplay) {
++      // TODO - not implemented
++      MOZ_CRASH();
++    }
++#endif
++  }
++
++#ifdef MOZ_WAYLAND
++  if (!mXDisplay) {
++    MOZ_ASSERT(aWindow);
++    mProvider.Initialize(aWindow);
++  } else
++#endif
++  {
++    mXWindow = (Window)aInitData.XWindow();
++
++    // Grab the window's visual and depth
++    XWindowAttributes windowAttrs;
++    XGetWindowAttributes(mXDisplay, mXWindow, &windowAttrs);
++
++    Visual*   visual = windowAttrs.visual;
++    int       depth = windowAttrs.depth;
++
++    // Initialize the window surface provider
++    mProvider.Initialize(
++      mXDisplay,
++      mXWindow,
++      visual,
++      depth
++      );
+   }
+-  mXWindow = (Window)aInitData.XWindow();
+-
+-  // Grab the window's visual and depth
+-  XWindowAttributes windowAttrs;
+-  XGetWindowAttributes(mXDisplay, mXWindow, &windowAttrs);
+-
+-  Visual*   visual = windowAttrs.visual;
+-  int       depth = windowAttrs.depth;
+-
+-  // Initialize the window surface provider
+-  mProvider.Initialize(
+-    mXDisplay,
+-    mXWindow,
+-    visual,
+-    depth
+-    );
+ 
+   mClientSize = aInitData.InitialClientSize();
+ }
+diff --git a/widget/gtk/moz.build b/widget/gtk/moz.build
+index baccb6c..1cc8917 100644
+--- a/widget/gtk/moz.build
++++ b/widget/gtk/moz.build
+@@ -7,6 +7,9 @@
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'gtk3':
+     DIRS += ['mozgtk']
+ 
++if CONFIG['MOZ_WAYLAND']:
++    DIRS += ['mozwayland']
++
+ EXPORTS += [
+     'mozcontainer.h',
+     'nsGTKToolkit.h',
+@@ -72,6 +75,7 @@ if CONFIG['NS_PRINTING']:
+ if CONFIG['MOZ_X11']:
+     UNIFIED_SOURCES += [
+         'nsClipboard.cpp',
++        'nsClipboardX11.cpp',
+         'nsDragService.cpp',
+         'WindowSurfaceProvider.cpp',
+         'WindowSurfaceX11.cpp',
+@@ -82,6 +86,12 @@ if CONFIG['MOZ_X11']:
+         'WindowSurfaceProvider.h',
+     ]
+ 
++if CONFIG['MOZ_WAYLAND']:
++    UNIFIED_SOURCES += [
++        'nsClipboardWayland.cpp',
++        'WindowSurfaceWayland.cpp',
++    ]
++
+ if CONFIG['ACCESSIBILITY']:
+     UNIFIED_SOURCES += [
+         'maiRedundantObjectFactory.c',
+diff --git a/widget/gtk/mozcontainer.c b/widget/gtk/mozcontainer.c
+index 9b596e4..3523abd 100644
+--- a/widget/gtk/mozcontainer.c
++++ b/widget/gtk/mozcontainer.c
+@@ -7,12 +7,16 @@
+ 
+ #include "mozcontainer.h"
+ #include <gtk/gtk.h>
++#ifdef GDK_WINDOWING_WAYLAND
++#include <gdk/gdkx.h>
++#include <gdk/gdkwayland.h>
++#endif
+ #include <stdio.h>
+-
+ #ifdef ACCESSIBILITY
+ #include <atk/atk.h>
+ #include "maiRedundantObjectFactory.h"
+-#endif 
++#endif
++#include "mozilla/Assertions.h"
+ 
+ /* init methods */
+ static void moz_container_class_init          (MozContainerClass *klass);
+@@ -143,6 +147,59 @@ moz_container_move (MozContainer *container, GtkWidget *child_widget,
+ 
+ /* static methods */
+ 
++#if defined(MOZ_WAYLAND)
++gboolean
++moz_container_map_surface(MozContainer *container)
++{
++    GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(container));
++    if (GDK_IS_X11_DISPLAY(display))
++        return FALSE;
++
++    if (container->subsurface && container->surface)
++        return TRUE;
++
++    if (!container->surface) {
++        struct wl_compositor *compositor;
++        compositor = gdk_wayland_display_get_wl_compositor(display);
++        container->surface = wl_compositor_create_surface(compositor);
++    }
++
++    if (!container->subsurface) {
++        GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(container));
++        struct wl_surface* gtk_surface = gdk_wayland_window_get_wl_surface(window);
++        if (!gtk_surface) {
++          // We requested the underlying wl_surface too early.
++          return FALSE;
++        }
++
++        container->subsurface =
++          wl_subcompositor_get_subsurface (container->subcompositor,
++                                           container->surface,
++                                           gtk_surface);
++        gint x, y;
++        gdk_window_get_position(window, &x, &y);
++        wl_subsurface_set_position(container->subsurface, x, y);
++        wl_subsurface_set_desync(container->subsurface);
++
++        // Don't accept input on subsurface
++        GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET (container));
++        struct wl_compositor* compositor = gdk_wayland_display_get_wl_compositor(display);
++        struct wl_region* region = wl_compositor_create_region(compositor);
++        wl_surface_set_input_region(container->surface, region);
++        wl_region_destroy(region);
++    }
++    return TRUE;
++}
++
++static void
++moz_container_unmap_surface(MozContainer *container)
++{
++    g_clear_pointer(&container->subsurface, wl_subsurface_destroy);
++    g_clear_pointer(&container->surface, wl_surface_destroy);
++}
++
++#endif
++
+ void
+ moz_container_class_init (MozContainerClass *klass)
+ {
+@@ -161,12 +218,58 @@ moz_container_class_init (MozContainerClass *klass)
+     container_class->add = moz_container_add;
+ }
+ 
++#if defined(MOZ_WAYLAND)
++static void
++registry_handle_global (void *data,
++                        struct wl_registry *registry,
++                        uint32_t name,
++                        const char *interface,
++                        uint32_t version)
++{
++    MozContainer *container = data;
++    if(strcmp(interface, "wl_subcompositor") == 0) {
++        container->subcompositor = wl_registry_bind(registry,
++                                                    name,
++                                                    &wl_subcompositor_interface,
++                                                    1);
++    }
++}
++
++static void
++registry_handle_global_remove (void *data,
++                               struct wl_registry *registry,
++                               uint32_t name)
++{
++}
++
++static const struct wl_registry_listener registry_listener = {
++    registry_handle_global,
++    registry_handle_global_remove
++};
++#endif
++
+ void
+ moz_container_init (MozContainer *container)
+ {
+     gtk_widget_set_can_focus(GTK_WIDGET(container), TRUE);
+     gtk_container_set_resize_mode(GTK_CONTAINER(container), GTK_RESIZE_IMMEDIATE);
+     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(container), FALSE);
++
++#if defined(MOZ_WAYLAND)
++    {
++      GdkDisplay *gdk_display = gtk_widget_get_display(GTK_WIDGET(container));
++      if (GDK_IS_WAYLAND_DISPLAY (gdk_display)) {
++          struct wl_display *display;
++          struct wl_registry *registry;
++
++          display = gdk_wayland_display_get_wl_display(gdk_display);
++          registry = wl_display_get_registry(display);
++          wl_registry_add_listener(registry, &registry_listener, container);
++          wl_display_roundtrip(display);
++          wl_display_roundtrip(display);
++        }
++    }
++#endif
+ }
+ 
+ void
+@@ -184,17 +287,19 @@ moz_container_map (GtkWidget *widget)
+     tmp_list = container->children;
+     while (tmp_list) {
+         tmp_child = ((MozContainerChild *)tmp_list->data)->widget;
+-    
++
+         if (gtk_widget_get_visible(tmp_child)) {
+             if (!gtk_widget_get_mapped(tmp_child))
+                 gtk_widget_map(tmp_child);
+         }
+         tmp_list = tmp_list->next;
+     }
+-
+     if (gtk_widget_get_has_window (widget)) {
+         gdk_window_show (gtk_widget_get_window(widget));
+     }
++#if defined(MOZ_WAYLAND)
++    moz_container_map_surface(MOZ_CONTAINER(widget));
++#endif
+ }
+ 
+ void
+@@ -207,6 +312,9 @@ moz_container_unmap (GtkWidget *widget)
+     if (gtk_widget_get_has_window (widget)) {
+         gdk_window_hide (gtk_widget_get_window(widget));
+     }
++#if defined(MOZ_WAYLAND)
++    moz_container_unmap_surface(MOZ_CONTAINER(widget));
++#endif
+ }
+ 
+ void
+@@ -221,6 +329,7 @@ moz_container_realize (GtkWidget *widget)
+         GdkWindowAttr attributes;
+         gint attributes_mask = GDK_WA_VISUAL | GDK_WA_X | GDK_WA_Y;
+         GtkAllocation allocation;
++        GtkWidget* parent_widget;
+ 
+         gtk_widget_get_allocation (widget, &allocation);
+         attributes.event_mask = gtk_widget_get_events (widget);
+@@ -237,7 +346,19 @@ moz_container_realize (GtkWidget *widget)
+         attributes_mask |= GDK_WA_COLORMAP;
+ #endif
+ 
++#ifdef MOZ_WAYLAND
++        // Get mShell type
++        parent_widget = gtk_widget_get_parent(widget);
++        if (parent_widget &&
++            gtk_window_get_window_type(GTK_WINDOW(parent_widget)) == GTK_WINDOW_POPUP) {
++            //attributes.window_type = GDK_WINDOW_TEMP;
++        }
++#endif
+         window = gdk_window_new (parent, &attributes, attributes_mask);
++
++        /* TODO
++         * Replace with gtk_widget_register_window/gtk_widget_unregister_window
++         */
+         gdk_window_set_user_data (window, widget);
+ #if (MOZ_WIDGET_GTK == 2)
+         /* TODO GTK3? */
+@@ -306,6 +427,14 @@ moz_container_size_allocate (GtkWidget     *widget,
+                                allocation->width,
+                                allocation->height);
+     }
++
++#if defined(MOZ_WAYLAND)
++    if (container->subsurface) {
++        gint x, y;
++        gdk_window_get_position(gtk_widget_get_window(widget), &x, &y);
++        wl_subsurface_set_position(container->subsurface, x, y);
++      }
++#endif
+ }
+ 
+ void
+@@ -363,7 +492,7 @@ moz_container_forall (GtkContainer *container, gboolean include_internals,
+ {
+     MozContainer *moz_container;
+     GList *tmp_list;
+-  
++
+     g_return_if_fail (IS_MOZ_CONTAINER(container));
+     g_return_if_fail (callback != NULL);
+ 
+@@ -399,7 +528,7 @@ moz_container_get_child (MozContainer *container, GtkWidget *child_widget)
+     tmp_list = container->children;
+     while (tmp_list) {
+         MozContainerChild *child;
+-    
++
+         child = tmp_list->data;
+         tmp_list = tmp_list->next;
+ 
+@@ -410,9 +539,25 @@ moz_container_get_child (MozContainer *container, GtkWidget *child_widget)
+     return NULL;
+ }
+ 
+-static void 
++static void
+ moz_container_add(GtkContainer *container, GtkWidget *widget)
+ {
+     moz_container_put(MOZ_CONTAINER(container), widget, 0, 0);
+ }
+ 
++#ifdef MOZ_WAYLAND
++struct wl_surface*
++moz_container_get_wl_surface(MozContainer *container)
++{
++    GdkWindow* window;
++    if (!container->subsurface || !container->surface) {
++        window = gtk_widget_get_window(GTK_WIDGET(container));
++        if (!gdk_window_is_visible(window))
++            return NULL;
++
++        moz_container_map_surface(container);
++    }
++
++    return container->surface;
++}
++#endif
+diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
+index 23e17f7..9c610bf 100644
+--- a/widget/gtk/mozcontainer.h
++++ b/widget/gtk/mozcontainer.h
+@@ -44,7 +44,7 @@ extern "C" {
+  * gtk_widget_set_parent_window should be called on the child GtkWidget before
+  * it is realized.
+  */
+- 
++
+ #define MOZ_CONTAINER_TYPE            (moz_container_get_type())
+ #define MOZ_CONTAINER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), MOZ_CONTAINER_TYPE, MozContainer))
+ #define MOZ_CONTAINER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), MOZ_CONTAINER_TYPE, MozContainerClass))
+@@ -55,10 +55,25 @@ extern "C" {
+ typedef struct _MozContainer      MozContainer;
+ typedef struct _MozContainerClass MozContainerClass;
+ 
++/* Workaround for bug at wayland-util.h,
++ * present in wayland < 1.12
++ */
++#ifdef MOZ_WAYLAND
++struct wl_subcompositor;
++struct wl_surface;
++struct wl_subsurface;
++#endif
++
+ struct _MozContainer
+ {
+     GtkContainer   container;
+     GList         *children;
++
++#ifdef MOZ_WAYLAND
++    struct wl_subcompositor *subcompositor;
++    struct wl_surface       *surface;
++    struct wl_subsurface    *subsurface;
++#endif
+ };
+ 
+ struct _MozContainerClass
+@@ -79,6 +94,11 @@ void       moz_container_move          (MozContainer *container,
+                                         gint          width,
+                                         gint          height);
+ 
++#ifdef MOZ_WAYLAND
++struct wl_surface * moz_container_get_wl_surface (MozContainer *container);
++gboolean            moz_container_map_wl_surface (MozContainer *container);
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif /* __cplusplus */
+diff --git a/widget/gtk/mozgtk/mozgtk.c b/widget/gtk/mozgtk/mozgtk.c
+index d9fb938..705fb7a 100644
+--- a/widget/gtk/mozgtk/mozgtk.c
++++ b/widget/gtk/mozgtk/mozgtk.c
+@@ -515,11 +515,19 @@ STUB(gdk_device_manager_get_client_pointer)
+ STUB(gdk_disable_multidevice)
+ STUB(gdk_device_manager_list_devices)
+ STUB(gdk_display_get_device_manager)
++STUB(gdk_display_get_default_seat)
+ STUB(gdk_error_trap_pop_ignored)
+ STUB(gdk_event_get_source_device)
++STUB(gdk_seat_grab)
++STUB(gdk_seat_ungrab)
+ STUB(gdk_window_get_type)
+ STUB(gdk_x11_window_get_xid)
+ STUB(gdk_x11_display_get_type)
++STUB(gdk_wayland_window_get_wl_surface)
++STUB(gdk_wayland_window_set_use_custom_surface)
++STUB(gdk_wayland_display_get_wl_display)
++STUB(gdk_wayland_display_get_wl_compositor)
++STUB(gdk_wayland_display_get_type)
+ STUB(gtk_box_new)
+ STUB(gtk_cairo_should_draw_window)
+ STUB(gtk_cairo_transform_to_window)
+@@ -578,6 +586,7 @@ STUB(gtk_tree_view_column_get_button)
+ STUB(gtk_widget_get_preferred_size)
+ STUB(gtk_widget_get_state_flags)
+ STUB(gtk_widget_get_style_context)
++STUB(gtk_widget_input_shape_combine_region)
+ STUB(gtk_widget_path_append_for_widget)
+ STUB(gtk_widget_path_append_type)
+ STUB(gtk_widget_path_copy)
+@@ -586,6 +595,7 @@ STUB(gtk_widget_path_iter_add_class)
+ STUB(gtk_widget_path_new)
+ STUB(gtk_widget_path_unref)
+ STUB(gtk_widget_set_visual)
++STUB(gtk_widget_unregister_window)
+ STUB(gtk_app_chooser_dialog_new_for_content_type)
+ STUB(gtk_app_chooser_get_type)
+ STUB(gtk_app_chooser_get_app_info)
+@@ -631,4 +641,3 @@ XShmQueryExtension(Display* aDisplay)
+   return False;
+ }
+ #endif
+-
+diff --git a/widget/gtk/mozwayland/moz.build b/widget/gtk/mozwayland/moz.build
+new file mode 100644
+index 0000000..cc27368
+--- /dev/null
++++ b/widget/gtk/mozwayland/moz.build
+@@ -0,0 +1,15 @@
++# -*- Mode: python; indent-tabs-mode: nil; tab-width: 40 -*-
++# vim: set filetype=python:
++# This Source Code Form is subject to the terms of the Mozilla Public
++# License, v. 2.0. If a copy of the MPL was not distributed with this
++# file, You can obtain one at http://mozilla.org/MPL/2.0/.
++
++SOURCES += [
++    'mozwayland.c',
++]
++
++SharedLibrary('mozwayland')
++
++SONAME = 'mozwayland'
++
++CFLAGS += CONFIG['TK_CFLAGS']
+diff --git a/widget/gtk/mozwayland/mozwayland.c b/widget/gtk/mozwayland/mozwayland.c
+new file mode 100644
+index 0000000..9dbb581b
+--- /dev/null
++++ b/widget/gtk/mozwayland/mozwayland.c
+@@ -0,0 +1,273 @@
++/* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/Types.h"
++#include <gtk/gtk.h>
++#include <gdk/gdkwayland.h>
++
++const struct wl_interface wl_buffer_interface;
++const struct wl_interface wl_callback_interface;
++const struct wl_interface wl_data_device_interface;
++const struct wl_interface wl_data_device_manager_interface;
++const struct wl_interface wl_keyboard_interface;
++const struct wl_interface wl_region_interface;
++const struct wl_interface wl_registry_interface;
++const struct wl_interface wl_shm_interface;
++const struct wl_interface wl_shm_pool_interface;
++const struct wl_interface wl_seat_interface;
++const struct wl_interface wl_surface_interface;
++const struct wl_interface wl_subsurface_interface;
++const struct wl_interface wl_subcompositor_interface;
++
++MOZ_EXPORT void
++wl_event_queue_destroy(struct wl_event_queue *queue)
++{
++}
++
++MOZ_EXPORT void
++wl_proxy_marshal(struct wl_proxy *p, uint32_t opcode, ...)
++{
++}
++
++MOZ_EXPORT void
++wl_proxy_marshal_array(struct wl_proxy *p, uint32_t opcode,
++		       union wl_argument *args)
++{
++}
++
++MOZ_EXPORT struct wl_proxy *
++wl_proxy_create(struct wl_proxy *factory,
++		const struct wl_interface *interface)
++{
++    return NULL;
++}
++
++MOZ_EXPORT void *
++wl_proxy_create_wrapper(void *proxy)
++{
++    return NULL;
++}
++
++MOZ_EXPORT void
++wl_proxy_wrapper_destroy(void *proxy_wrapper)
++{
++}
++
++MOZ_EXPORT struct wl_proxy *
++wl_proxy_marshal_constructor(struct wl_proxy *proxy,
++			     uint32_t opcode,
++			     const struct wl_interface *interface,
++			     ...)
++{
++   return NULL;
++}
++
++MOZ_EXPORT struct wl_proxy *
++wl_proxy_marshal_constructor_versioned(struct wl_proxy *proxy,
++				       uint32_t opcode,
++				       const struct wl_interface *interface,
++				       uint32_t version,
++				       ...)
++{
++   return NULL;
++}
++
++MOZ_EXPORT struct wl_proxy *
++wl_proxy_marshal_array_constructor(struct wl_proxy *proxy,
++				   uint32_t opcode, union wl_argument *args,
++				   const struct wl_interface *interface)
++{
++   return NULL;
++}
++
++MOZ_EXPORT struct wl_proxy *
++wl_proxy_marshal_array_constructor_versioned(struct wl_proxy *proxy,
++					     uint32_t opcode,
++					     union wl_argument *args,
++					     const struct wl_interface *interface,
++					     uint32_t version)
++{
++  return NULL;
++}
++
++MOZ_EXPORT void
++wl_proxy_destroy(struct wl_proxy *proxy)
++{
++}
++
++MOZ_EXPORT int
++wl_proxy_add_listener(struct wl_proxy *proxy,
++		      void (**implementation)(void), void *data)
++{
++   return -1;
++}
++
++MOZ_EXPORT const void *
++wl_proxy_get_listener(struct wl_proxy *proxy)
++{
++   return NULL;
++}
++
++MOZ_EXPORT int
++wl_proxy_add_dispatcher(struct wl_proxy *proxy,
++			wl_dispatcher_func_t dispatcher_func,
++			const void * dispatcher_data, void *data)
++{
++   return -1;
++}
++
++MOZ_EXPORT void
++wl_proxy_set_user_data(struct wl_proxy *proxy, void *user_data)
++{
++}
++
++MOZ_EXPORT void *
++wl_proxy_get_user_data(struct wl_proxy *proxy)
++{
++   return NULL;
++}
++
++MOZ_EXPORT uint32_t
++wl_proxy_get_version(struct wl_proxy *proxy)
++{
++   return -1;
++}
++
++MOZ_EXPORT uint32_t
++wl_proxy_get_id(struct wl_proxy *proxy)
++{
++   return -1;
++}
++
++MOZ_EXPORT const char *
++wl_proxy_get_class(struct wl_proxy *proxy)
++{
++   return NULL;
++}
++
++MOZ_EXPORT void
++wl_proxy_set_queue(struct wl_proxy *proxy, struct wl_event_queue *queue)
++{
++}
++
++MOZ_EXPORT struct wl_display *
++wl_display_connect(const char *name)
++{
++   return NULL;
++}
++
++MOZ_EXPORT struct wl_display *
++wl_display_connect_to_fd(int fd)
++{
++   return NULL;
++}
++
++MOZ_EXPORT void
++wl_display_disconnect(struct wl_display *display)
++{
++}
++
++MOZ_EXPORT int
++wl_display_get_fd(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_dispatch(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_dispatch_queue(struct wl_display *display,
++			  struct wl_event_queue *queue)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_dispatch_queue_pending(struct wl_display *display,
++				  struct wl_event_queue *queue)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_dispatch_pending(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_get_error(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT uint32_t
++wl_display_get_protocol_error(struct wl_display *display,
++			      const struct wl_interface **interface,
++			      uint32_t *id)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_flush(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_roundtrip_queue(struct wl_display *display,
++			   struct wl_event_queue *queue)
++{
++  return -1;
++}
++
++MOZ_EXPORT int
++wl_display_roundtrip(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT struct wl_event_queue *
++wl_display_create_queue(struct wl_display *display)
++{
++   return NULL;
++}
++
++MOZ_EXPORT int
++wl_display_prepare_read_queue(struct wl_display *display,
++			      struct wl_event_queue *queue)
++{
++   return -1;
++}
++
++MOZ_EXPORT int
++wl_display_prepare_read(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT void
++wl_display_cancel_read(struct wl_display *display)
++{
++}
++
++MOZ_EXPORT int
++wl_display_read_events(struct wl_display *display)
++{
++   return -1;
++}
++
++MOZ_EXPORT void
++wl_log_set_handler_client(wl_log_func_t handler)
++{
++}
++
+diff --git a/widget/gtk/nsClipboard.cpp b/widget/gtk/nsClipboard.cpp
+index 053ae97..48f6ca7 100644
+--- a/widget/gtk/nsClipboard.cpp
++++ b/widget/gtk/nsClipboard.cpp
+@@ -9,6 +9,10 @@
+ 
+ #include "nsArrayUtils.h"
+ #include "nsClipboard.h"
++#include "nsClipboardX11.h"
++#if defined(MOZ_WAYLAND)
++#include "nsClipboardWayland.h"
++#endif
+ #include "nsSupportsPrimitives.h"
+ #include "nsString.h"
+ #include "nsReadableUtils.h"
+@@ -20,20 +24,11 @@
+ #include "nsIObserverService.h"
+ #include "mozilla/Services.h"
+ #include "mozilla/RefPtr.h"
+-#include "mozilla/TimeStamp.h"
+ 
+ #include "imgIContainer.h"
+ 
+ #include <gtk/gtk.h>
+-
+-// For manipulation of the X event queue
+-#include <X11/Xlib.h>
+-#include <gdk/gdkx.h>
+-#include <sys/time.h>
+-#include <sys/types.h>
+-#include <errno.h>
+-#include <unistd.h>
+-#include "X11UndefineNone.h"
++#include <gtk/gtkx.h>
+ 
+ #include "mozilla/dom/EncodingUtils.h"
+ #include "nsIUnicodeDecoder.h"
+@@ -62,24 +57,52 @@ ConvertHTMLtoUCS2          (guchar             *data,
+ static void
+ GetHTMLCharset             (guchar * data, int32_t dataLength, nsCString& str);
+ 
++GdkAtom
++GetSelectionAtom(int32_t aWhichClipboard)
++{
++    if (aWhichClipboard == nsIClipboard::kGlobalClipboard)
++        return GDK_SELECTION_CLIPBOARD;
++
++    return GDK_SELECTION_PRIMARY;
++}
++
++// Idle timeout for receiving selection and property notify events (microsec)
++const int
++nsRetrievalContext::kClipboardTimeout = 500000;
++
++NS_IMPL_ISUPPORTS(nsRetrievalContext, nsIObserver)
+ 
+-// Our own versions of gtk_clipboard_wait_for_contents and
+-// gtk_clipboard_wait_for_text, which don't run the event loop while
+-// waiting for the data.  This prevents a lot of problems related to
+-// dispatching events at unexpected times.
++nsRetrievalContext::nsRetrievalContext(void)
++{
++    nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
++    if (os) {
++        os->AddObserver(this, "quit-application", false);
++    }
++}
+ 
+-static GtkSelectionData *
+-wait_for_contents          (GtkClipboard *clipboard, GdkAtom target);
++nsRetrievalContext::~nsRetrievalContext(void)
++{
++}
+ 
+-static gchar *
+-wait_for_text              (GtkClipboard *clipboard);
++NS_IMETHODIMP
++nsRetrievalContext::Observe(nsISupports *aSubject, const char *aTopic, const char16_t *aData)
++{
++    if (strcmp(aTopic, "quit-application") == 0) {
++        // application is going to quit, save clipboard content
++        Store();
++    }
++    return NS_OK;
++}
+ 
+-static GdkFilterReturn
+-selection_request_filter   (GdkXEvent *gdk_xevent,
+-                            GdkEvent *event,
+-                            gpointer data);
++void
++nsRetrievalContext::Store(void)
++{
++    GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
++    gtk_clipboard_store(clipboard);
++}
+ 
+ nsClipboard::nsClipboard()
++ : mContext(nullptr)
+ {
+ }
+ 
+@@ -100,40 +123,24 @@ NS_IMPL_ISUPPORTS(nsClipboard, nsIClipboard)
+ nsresult
+ nsClipboard::Init(void)
+ {
+-    nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
+-    if (!os)
+-      return NS_ERROR_FAILURE;
+-
+-    os->AddObserver(this, "quit-application", false);
+-
+-    // A custom event filter to workaround attempting to dereference a null
+-    // selection requestor in GTK3 versions before 3.11.3. See bug 1178799.
+-#if (MOZ_WIDGET_GTK == 3) && defined(MOZ_X11)
+-    if (gtk_check_version(3, 11, 3))
+-        gdk_window_add_filter(nullptr, selection_request_filter, nullptr);
++    // create nsRetrievalContext
++    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++        mContext = new nsRetrievalContextX11();
++#if defined(MOZ_WAYLAND)
++    } else {
++        mContext = new nsRetrievalContextWayland();
+ #endif
+-
+-    return NS_OK;
+-}
+-
+-NS_IMETHODIMP
+-nsClipboard::Observe(nsISupports *aSubject, const char *aTopic, const char16_t *aData)
+-{
+-    if (strcmp(aTopic, "quit-application") == 0) {
+-        // application is going to quit, save clipboard content
+-        Store();
+-        gdk_window_remove_filter(nullptr, selection_request_filter, nullptr);
+     }
+     return NS_OK;
+ }
+ 
++
+ nsresult
+ nsClipboard::Store(void)
+ {
+     // Ask the clipboard manager to store the current clipboard content
+     if (mGlobalTransferable) {
+-        GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+-        gtk_clipboard_store(clipboard);
++        mContext->Store();
+     }
+     return NS_OK;
+ }
+@@ -248,11 +255,8 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+     if (!aTransferable)
+         return NS_ERROR_FAILURE;
+ 
+-    GtkClipboard *clipboard;
+-    clipboard = gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
+-
+     guchar        *data = nullptr;
+-    gint           length = 0;
++    uint32_t       length = 0;
+     bool           foundData = false;
+     nsAutoCString  foundFlavor;
+ 
+@@ -276,21 +280,34 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+             // Special case text/unicode since we can convert any
+             // string into text/unicode
+             if (!strcmp(flavorStr, kUnicodeMime)) {
+-                gchar* new_text = wait_for_text(clipboard);
+-                if (new_text) {
+-                    // Convert utf-8 into our unicode format.
+-                    NS_ConvertUTF8toUTF16 ucs2string(new_text);
+-                    data = (guchar *)ToNewUnicode(ucs2string);
+-                    length = ucs2string.Length() * 2;
++                nsCOMPtr<nsIInputStream> dataStream;
++                rv = mContext->GetClipboardContent(GTK_DEFAULT_MIME_TEXT,
++                                                   aWhichClipboard,
++                                                   getter_AddRefs(dataStream),
++                                                   &length);
++                if (NS_FAILED(rv)) {
++                    // If the type was text/unicode and we couldn't get
++                    // text off the clipboard, run the next loop
++                    // iteration.
++                    continue;
++                }
++
++                char* new_text = (char*)g_malloc(length);
++                uint32_t ret;
++                rv = dataStream->Read(new_text, length, &ret);
++                if(NS_FAILED(rv)) {
+                     g_free(new_text);
+-                    foundData = true;
+-                    foundFlavor = kUnicodeMime;
+-                    break;
++                    continue;
+                 }
+-                // If the type was text/unicode and we couldn't get
+-                // text off the clipboard, run the next loop
+-                // iteration.
+-                continue;
++
++                // Convert utf-8 into our unicode format.
++                NS_ConvertUTF8toUTF16 ucs2string(new_text, length);
++                data = (guchar *)ToNewUnicode(ucs2string);
++                length = ucs2string.Length() * 2;
++                g_free(new_text);
++                foundData = true;
++                foundFlavor = kUnicodeMime;
++                break;
+             }
+ 
+             // For images, we must wrap the data in an nsIInputStream then return instead of break,
+@@ -304,52 +321,54 @@ nsClipboard::GetData(nsITransferable *aTransferable, int32_t aWhichClipboard)
+                     flavorStr.Assign(kJPEGImageMime);
+                 }
+ 
+-                GdkAtom atom = gdk_atom_intern(flavorStr, FALSE);
+-
+-                GtkSelectionData *selectionData = wait_for_contents(clipboard, atom);
+-                if (!selectionData)
++                nsCOMPtr<nsIInputStream> byteStream;
++                rv = mContext->GetClipboardContent(flavorStr.get(), aWhichClipboard,
++                                                   getter_AddRefs(byteStream),
++                                                   &length);
++                if (NS_FAILED(rv))
+                     continue;
+ 
+-                nsCOMPtr<nsIInputStream> byteStream;
+-                NS_NewByteInputStream(getter_AddRefs(byteStream), 
+-                                      (const char*)gtk_selection_data_get_data(selectionData),
+-                                      gtk_selection_data_get_length(selectionData), 
+-                                      NS_ASSIGNMENT_COPY);
+                 aTransferable->SetTransferData(flavorStr, byteStream, sizeof(nsIInputStream*));
+-                gtk_selection_data_free(selectionData);
+                 return NS_OK;
+             }
+ 
+-            // Get the atom for this type and try to request it off
+-            // the clipboard.
+-            GdkAtom atom = gdk_atom_intern(flavorStr, FALSE);
+-            GtkSelectionData *selectionData;
+-            selectionData = wait_for_contents(clipboard, atom);
+-            if (selectionData) {
+-                const guchar *clipboardData = gtk_selection_data_get_data(selectionData);
+-                length = gtk_selection_data_get_length(selectionData);
++            // Try to request it off the clipboard.
++            nsCOMPtr<nsIInputStream> byteStream;
++            rv = mContext->GetClipboardContent(flavorStr.get(), aWhichClipboard,
++                                               getter_AddRefs(byteStream),
++                                               &length);
++            if (NS_SUCCEEDED(rv)) {
+                 // Special case text/html since we can convert into UCS2
+                 if (!strcmp(flavorStr, kHTMLMime)) {
++                    guchar *clipboardData = (guchar *)g_malloc(length);
++                    uint32_t ret;
++                    rv = byteStream->Read((char*)clipboardData, length, &ret);
++                    if(NS_FAILED(rv)) {
++                        g_free(clipboardData);
++                        continue;
++                    }
++
+                     char16_t* htmlBody= nullptr;
+                     int32_t htmlBodyLen = 0;
+                     // Convert text/html into our unicode format
+-                    ConvertHTMLtoUCS2(const_cast<guchar*>(clipboardData), length,
++                    ConvertHTMLtoUCS2(clipboardData, length,
+                                       &htmlBody, htmlBodyLen);
++                    g_free(clipboardData);
++
+                     // Try next data format?
+                     if (!htmlBodyLen)
+                         continue;
+                     data = (guchar *)htmlBody;
+                     length = htmlBodyLen * 2;
++
++                    foundData = true;
++                    foundFlavor = flavorStr;
++
+                 } else {
+-                    data = (guchar *)moz_xmalloc(length);
+-                    if (!data)
+-                        break;
+-                    memcpy(data, clipboardData, length);
++                    aTransferable->SetTransferData(flavorStr, byteStream,
++                                                   sizeof(nsIInputStream*));
++                    return NS_OK;
+                 }
+-                gtk_selection_data_free(selectionData);
+-                foundData = true;
+-                foundFlavor = flavorStr;
+-                break;
+             }
+         }
+     }
+@@ -394,63 +413,16 @@ NS_IMETHODIMP
+ nsClipboard::HasDataMatchingFlavors(const char** aFlavorList, uint32_t aLength,
+                                     int32_t aWhichClipboard, bool *_retval)
+ {
+-    if (!aFlavorList || !_retval)
+-        return NS_ERROR_NULL_POINTER;
+-
+-    *_retval = false;
+-
+-    GtkSelectionData *selection_data =
+-        GetTargets(GetSelectionAtom(aWhichClipboard));
+-    if (!selection_data)
+-        return NS_OK;
+-
+-    gint n_targets = 0;
+-    GdkAtom *targets = nullptr;
+-
+-    if (!gtk_selection_data_get_targets(selection_data, 
+-                                        &targets, &n_targets) ||
+-        !n_targets)
+-        return NS_OK;
+-
+-    // Walk through the provided types and try to match it to a
+-    // provided type.
+-    for (uint32_t i = 0; i < aLength && !*_retval; i++) {
+-        // We special case text/unicode here.
+-        if (!strcmp(aFlavorList[i], kUnicodeMime) && 
+-            gtk_selection_data_targets_include_text(selection_data)) {
+-            *_retval = true;
+-            break;
+-        }
+-
+-        for (int32_t j = 0; j < n_targets; j++) {
+-            gchar *atom_name = gdk_atom_name(targets[j]);
+-            if (!atom_name)
+-                continue;
+-
+-            if (!strcmp(atom_name, aFlavorList[i]))
+-                *_retval = true;
+-
+-            // X clipboard supports image/jpeg, but we want to emulate support
+-            // for image/jpg as well
+-            if (!strcmp(aFlavorList[i], kJPGImageMime) && !strcmp(atom_name, kJPEGImageMime))
+-                *_retval = true;
+-
+-            g_free(atom_name);
+-
+-            if (*_retval)
+-                break;
+-        }
+-    }
+-    gtk_selection_data_free(selection_data);
+-    g_free(targets);
+-
+-    return NS_OK;
++    return mContext->HasDataMatchingFlavors(aFlavorList, aLength,
++                                            aWhichClipboard, _retval);
+ }
+ 
+ NS_IMETHODIMP
+ nsClipboard::SupportsSelectionClipboard(bool *_retval)
+ {
+-    *_retval = true; // yeah, unix supports the selection clipboard
++    // yeah, unix supports the selection clipboard on X11
++    // TODO Wayland
++    *_retval = GDK_IS_X11_DISPLAY(gdk_display_get_default());
+     return NS_OK;
+ }
+ 
+@@ -461,24 +433,6 @@ nsClipboard::SupportsFindClipboard(bool* _retval)
+   return NS_OK;
+ }
+ 
+-/* static */
+-GdkAtom
+-nsClipboard::GetSelectionAtom(int32_t aWhichClipboard)
+-{
+-    if (aWhichClipboard == kGlobalClipboard)
+-        return GDK_SELECTION_CLIPBOARD;
+-
+-    return GDK_SELECTION_PRIMARY;
+-}
+-
+-/* static */
+-GtkSelectionData *
+-nsClipboard::GetTargets(GdkAtom aWhichClipboard)
+-{
+-    GtkClipboard *clipboard = gtk_clipboard_get(aWhichClipboard);
+-    return wait_for_contents(clipboard, gdk_atom_intern("TARGETS", FALSE));
+-}
+-
+ nsITransferable *
+ nsClipboard::GetTransferable(int32_t aWhichClipboard)
+ {
+@@ -801,246 +755,3 @@ void GetHTMLCharset(guchar * data, int32_t dataLength, nsCString& str)
+     }
+     str.AssignLiteral("UNKNOWN");
+ }
+-
+-static void
+-DispatchSelectionNotifyEvent(GtkWidget *widget, XEvent *xevent)
+-{
+-    GdkEvent event;
+-    event.selection.type = GDK_SELECTION_NOTIFY;
+-    event.selection.window = gtk_widget_get_window(widget);
+-    event.selection.selection = gdk_x11_xatom_to_atom(xevent->xselection.selection);
+-    event.selection.target = gdk_x11_xatom_to_atom(xevent->xselection.target);
+-    event.selection.property = gdk_x11_xatom_to_atom(xevent->xselection.property);
+-    event.selection.time = xevent->xselection.time;
+-
+-    gtk_widget_event(widget, &event);
+-}
+-
+-static void
+-DispatchPropertyNotifyEvent(GtkWidget *widget, XEvent *xevent)
+-{
+-    GdkWindow *window = gtk_widget_get_window(widget);
+-    if ((gdk_window_get_events(window)) & GDK_PROPERTY_CHANGE_MASK) {
+-        GdkEvent event;
+-        event.property.type = GDK_PROPERTY_NOTIFY;
+-        event.property.window = window;
+-        event.property.atom = gdk_x11_xatom_to_atom(xevent->xproperty.atom);
+-        event.property.time = xevent->xproperty.time;
+-        event.property.state = xevent->xproperty.state;
+-
+-        gtk_widget_event(widget, &event);
+-    }
+-}
+-
+-struct checkEventContext
+-{
+-    GtkWidget *cbWidget;
+-    Atom       selAtom;
+-};
+-
+-static Bool
+-checkEventProc(Display *display, XEvent *event, XPointer arg)
+-{
+-    checkEventContext *context = (checkEventContext *) arg;
+-
+-    if (event->xany.type == SelectionNotify ||
+-        (event->xany.type == PropertyNotify &&
+-         event->xproperty.atom == context->selAtom)) {
+-
+-        GdkWindow *cbWindow = 
+-            gdk_x11_window_lookup_for_display(gdk_x11_lookup_xdisplay(display),
+-                                              event->xany.window);
+-        if (cbWindow) {
+-            GtkWidget *cbWidget = nullptr;
+-            gdk_window_get_user_data(cbWindow, (gpointer *)&cbWidget);
+-            if (cbWidget && GTK_IS_WIDGET(cbWidget)) {
+-                context->cbWidget = cbWidget;
+-                return True;
+-            }
+-        }
+-    }
+-
+-    return False;
+-}
+-
+-// Idle timeout for receiving selection and property notify events (microsec)
+-static const int kClipboardTimeout = 500000;
+-
+-static gchar* CopyRetrievedData(const gchar *aData)
+-{
+-    return g_strdup(aData);
+-}
+-
+-static GtkSelectionData* CopyRetrievedData(GtkSelectionData *aData)
+-{
+-    // A negative length indicates that retrieving the data failed.
+-    return gtk_selection_data_get_length(aData) >= 0 ?
+-        gtk_selection_data_copy(aData) : nullptr;
+-}
+-
+-class RetrievalContext {
+-    ~RetrievalContext()
+-    {
+-        MOZ_ASSERT(!mData, "Wait() wasn't called");
+-    }
+-
+-public:
+-    NS_INLINE_DECL_REFCOUNTING(RetrievalContext)
+-    enum State { INITIAL, COMPLETED, TIMED_OUT };
+-
+-    RetrievalContext() : mState(INITIAL), mData(nullptr) {}
+-
+-    /**
+-     * Call this when data has been retrieved.
+-     */
+-    template <class T> void Complete(T *aData)
+-    {
+-        if (mState == INITIAL) {
+-            mState = COMPLETED;
+-            mData = CopyRetrievedData(aData);
+-        } else {
+-            // Already timed out
+-            MOZ_ASSERT(mState == TIMED_OUT);
+-        }
+-    }
+-
+-    /**
+-     * Spins X event loop until timing out or being completed. Returns
+-     * null if we time out, otherwise returns the completed data (passing
+-     * ownership to caller).
+-     */
+-    void *Wait();
+-
+-protected:
+-    State mState;
+-    void* mData;
+-};
+-
+-void *
+-RetrievalContext::Wait()
+-{
+-    if (mState == COMPLETED) { // the request completed synchronously
+-        void *data = mData;
+-        mData = nullptr;
+-        return data;
+-    }
+-
+-    GdkDisplay *gdkDisplay = gdk_display_get_default();
+-    if (GDK_IS_X11_DISPLAY(gdkDisplay)) {
+-        Display *xDisplay = GDK_DISPLAY_XDISPLAY(gdkDisplay);
+-        checkEventContext context;
+-        context.cbWidget = nullptr;
+-        context.selAtom = gdk_x11_atom_to_xatom(gdk_atom_intern("GDK_SELECTION",
+-                                                                FALSE));
+-
+-        // Send X events which are relevant to the ongoing selection retrieval
+-        // to the clipboard widget.  Wait until either the operation completes, or
+-        // we hit our timeout.  All other X events remain queued.
+-
+-        int select_result;
+-
+-        int cnumber = ConnectionNumber(xDisplay);
+-        fd_set select_set;
+-        FD_ZERO(&select_set);
+-        FD_SET(cnumber, &select_set);
+-        ++cnumber;
+-        TimeStamp start = TimeStamp::Now();
+-
+-        do {
+-            XEvent xevent;
+-
+-            while (XCheckIfEvent(xDisplay, &xevent, checkEventProc,
+-                                 (XPointer) &context)) {
+-
+-                if (xevent.xany.type == SelectionNotify)
+-                    DispatchSelectionNotifyEvent(context.cbWidget, &xevent);
+-                else
+-                    DispatchPropertyNotifyEvent(context.cbWidget, &xevent);
+-
+-                if (mState == COMPLETED) {
+-                    void *data = mData;
+-                    mData = nullptr;
+-                    return data;
+-                }
+-            }
+-
+-            TimeStamp now = TimeStamp::Now();
+-            struct timeval tv;
+-            tv.tv_sec = 0;
+-            tv.tv_usec = std::max<int32_t>(0,
+-                kClipboardTimeout - (now - start).ToMicroseconds());
+-            select_result = select(cnumber, &select_set, nullptr, nullptr, &tv);
+-        } while (select_result == 1 ||
+-                 (select_result == -1 && errno == EINTR));
+-    }
+-#ifdef DEBUG_CLIPBOARD
+-    printf("exceeded clipboard timeout\n");
+-#endif
+-    mState = TIMED_OUT;
+-    return nullptr;
+-}
+-
+-static void
+-clipboard_contents_received(GtkClipboard     *clipboard,
+-                            GtkSelectionData *selection_data,
+-                            gpointer          data)
+-{
+-    RetrievalContext *context = static_cast<RetrievalContext*>(data);
+-    context->Complete(selection_data);
+-    context->Release();
+-}
+-
+-static GtkSelectionData *
+-wait_for_contents(GtkClipboard *clipboard, GdkAtom target)
+-{
+-    RefPtr<RetrievalContext> context = new RetrievalContext();
+-    // Balanced by Release in clipboard_contents_received
+-    context.get()->AddRef();
+-    gtk_clipboard_request_contents(clipboard, target,
+-                                   clipboard_contents_received,
+-                                   context.get());
+-    return static_cast<GtkSelectionData*>(context->Wait());
+-}
+-
+-static void
+-clipboard_text_received(GtkClipboard *clipboard,
+-                        const gchar  *text,
+-                        gpointer      data)
+-{
+-    RetrievalContext *context = static_cast<RetrievalContext*>(data);
+-    context->Complete(text);
+-    context->Release();
+-}
+-
+-static gchar *
+-wait_for_text(GtkClipboard *clipboard)
+-{
+-    RefPtr<RetrievalContext> context = new RetrievalContext();
+-    // Balanced by Release in clipboard_text_received
+-    context.get()->AddRef();
+-    gtk_clipboard_request_text(clipboard, clipboard_text_received, context.get());
+-    return static_cast<gchar*>(context->Wait());
+-}
+-
+-static GdkFilterReturn
+-selection_request_filter(GdkXEvent *gdk_xevent, GdkEvent *event, gpointer data)
+-{
+-    XEvent *xevent = static_cast<XEvent*>(gdk_xevent);
+-    if (xevent->xany.type == SelectionRequest) {
+-        if (xevent->xselectionrequest.requestor == X11None)
+-            return GDK_FILTER_REMOVE;
+-
+-        GdkDisplay *display = gdk_x11_lookup_xdisplay(
+-                xevent->xselectionrequest.display);
+-        if (!display)
+-            return GDK_FILTER_REMOVE;
+-
+-        GdkWindow *window = gdk_x11_window_foreign_new_for_display(display,
+-                xevent->xselectionrequest.requestor);
+-        if (!window)
+-            return GDK_FILTER_REMOVE;
+-
+-        g_object_unref(window);
+-    }
+-    return GDK_FILTER_CONTINUE;
+-}
+diff --git a/widget/gtk/nsClipboard.h b/widget/gtk/nsClipboard.h
+index 70c866a..21c9661 100644
+--- a/widget/gtk/nsClipboard.h
++++ b/widget/gtk/nsClipboard.h
+@@ -10,10 +10,39 @@
+ 
+ #include "nsIClipboard.h"
+ #include "nsIObserver.h"
++#include "nsIBinaryOutputStream.h"
+ #include <gtk/gtk.h>
+ 
+-class nsClipboard : public nsIClipboard,
+-                    public nsIObserver
++// Default Gtk MIME for text
++#define GTK_DEFAULT_MIME_TEXT "UTF8_STRING"
++
++class nsRetrievalContext : public nsIObserver {
++public:
++    NS_DECL_ISUPPORTS
++    NS_DECL_NSIOBSERVER
++
++    nsRetrievalContext();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) = 0;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) = 0;
++
++    // Save global clipboard content to gtk
++    void  Store(void);
++
++protected:
++    virtual ~nsRetrievalContext();
++
++    // Idle timeout for receiving selection and property notify events (microsec)
++    static const int kClipboardTimeout;
++};
++
++class nsClipboard : public nsIClipboard
+ {
+ public:
+     nsClipboard();
+@@ -21,7 +50,6 @@ public:
+     NS_DECL_ISUPPORTS
+     
+     NS_DECL_NSICLIPBOARD
+-    NS_DECL_NSIOBSERVER
+ 
+     // Make sure we are initialized, called from the factory
+     // constructor
+@@ -35,10 +63,6 @@ public:
+ private:
+     virtual ~nsClipboard();
+ 
+-    // Utility methods
+-    static GdkAtom               GetSelectionAtom (int32_t aWhichClipboard);
+-    static GtkSelectionData     *GetTargets       (GdkAtom aWhichClipboard);
+-
+     // Save global clipboard content to gtk
+     nsresult                     Store            (void);
+ 
+@@ -52,7 +76,9 @@ private:
+     nsCOMPtr<nsIClipboardOwner>  mGlobalOwner;
+     nsCOMPtr<nsITransferable>    mSelectionTransferable;
+     nsCOMPtr<nsITransferable>    mGlobalTransferable;
+-
++    RefPtr<nsRetrievalContext>   mContext;
+ };
+ 
++GdkAtom GetSelectionAtom(int32_t aWhichClipboard);
++
+ #endif /* __nsClipboard_h_ */
+diff --git a/widget/gtk/nsClipboardWayland.cpp b/widget/gtk/nsClipboardWayland.cpp
+new file mode 100644
+index 0000000..30bec84
+--- /dev/null
++++ b/widget/gtk/nsClipboardWayland.cpp
+@@ -0,0 +1,448 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/ArrayUtils.h"
++
++#include "nsArrayUtils.h"
++#include "nsClipboard.h"
++#include "nsClipboardWayland.h"
++#include "nsIStorageStream.h"
++#include "nsIBinaryOutputStream.h"
++#include "nsSupportsPrimitives.h"
++#include "nsString.h"
++#include "nsReadableUtils.h"
++#include "nsXPIDLString.h"
++#include "nsPrimitiveHelpers.h"
++#include "nsIServiceManager.h"
++#include "nsImageToPixbuf.h"
++#include "nsStringStream.h"
++#include "nsIObserverService.h"
++#include "mozilla/Services.h"
++#include "mozilla/RefPtr.h"
++#include "mozilla/TimeStamp.h"
++
++#include "imgIContainer.h"
++
++#include <gtk/gtk.h>
++#include <poll.h>
++#include <sys/epoll.h>
++#include <stdlib.h>
++#include <string.h>
++#include <fcntl.h>
++#include <gtk/gtk.h>
++#include <gdk/gdkwayland.h>
++#include <errno.h>
++
++void
++nsRetrievalContextWayland::ResetMIMETypeList(void)
++{
++  int length = mMIMETypes.Length();
++  for (int i = 0; i < length; i++) {
++      free(mMIMETypes[i]);
++  }
++  mMIMETypes.Clear();
++}
++
++void
++nsRetrievalContextWayland::AddMIMEType(const char *aMimeType)
++{
++    mMIMETypes.AppendElement(strdup(aMimeType));
++}
++
++bool
++nsRetrievalContextWayland::HasMIMEType(const char *aMimeType)
++{
++    int length = mMIMETypes.Length();
++    for (int i = 0; i < length; i++) {
++        if(strcmp(mMIMETypes[i], aMimeType) == 0)
++            return true;
++    }
++    return false;
++}
++
++bool
++nsRetrievalContextWayland::HasMIMETypeText(void)
++{
++    // Taken from gtk_targets_include_text()
++    int length = mMIMETypes.Length();
++    for (int i = 0; i < length; i++) {
++        if(strcmp(mMIMETypes[i], "UTF8_STRING") == 0 ||
++           strcmp(mMIMETypes[i], "TEXT") == 0 ||
++           strcmp(mMIMETypes[i], "COMPOUND_TEXT") == 0 ||
++           strcmp(mMIMETypes[i], "text/plain") == 0 ||
++           strcmp(mMIMETypes[i], "text/plain;charset=utf-8") == 0 ||
++           strcmp(mMIMETypes[i], "mTextPlainLocale") == 0)
++        {
++            return true;
++        }
++    }
++    return false;
++}
++
++void
++nsRetrievalContextWayland::SetDataOffer(wl_data_offer *aDataOffer)
++{
++    if(mDataOffer) {
++        wl_data_offer_destroy(mDataOffer);
++    }
++    mDataOffer = aDataOffer;
++}
++
++static void
++data_device_selection (void                  *data,
++                       struct wl_data_device *wl_data_device,
++                       struct wl_data_offer  *offer)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++    context->SetDataOffer(offer);
++}
++
++static void
++data_offer_offer (void                 *data,
++                  struct wl_data_offer *wl_data_offer,
++                  const char           *type)
++{
++  nsRetrievalContextWayland *context =
++      static_cast<nsRetrievalContextWayland*>(data);
++  context->AddMIMEType(type);
++}
++
++static void
++data_offer_source_actions(void *data,
++                          struct wl_data_offer *wl_data_offer,
++                          uint32_t source_actions)
++{
++}
++
++static void
++data_offer_action(void *data,
++                  struct wl_data_offer *wl_data_offer,
++                  uint32_t dnd_action)
++{
++}
++
++static const struct wl_data_offer_listener data_offer_listener = {
++    data_offer_offer,
++    data_offer_source_actions,
++    data_offer_action
++};
++
++static void
++data_device_data_offer (void                  *data,
++                        struct wl_data_device *data_device,
++                        struct wl_data_offer  *offer)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++
++    // We have a new fresh clipboard content
++    context->ResetMIMETypeList();
++    wl_data_offer_add_listener (offer, &data_offer_listener, data);
++}
++
++static void
++data_device_enter (void                  *data,
++                   struct wl_data_device *data_device,
++                   uint32_t               time,
++                   struct wl_surface     *surface,
++                   int32_t                x,
++                   int32_t                y,
++                   struct wl_data_offer  *offer)
++{
++}
++
++static void
++data_device_leave (void                  *data,
++                   struct wl_data_device *data_device)
++{
++}
++
++static void
++data_device_motion (void                  *data,
++                    struct wl_data_device *data_device,
++                    uint32_t               time,
++                    int32_t                x,
++                    int32_t                y)
++{
++}
++
++static void
++data_device_drop (void                  *data,
++                  struct wl_data_device *data_device)
++{
++}
++
++static const struct wl_data_device_listener data_device_listener = {
++    data_device_data_offer,
++    data_device_enter,
++    data_device_leave,
++    data_device_motion,
++    data_device_drop,
++    data_device_selection
++};
++
++static void
++keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
++                       uint32_t format, int fd, uint32_t size)
++{
++}
++
++static void
++keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
++                      uint32_t serial, struct wl_surface *surface,
++                      struct wl_array *keys)
++{
++}
++
++static void
++keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
++                      uint32_t serial, struct wl_surface *surface)
++{
++    // We lost focus so our clipboard data are outdated
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++
++    context->ResetMIMETypeList();
++    context->SetDataOffer(nullptr);
++}
++
++static void
++keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
++                    uint32_t serial, uint32_t time, uint32_t key,
++                    uint32_t state)
++{
++}
++
++static void
++keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
++                          uint32_t serial, uint32_t mods_depressed,
++                          uint32_t mods_latched, uint32_t mods_locked,
++                          uint32_t group)
++{
++}
++
++static const struct wl_keyboard_listener keyboard_listener = {
++    keyboard_handle_keymap,
++    keyboard_handle_enter,
++    keyboard_handle_leave,
++    keyboard_handle_key,
++    keyboard_handle_modifiers,
++};
++
++void
++nsRetrievalContextWayland::ConfigureKeyboard(wl_seat_capability caps)
++{
++  if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
++      mKeyboard = wl_seat_get_keyboard(mSeat);
++      wl_keyboard_add_listener(mKeyboard, &keyboard_listener, this);
++  } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
++      wl_keyboard_destroy(mKeyboard);
++      mKeyboard = nullptr;
++  }
++}
++
++static void
++seat_handle_capabilities(void *data, struct wl_seat *seat,
++                         unsigned int caps)
++{
++    nsRetrievalContextWayland *context =
++        static_cast<nsRetrievalContextWayland*>(data);
++    context->ConfigureKeyboard((wl_seat_capability)caps);
++}
++
++static const struct wl_seat_listener seat_listener = {
++      seat_handle_capabilities,
++};
++
++void
++nsRetrievalContextWayland::InitDataDeviceManager(wl_registry *registry,
++                                                 uint32_t id,
++                                                 uint32_t version)
++{
++  int data_device_manager_version = MIN (version, 3);
++  mDataDeviceManager = (wl_data_device_manager *)wl_registry_bind(registry, id,
++      &wl_data_device_manager_interface, data_device_manager_version);
++}
++
++void nsRetrievalContextWayland::InitSeat(wl_registry *registry,
++                                         uint32_t id, uint32_t version,
++                                         void *data)
++{
++  mSeat = (wl_seat*)wl_registry_bind(registry, id, &wl_seat_interface, 1);
++  wl_seat_add_listener(mSeat, &seat_listener, data);
++}
++
++static void
++gdk_registry_handle_global(void               *data,
++                           struct wl_registry *registry,
++                           uint32_t            id,
++                           const char         *interface,
++                           uint32_t            version)
++{
++  nsRetrievalContextWayland *context =
++      static_cast<nsRetrievalContextWayland*>(data);
++
++  if (strcmp (interface, "wl_data_device_manager") == 0) {
++    context->InitDataDeviceManager(registry, id, version);
++  } else if (strcmp(interface, "wl_seat") == 0) {
++    context->InitSeat(registry, id, version, data);
++  }
++}
++
++static void
++gdk_registry_handle_global_remove(void               *data,
++                                 struct wl_registry *registry,
++                                 uint32_t            id)
++{
++}
++
++static const struct wl_registry_listener clipboard_registry_listener = {
++    gdk_registry_handle_global,
++    gdk_registry_handle_global_remove
++};
++
++nsRetrievalContextWayland::nsRetrievalContextWayland(void)
++  : mInitialized(false),
++    mDataDeviceManager(nullptr),
++    mDataOffer(nullptr)
++{
++    const gchar* charset;
++    g_get_charset(&charset);
++    mTextPlainLocale = g_strdup_printf("text/plain;charset=%s", charset);
++
++    mDisplay = gdk_wayland_display_get_wl_display(gdk_display_get_default());
++    wl_registry_add_listener(wl_display_get_registry(mDisplay),
++                             &clipboard_registry_listener, this);
++    wl_display_roundtrip(mDisplay);
++    wl_display_roundtrip(mDisplay);
++
++    // We don't have Wayland support here so just give up
++    if (!mDataDeviceManager || !mSeat)
++        return;
++
++    wl_data_device *dataDevice =
++        wl_data_device_manager_get_data_device(mDataDeviceManager, mSeat);
++    wl_data_device_add_listener(dataDevice, &data_device_listener, this);
++    // We have to call wl_display_roundtrip() twice otherwise data_offer_listener
++    // may not be processed because it's called from data_device_data_offer
++    // callback.
++    wl_display_roundtrip(mDisplay);
++    wl_display_roundtrip(mDisplay);
++
++    mInitialized = true;
++}
++
++nsRetrievalContextWayland::~nsRetrievalContextWayland(void)
++{
++    g_free(mTextPlainLocale);
++}
++
++NS_IMETHODIMP
++nsRetrievalContextWayland::HasDataMatchingFlavors(const char** aFlavorList,
++    uint32_t aLength, int32_t aWhichClipboard, bool *_retval)
++{
++    if (!aFlavorList || !_retval)
++        return NS_ERROR_NULL_POINTER;
++
++    *_retval = false;
++
++    // Walk through the provided types and try to match it to a
++    // provided type.
++    for (uint32_t i = 0; i < aLength; i++) {
++        // We special case text/unicode here.
++        if (!strcmp(aFlavorList[i], kUnicodeMime) &&
++            HasMIMETypeText()) {
++            *_retval = true;
++            break;
++        }
++        if (HasMIMEType(aFlavorList[i])) {
++            *_retval = true;
++            break;
++        }
++        // X clipboard supports image/jpeg, but we want to emulate support
++        // for image/jpg as well
++        if (!strcmp(aFlavorList[i], kJPGImageMime) &&
++            HasMIMEType(kJPEGImageMime)) {
++            *_retval = true;
++            break;
++        }
++    }
++
++    return NS_OK;
++}
++
++nsresult
++nsRetrievalContextWayland::GetClipboardContent(const char* aMimeType,
++                                               int32_t aWhichClipboard,
++                                               nsIInputStream** aResult,
++                                               uint32_t* aContentLength)
++{
++    NS_ASSERTION(mDataOffer, "Requested data without valid data offer!");
++
++    if (!mDataOffer) {
++        // TODO
++        // Something went wrong. We're requested to provide clipboard data
++        // but we haven't got any from wayland. Looks like rhbz#1455915.
++        // Return NS_ERROR_FAILURE to avoid crash.
++        return NS_ERROR_FAILURE;
++    }
++
++    int pipe_fd[2];
++    if (pipe(pipe_fd) == -1)
++        return NS_ERROR_FAILURE;
++
++    wl_data_offer_receive(mDataOffer, aMimeType, pipe_fd[1]);
++    close(pipe_fd[1]);
++    wl_display_flush(mDisplay);
++
++    nsresult rv;
++    nsCOMPtr<nsIStorageStream> storageStream;
++    nsCOMPtr<nsIBinaryOutputStream> stream;
++    int length;
++
++    struct pollfd fds;
++    fds.fd = pipe_fd[0];
++    fds.events = POLLIN;
++
++    // Choose some reasonable timeout here
++    int ret = poll(&fds, 1, kClipboardTimeout*1000);
++    if (!ret || ret == -1) {
++        close(pipe_fd[0]);
++        return NS_ERROR_FAILURE;
++    }
++
++    #define BUFFER_SIZE 4096
++
++    NS_NewStorageStream(BUFFER_SIZE, UINT32_MAX, getter_AddRefs(storageStream));
++    nsCOMPtr<nsIOutputStream> outputStream;
++    rv = storageStream->GetOutputStream(0, getter_AddRefs(outputStream));
++    if (NS_FAILED(rv)) {
++        close(pipe_fd[0]);
++        return NS_ERROR_FAILURE;
++    }
++
++    do {
++        char buffer[BUFFER_SIZE];
++        length = read(pipe_fd[0], buffer, sizeof(buffer));
++        if (length == 0 || length == -1)
++            break;
++
++        uint32_t ret;
++        rv = outputStream->Write(buffer, length, &ret);
++    } while(NS_SUCCEEDED(rv) && length == BUFFER_SIZE);
++
++    outputStream->Close();
++    close(pipe_fd[0]);
++
++    rv = storageStream->GetLength(aContentLength);
++    NS_ENSURE_SUCCESS(rv, rv);
++
++    rv = storageStream->NewInputStream(0, aResult);
++    NS_ENSURE_SUCCESS(rv, rv);
++    return NS_OK;
++}
+diff --git a/widget/gtk/nsClipboardWayland.h b/widget/gtk/nsClipboardWayland.h
+new file mode 100644
+index 0000000..0feede8
+--- /dev/null
++++ b/widget/gtk/nsClipboardWayland.h
+@@ -0,0 +1,53 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef __nsClipboardWayland_h_
++#define __nsClipboardWayland_h_
++
++#include "nsIClipboard.h"
++#include <gtk/gtk.h>
++#include <gdk/gdkwayland.h>
++#include <nsTArray.h>
++
++class nsRetrievalContextWayland : public nsRetrievalContext
++{
++public:
++    nsRetrievalContextWayland();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) override;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) override;
++
++    void SetDataOffer(wl_data_offer *aDataOffer);
++    void AddMIMEType(const char *aMimeType);
++    bool HasMIMEType(const char *aMimeType);
++    // Our version of gtk_selection_data_targets_include_text()
++    bool HasMIMETypeText(void);
++    void ResetMIMETypeList(void);
++    void ConfigureKeyboard(wl_seat_capability caps);
++
++    void InitDataDeviceManager(wl_registry *registry, uint32_t id, uint32_t version);
++    void InitSeat(wl_registry *registry, uint32_t id, uint32_t version, void *data);
++private:
++    virtual ~nsRetrievalContextWayland() override;
++
++    bool                    mInitialized;
++    wl_display             *mDisplay;
++    wl_seat                *mSeat;
++    wl_data_device_manager *mDataDeviceManager;
++    wl_data_offer          *mDataOffer;
++    wl_keyboard            *mKeyboard;
++    nsTArray<char*>         mMIMETypes;
++    gchar                  *mTextPlainLocale;
++};
++
++#endif /* __nsClipboardWayland_h_ */
+diff --git a/widget/gtk/nsClipboardX11.cpp b/widget/gtk/nsClipboardX11.cpp
+new file mode 100644
+index 0000000..45c6d9f
+--- /dev/null
++++ b/widget/gtk/nsClipboardX11.cpp
+@@ -0,0 +1,309 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/ArrayUtils.h"
++
++#include "nsArrayUtils.h"
++#include "nsClipboard.h"
++#include "nsClipboardX11.h"
++#include "nsSupportsPrimitives.h"
++#include "nsString.h"
++#include "nsReadableUtils.h"
++#include "nsXPIDLString.h"
++#include "nsPrimitiveHelpers.h"
++#include "nsIServiceManager.h"
++#include "nsImageToPixbuf.h"
++#include "nsStringStream.h"
++#include "nsIObserverService.h"
++#include "mozilla/Services.h"
++#include "mozilla/RefPtr.h"
++#include "mozilla/TimeStamp.h"
++
++#include "imgIContainer.h"
++
++#include <gtk/gtk.h>
++
++// For manipulation of the X event queue
++#include <X11/Xlib.h>
++#include <gdk/gdkx.h>
++#include <sys/time.h>
++#include <sys/types.h>
++#include <errno.h>
++#include <unistd.h>
++#include "X11UndefineNone.h"
++
++using namespace mozilla;
++
++static GdkFilterReturn
++selection_request_filter(GdkXEvent *gdk_xevent, GdkEvent *event, gpointer data)
++{
++    XEvent *xevent = static_cast<XEvent*>(gdk_xevent);
++    if (xevent->xany.type == SelectionRequest) {
++        if (xevent->xselectionrequest.requestor == X11None)
++            return GDK_FILTER_REMOVE;
++
++        GdkDisplay *display = gdk_x11_lookup_xdisplay(
++                xevent->xselectionrequest.display);
++        if (!display)
++            return GDK_FILTER_REMOVE;
++
++        GdkWindow *window = gdk_x11_window_foreign_new_for_display(display,
++                xevent->xselectionrequest.requestor);
++        if (!window)
++            return GDK_FILTER_REMOVE;
++
++        g_object_unref(window);
++    }
++    return GDK_FILTER_CONTINUE;
++}
++
++nsRetrievalContextX11::nsRetrievalContextX11(void)
++: mState(INITIAL),
++  mData(nullptr)
++{
++    // A custom event filter to workaround attempting to dereference a null
++    // selection requestor in GTK3 versions before 3.11.3. See bug 1178799.
++#if (MOZ_WIDGET_GTK == 3) && defined(MOZ_X11)
++    if (gtk_check_version(3, 11, 3))
++        gdk_window_add_filter(nullptr, selection_request_filter, nullptr);
++#endif
++}
++
++nsRetrievalContextX11::~nsRetrievalContextX11(void)
++{
++    gdk_window_remove_filter(nullptr, selection_request_filter, nullptr);
++}
++
++static void
++DispatchSelectionNotifyEvent(GtkWidget *widget, XEvent *xevent)
++{
++    GdkEvent event;
++    event.selection.type = GDK_SELECTION_NOTIFY;
++    event.selection.window = gtk_widget_get_window(widget);
++    event.selection.selection = gdk_x11_xatom_to_atom(xevent->xselection.selection);
++    event.selection.target = gdk_x11_xatom_to_atom(xevent->xselection.target);
++    event.selection.property = gdk_x11_xatom_to_atom(xevent->xselection.property);
++    event.selection.time = xevent->xselection.time;
++
++    gtk_widget_event(widget, &event);
++}
++
++static void
++DispatchPropertyNotifyEvent(GtkWidget *widget, XEvent *xevent)
++{
++    GdkWindow *window = gtk_widget_get_window(widget);
++    if ((gdk_window_get_events(window)) & GDK_PROPERTY_CHANGE_MASK) {
++        GdkEvent event;
++        event.property.type = GDK_PROPERTY_NOTIFY;
++        event.property.window = window;
++        event.property.atom = gdk_x11_xatom_to_atom(xevent->xproperty.atom);
++        event.property.time = xevent->xproperty.time;
++        event.property.state = xevent->xproperty.state;
++
++        gtk_widget_event(widget, &event);
++    }
++}
++
++struct checkEventContext
++{
++    GtkWidget *cbWidget;
++    Atom       selAtom;
++};
++
++static Bool
++checkEventProc(Display *display, XEvent *event, XPointer arg)
++{
++    checkEventContext *context = (checkEventContext *) arg;
++
++    if (event->xany.type == SelectionNotify ||
++        (event->xany.type == PropertyNotify &&
++         event->xproperty.atom == context->selAtom)) {
++
++        GdkWindow *cbWindow =
++            gdk_x11_window_lookup_for_display(gdk_x11_lookup_xdisplay(display),
++                                              event->xany.window);
++        if (cbWindow) {
++            GtkWidget *cbWidget = nullptr;
++            gdk_window_get_user_data(cbWindow, (gpointer *)&cbWidget);
++            if (cbWidget && GTK_IS_WIDGET(cbWidget)) {
++                context->cbWidget = cbWidget;
++                return True;
++            }
++        }
++    }
++
++    return False;
++}
++
++void *
++nsRetrievalContextX11::Wait()
++{
++    if (mState == COMPLETED) { // the request completed synchronously
++        void *data = mData;
++        mData = nullptr;
++        return data;
++    }
++
++    GdkDisplay *gdkDisplay = gdk_display_get_default();
++    if (GDK_IS_X11_DISPLAY(gdkDisplay)) {
++        Display *xDisplay = GDK_DISPLAY_XDISPLAY(gdkDisplay);
++        checkEventContext context;
++        context.cbWidget = nullptr;
++        context.selAtom = gdk_x11_atom_to_xatom(gdk_atom_intern("GDK_SELECTION",
++                                                                FALSE));
++
++        // Send X events which are relevant to the ongoing selection retrieval
++        // to the clipboard widget.  Wait until either the operation completes, or
++        // we hit our timeout.  All other X events remain queued.
++
++        int select_result;
++
++        int cnumber = ConnectionNumber(xDisplay);
++        fd_set select_set;
++        FD_ZERO(&select_set);
++        FD_SET(cnumber, &select_set);
++        ++cnumber;
++        TimeStamp start = TimeStamp::Now();
++
++        do {
++            XEvent xevent;
++
++            while (XCheckIfEvent(xDisplay, &xevent, checkEventProc,
++                                 (XPointer) &context)) {
++
++                if (xevent.xany.type == SelectionNotify)
++                    DispatchSelectionNotifyEvent(context.cbWidget, &xevent);
++                else
++                    DispatchPropertyNotifyEvent(context.cbWidget, &xevent);
++
++                if (mState == COMPLETED) {
++                    void *data = mData;
++                    mData = nullptr;
++                    return data;
++                }
++            }
++
++            TimeStamp now = TimeStamp::Now();
++            struct timeval tv;
++            tv.tv_sec = 0;
++            tv.tv_usec = std::max<int32_t>(0,
++                kClipboardTimeout - (now - start).ToMicroseconds());
++            select_result = select(cnumber, &select_set, nullptr, nullptr, &tv);
++        } while (select_result == 1 ||
++                 (select_result == -1 && errno == EINTR));
++    }
++#ifdef DEBUG_CLIPBOARD
++    printf("exceeded clipboard timeout\n");
++#endif
++    mState = TIMED_OUT;
++    return nullptr;
++}
++
++static void
++clipboard_contents_received(GtkClipboard     *clipboard,
++                            GtkSelectionData *selection_data,
++                            gpointer          data)
++{
++    nsRetrievalContextX11 *context = static_cast<nsRetrievalContextX11*>(data);
++    context->Complete(selection_data);
++}
++
++GtkSelectionData*
++nsRetrievalContextX11::WaitForContents(GtkClipboard *clipboard, const char *aMimeType)
++{
++    mState = INITIAL;
++    NS_ASSERTION(!mData, "Leaking clipboard content!");
++
++    gtk_clipboard_request_contents(clipboard,
++                                   gdk_atom_intern(aMimeType, FALSE),
++                                   clipboard_contents_received,
++                                   this);
++    return static_cast<GtkSelectionData*>(Wait());
++}
++
++NS_IMETHODIMP
++nsRetrievalContextX11::HasDataMatchingFlavors(const char** aFlavorList,
++                                              uint32_t aLength,
++                                              int32_t aWhichClipboard,
++                                              bool *_retval)
++{
++    if (!aFlavorList || !_retval)
++        return NS_ERROR_NULL_POINTER;
++
++    *_retval = false;
++
++    GtkClipboard *clipboard = 
++        gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
++
++    GtkSelectionData *selection_data =
++        WaitForContents(clipboard, "TARGETS");
++    if (!selection_data)
++        return NS_OK;
++
++    gint n_targets = 0;
++    GdkAtom *targets = nullptr;
++
++    if (!gtk_selection_data_get_targets(selection_data,
++                                        &targets, &n_targets) ||
++        !n_targets)
++        return NS_OK;
++
++    // Walk through the provided types and try to match it to a
++    // provided type.
++    for (uint32_t i = 0; i < aLength && !*_retval; i++) {
++        // We special case text/unicode here.
++        if (!strcmp(aFlavorList[i], kUnicodeMime) &&
++            gtk_selection_data_targets_include_text(selection_data)) {
++            *_retval = true;
++            break;
++        }
++
++        for (int32_t j = 0; j < n_targets; j++) {
++            gchar *atom_name = gdk_atom_name(targets[j]);
++            if (!atom_name)
++                continue;
++
++            if (!strcmp(atom_name, aFlavorList[i]))
++                *_retval = true;
++
++            // X clipboard supports image/jpeg, but we want to emulate support
++            // for image/jpg as well
++            if (!strcmp(aFlavorList[i], kJPGImageMime) && !strcmp(atom_name, kJPEGImageMime))
++                *_retval = true;
++
++            g_free(atom_name);
++
++            if (*_retval)
++                break;
++        }
++    }
++    gtk_selection_data_free(selection_data);
++    g_free(targets);
++
++    return NS_OK;
++}
++
++nsresult
++nsRetrievalContextX11::GetClipboardContent(const char* aMimeType,
++                                           int32_t aWhichClipboard,
++                                           nsIInputStream** aResult,
++                                           uint32_t* aContentLength)
++{
++    GtkClipboard *clipboard;
++    clipboard = gtk_clipboard_get(GetSelectionAtom(aWhichClipboard));
++
++    GtkSelectionData *selectionData = WaitForContents(clipboard, aMimeType);
++    if (!selectionData)
++        return NS_ERROR_FAILURE;
++
++    *aContentLength = gtk_selection_data_get_length(selectionData);
++    NS_NewByteInputStream(aResult,
++                          (const char*)gtk_selection_data_get_data(selectionData),
++                          *aContentLength, NS_ASSIGNMENT_COPY);
++    gtk_selection_data_free(selectionData);
++    return NS_OK;
++}
+diff --git a/widget/gtk/nsClipboardX11.h b/widget/gtk/nsClipboardX11.h
+new file mode 100644
+index 0000000..f9eb0d3
+--- /dev/null
++++ b/widget/gtk/nsClipboardX11.h
+@@ -0,0 +1,68 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
++/* vim:expandtab:shiftwidth=4:tabstop=4:
++ */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef __nsClipboardX11_h_
++#define __nsClipboardX11_h_
++
++#include "nsIClipboard.h"
++#include <gtk/gtk.h>
++
++class nsRetrievalContextX11 : public nsRetrievalContext
++{
++public:
++    enum State { INITIAL, COMPLETED, TIMED_OUT };
++
++    nsRetrievalContextX11();
++
++    NS_IMETHOD HasDataMatchingFlavors(const char** aFlavorList,
++                                      uint32_t aLength,
++                                      int32_t aWhichClipboard,
++                                      bool *_retval) override;
++    NS_IMETHOD GetClipboardContent(const char* aMimeType,
++                                   int32_t aWhichClipboard,
++                                   nsIInputStream** aResult,
++                                   uint32_t* aContentLength) override;
++
++    gchar* CopyRetrievedData(const gchar *aData)
++    {
++      return g_strdup(aData);
++    }
++    GtkSelectionData* CopyRetrievedData(GtkSelectionData *aData)
++    {
++      // A negative length indicates that retrieving the data failed.
++      return gtk_selection_data_get_length(aData) >= 0 ?
++          gtk_selection_data_copy(aData) : nullptr;
++    }
++
++    // Call this when data has been retrieved.
++    template <class T> void Complete(T *aData)
++    {
++      if (mState == INITIAL) {
++          mState = COMPLETED;
++          mData = CopyRetrievedData(aData);
++      } else {
++          // Already timed out
++          MOZ_ASSERT(mState == TIMED_OUT);
++      }
++    }
++private:
++    virtual ~nsRetrievalContextX11() override;
++
++    GtkSelectionData* WaitForContents(GtkClipboard *clipboard,
++                                      const char *aMimeType);
++    /**
++     * Spins X event loop until timing out or being completed. Returns
++     * null if we time out, otherwise returns the completed data (passing
++     * ownership to caller).
++     */
++    void *Wait();
++
++    State mState;
++    void* mData;
++};
++
++#endif /* __nsClipboardX11_h_ */
+diff --git a/widget/gtk/nsNativeThemeGTK.cpp b/widget/gtk/nsNativeThemeGTK.cpp
+index 89b8ab7..0c26f20 100644
+--- a/widget/gtk/nsNativeThemeGTK.cpp
++++ b/widget/gtk/nsNativeThemeGTK.cpp
+@@ -7,6 +7,7 @@
+ #include "nsThemeConstants.h"
+ #include "gtkdrawing.h"
+ #include "nsScreenGtk.h"
++#include "X11UndefineNone.h"
+ 
+ #include "gfx2DGlue.h"
+ #include "nsIObserverService.h"
+@@ -30,6 +31,7 @@
+ 
+ #include <gdk/gdkprivate.h>
+ #include <gtk/gtk.h>
++#include <gtk/gtkx.h>
+ 
+ #include "gfxContext.h"
+ #include "gfxPlatformGtk.h"
+@@ -101,7 +103,7 @@ nsNativeThemeGTK::RefreshWidgetWindow(nsIFrame* aFrame)
+   nsViewManager* vm = shell->GetViewManager();
+   if (!vm)
+     return;
+- 
++
+   vm->InvalidateAllViews();
+ }
+ 
+@@ -663,7 +665,7 @@ nsNativeThemeGTK::GetGtkWidgetAndState(uint8_t aWidgetType, nsIFrame* aFrame,
+   case NS_THEME_SPLITTER:
+     if (IsHorizontal(aFrame))
+       aGtkWidgetType = MOZ_GTK_SPLITTER_VERTICAL;
+-    else 
++    else
+       aGtkWidgetType = MOZ_GTK_SPLITTER_HORIZONTAL;
+     break;
+   case NS_THEME_MENUBAR:
+@@ -728,7 +730,7 @@ private:
+ };
+ 
+ nsresult
+-ThemeRenderer::DrawWithGDK(GdkDrawable * drawable, gint offsetX, 
++ThemeRenderer::DrawWithGDK(GdkDrawable * drawable, gint offsetX,
+         gint offsetY, GdkRectangle * clipRects, uint32_t numClipRects)
+ {
+   GdkRectangle gdk_rect = mGDKRect;
+@@ -744,7 +746,7 @@ ThemeRenderer::DrawWithGDK(GdkDrawable * drawable, gint offsetX,
+   surfaceRect.y = 0;
+   gdk_drawable_get_size(drawable, &surfaceRect.width, &surfaceRect.height);
+   gdk_rectangle_intersect(&gdk_clip, &surfaceRect, &gdk_clip);
+-  
++
+   NS_ASSERTION(numClipRects == 0, "We don't support clipping!!!");
+   moz_gtk_widget_paint(mGTKWidgetType, drawable, &gdk_rect, &gdk_clip,
+                        &mState, mFlags, mDirection);
+@@ -1204,7 +1206,7 @@ nsNativeThemeGTK::DrawWidgetBackground(nsRenderingContext* aContext,
+   GdkColormap* colormap = moz_gtk_widget_get_colormap();
+ 
+   renderer.Draw(ctx, drawingRect.Size(), rendererFlags, colormap);
+-#else 
++#else
+   DrawThemeWithCairo(ctx, aContext->GetDrawTarget(),
+                      state, gtkWidgetType, flags, direction, scaleFactor,
+                      snapped, ToPoint(origin), drawingRect.Size(),
+@@ -1212,7 +1214,11 @@ nsNativeThemeGTK::DrawWidgetBackground(nsRenderingContext* aContext,
+ #endif
+ 
+   if (!safeState) {
+-    gdk_flush();
++    // gdk_flush() call from expose event crashes Gtk+ on Wayland
++    // (Gnome BZ #773307)
++    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
++      gdk_flush();
++    }
+     gLastGdkError = gdk_error_trap_pop ();
+ 
+     if (gLastGdkError) {
+@@ -1600,7 +1606,7 @@ nsNativeThemeGTK::GetMinimumWidgetSize(nsPresContext* aPresContext,
+ 
+       moz_gtk_get_menu_separator_height(&separator_height);
+       aResult->height = separator_height;
+-    
++
+       *aIsOverridable = false;
+     }
+     break;
+@@ -1667,9 +1673,9 @@ nsNativeThemeGTK::GetMinimumWidgetSize(nsPresContext* aPresContext,
+   case NS_THEME_SEPARATOR:
+     {
+       gint separator_width;
+-    
++
+       moz_gtk_get_toolbar_separator_width(&separator_width);
+-    
++
+       aResult->width = separator_width;
+     }
+     break;
+@@ -1708,7 +1714,7 @@ nsNativeThemeGTK::GetMinimumWidgetSize(nsPresContext* aPresContext,
+ }
+ 
+ NS_IMETHODIMP
+-nsNativeThemeGTK::WidgetStateChanged(nsIFrame* aFrame, uint8_t aWidgetType, 
++nsNativeThemeGTK::WidgetStateChanged(nsIFrame* aFrame, uint8_t aWidgetType,
+                                      nsIAtom* aAttribute, bool* aShouldRepaint,
+                                      const nsAttrValue* aOldValue)
+ {
+@@ -1775,7 +1781,7 @@ nsNativeThemeGTK::WidgetStateChanged(nsIFrame* aFrame, uint8_t aWidgetType,
+     *aShouldRepaint = true;
+   }
+   else {
+-    // Check the attribute to see if it's relevant.  
++    // Check the attribute to see if it's relevant.
+     // disabled, checked, dlgtype, default, etc.
+     *aShouldRepaint = false;
+     if (aAttribute == nsGkAtoms::disabled ||
+@@ -1943,10 +1949,10 @@ bool
+ nsNativeThemeGTK::ThemeDrawsFocusForWidget(uint8_t aWidgetType)
+ {
+    if (aWidgetType == NS_THEME_MENULIST ||
+-      aWidgetType == NS_THEME_BUTTON || 
++      aWidgetType == NS_THEME_BUTTON ||
+       aWidgetType == NS_THEME_TREEHEADERCELL)
+     return true;
+-  
++
+   return false;
+ }
+ 
+diff --git a/widget/gtk/nsNativeThemeGTK.h b/widget/gtk/nsNativeThemeGTK.h
+index 56ae031..7ad7c17 100644
+--- a/widget/gtk/nsNativeThemeGTK.h
++++ b/widget/gtk/nsNativeThemeGTK.h
+@@ -6,6 +6,7 @@
+ #ifndef _GTK_NSNATIVETHEMEGTK_H_
+ #define _GTK_NSNATIVETHEMEGTK_H_
+ 
++#include "X11UndefineNone.h"
+ #include "nsITheme.h"
+ #include "nsCOMPtr.h"
+ #include "nsIAtom.h"
+diff --git a/widget/gtk/nsScreenGtk.cpp b/widget/gtk/nsScreenGtk.cpp
+index 61e6605..aca0a23 100644
+--- a/widget/gtk/nsScreenGtk.cpp
++++ b/widget/gtk/nsScreenGtk.cpp
+@@ -50,7 +50,7 @@ nsScreenGtk :: GetRect(int32_t *outLeft, int32_t *outTop, int32_t *outWidth, int
+   *outHeight = mRect.height;
+ 
+   return NS_OK;
+-  
++
+ } // GetRect
+ 
+ 
+@@ -63,7 +63,7 @@ nsScreenGtk :: GetAvailRect(int32_t *outLeft, int32_t *outTop, int32_t *outWidth
+   *outHeight = mAvailRect.height;
+ 
+   return NS_OK;
+-  
++
+ } // GetAvailRect
+ 
+ gint
+@@ -93,7 +93,7 @@ nsScreenGtk :: GetDPIScale()
+   return dpiScale;
+ }
+ 
+-NS_IMETHODIMP 
++NS_IMETHODIMP
+ nsScreenGtk :: GetPixelDepth(int32_t *aPixelDepth)
+ {
+   GdkVisual * visual = gdk_screen_get_system_visual(gdk_screen_get_default());
+@@ -103,7 +103,7 @@ nsScreenGtk :: GetPixelDepth(int32_t *aPixelDepth)
+ 
+ } // GetPixelDepth
+ 
+-NS_IMETHODIMP 
++NS_IMETHODIMP
+ nsScreenGtk :: GetColorDepth(int32_t *aColorDepth)
+ {
+   return GetPixelDepth ( aColorDepth );
+@@ -130,6 +130,8 @@ nsScreenGtk :: Init (GdkWindow *aRootWindow)
+   // versions of GDK predating the GdkScreen object.  See bug 256646.
+   mAvailRect = mRect = nsIntRect(0, 0, width, height);
+ 
++  return; //TODO
++
+ #ifdef MOZ_X11
+   // We need to account for the taskbar, etc in the available rect.
+   // See http://freedesktop.org/Standards/wm-spec/index.html#id2767771
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index d97b350..858ebd5 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -5,6 +5,7 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#include <assert.h>
+ #include "nsWindow.h"
+ 
+ #include "mozilla/ArrayUtils.h"
+@@ -58,6 +59,10 @@
+ #include <gtk/gtkprivate.h>
+ #endif
+ 
++#if defined(MOZ_WAYLAND)
++#include <gdk/gdkwayland.h>
++#endif
++
+ #include "nsGkAtoms.h"
+ 
+ #ifdef MOZ_ENABLE_STARTUP_NOTIFICATION
+@@ -123,6 +128,9 @@ using namespace mozilla::widget;
+ #include "WindowSurfaceX11SHM.h"
+ #include "WindowSurfaceXRender.h"
+ #endif // MOZ_X11
++#ifdef MOZ_WAYLAND
++#include "nsIClipboard.h"
++#endif
+ 
+ #include "nsShmImage.h"
+ 
+@@ -464,6 +472,17 @@ nsWindow::nsWindow()
+ 
+         // It's OK if either of these fail, but it may not be one day.
+         initialize_prefs();
++
++#ifdef MOZ_WAYLAND
++        // Wayland provides clipboard data to application on focus-in event
++        // so we need to init our clipboard hooks before we create window
++        // and get focus.
++        if (!mIsX11Display) {
++            nsCOMPtr<nsIClipboard> clipboard =
++                do_GetService("@mozilla.org/widget/clipboard;1");
++            NS_ASSERTION(clipboard, "Failed to init clipboard!");
++        }
++#endif
+     }
+ 
+     mLastMotionPressure = 0;
+@@ -1390,6 +1409,9 @@ SetUserTimeAndStartupIDForActivatedWindow(GtkWidget* aWindow)
+ /* static */ guint32
+ nsWindow::GetLastUserInputTime()
+ {
++    if (!GDK_IS_X11_DISPLAY(gdk_display_get_default()))
++        return sLastUserInputTime;
++
+     // gdk_x11_display_get_user_time tracks button and key presses,
+     // DESKTOP_STARTUP_ID used to start the app, drop events from external
+     // drags, WM_DELETE_WINDOW delete events, but not usually mouse motion nor
+@@ -1727,32 +1749,51 @@ nsWindow::GetNativeData(uint32_t aDataType)
+ 
+         return mGdkWindow;
+     }
+-
+     case NS_NATIVE_PLUGIN_PORT:
++#if defined(MOZ_WAYLAND)
++        if (!GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
++            return SetupPluginPort();
++        }
++#else
+         return SetupPluginPort();
+-
++#endif
+     case NS_NATIVE_PLUGIN_ID:
++#if defined(MOZ_WAYLAND)
++        if (!GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
++            if (!mPluginNativeWindow) {
++                NS_WARNING("no native plugin instance!");
++                return nullptr;
++            }
++        }
++#else
+         if (!mPluginNativeWindow) {
+-          NS_WARNING("no native plugin instance!");
+-          return nullptr;
++            NS_WARNING("no native plugin instance!");
++            return nullptr;
+         }
+-        // Return the socket widget XID
++#endif
+         return (void*)mPluginNativeWindow->window;
+-
+     case NS_NATIVE_DISPLAY: {
+-#ifdef MOZ_X11
++#if defined(MOZ_X11)
+         GdkDisplay* gdkDisplay = gdk_display_get_default();
+         if (GDK_IS_X11_DISPLAY(gdkDisplay)) {
+-          return GDK_DISPLAY_XDISPLAY(gdkDisplay);
++            return GDK_DISPLAY_XDISPLAY(gdkDisplay);
+         }
+ #endif /* MOZ_X11 */
++#if defined(MOZ_WAYLAND)
++        if (GDK_IS_WAYLAND_DISPLAY(gdkDisplay)) {
++            return gdk_wayland_display_get_wl_display(gdkDisplay);
++        }
++#endif
+         return nullptr;
+     }
+     case NS_NATIVE_SHELLWIDGET:
+         return GetToplevelWidget();
+ 
+-    case NS_NATIVE_SHAREABLE_WINDOW:
+-        return (void *) GDK_WINDOW_XID(gdk_window_get_toplevel(mGdkWindow));
++    case NS_NATIVE_SHAREABLE_WINDOW: {
++        return mIsX11Display ?
++            (void *) GDK_WINDOW_XID(gdk_window_get_toplevel(mGdkWindow)) :
++            nullptr;
++    }
+     case NS_NATIVE_PLUGIN_OBJECT_PTR:
+         return (void *) mPluginNativeWindow;
+     case NS_RAW_NATIVE_IME_CONTEXT: {
+@@ -1769,10 +1810,10 @@ nsWindow::GetNativeData(uint32_t aDataType)
+     }
+     case NS_NATIVE_OPENGL_CONTEXT:
+       return nullptr;
+-#ifdef MOZ_X11
++#if defined(MOZ_X11)
+     case NS_NATIVE_COMPOSITOR_DISPLAY:
+         return gfxPlatformGtk::GetPlatform()->GetCompositorDisplay();
+-#endif // MOZ_X11
++#endif
+     default:
+         NS_WARNING("nsWindow::GetNativeData called with bad value");
+         return nullptr;
+@@ -2187,7 +2228,7 @@ nsWindow::OnExposeEvent(cairo_t *cr)
+ 
+     LOGDRAW(("sending expose event [%p] %p 0x%lx (rects follow):\n",
+              (void *)this, (void *)mGdkWindow,
+-             gdk_x11_window_get_xid(mGdkWindow)));
++             mIsX11Display ? gdk_x11_window_get_xid(mGdkWindow) : 0));
+ 
+     // Our bounds may have changed after calling WillPaintWindow.  Clip
+     // to the new bounds here.  The region is relative to this
+@@ -3055,11 +3096,20 @@ nsWindow::GetEventTimeStamp(guint32 aEventTime)
+         // In this case too, just return the current timestamp.
+         return TimeStamp::Now();
+     }
+-    CurrentX11TimeGetter* getCurrentTime = GetCurrentTimeGetter();
+-    MOZ_ASSERT(getCurrentTime,
+-               "Null current time getter despite having a window");
+-    return TimeConverter().GetTimeStampFromSystemTime(aEventTime,
+-                                                      *getCurrentTime);
++    if (!mIsX11Display) {
++        // Wayland uses SYSTEM_TIME_MONOTONIC.
++        // Our posix implemententaion of TimeStamp::Now uses SYSTEM_TIME_MONOTONIC
++        //  too. Due to same implementation, we can use this via FromSystemTime.
++        int64_t tick =
++           BaseTimeDurationPlatformUtils::TicksFromMilliseconds(aEventTime);
++        return TimeStamp::FromSystemTime(tick);
++    } else {
++        CurrentX11TimeGetter* getCurrentTime = GetCurrentTimeGetter();
++        MOZ_ASSERT(getCurrentTime,
++                   "Null current time getter despite having a window");
++        return TimeConverter().GetTimeStampFromSystemTime(aEventTime,
++                                                          *getCurrentTime);
++    }
+ }
+ 
+ mozilla::CurrentX11TimeGetter*
+@@ -3612,6 +3662,7 @@ nsWindow::Create(nsIWidget* aParent,
+     nsWindow       *parentnsWindow = nullptr;
+     GtkWidget      *eventWidget = nullptr;
+     bool            shellHasCSD = false;
++    bool            drawToContainer = false;
+ 
+     if (aParent) {
+         parentnsWindow = static_cast<nsWindow*>(aParent);
+@@ -3652,10 +3703,14 @@ nsWindow::Create(nsIWidget* aParent,
+         // which will use a Window with the override-redirect attribute
+         // (for temporary windows).
+         // For long-lived windows, their stacking order is managed by the
+-        // window manager, as indicated by GTK_WINDOW_TOPLEVEL ...
++        // window manager, as indicated by GTK_WINDOW_TOPLEVEL.
++        // For Wayland we have to always use GTK_WINDOW_POPUP otherwise
++        // we can't control window position.
+         GtkWindowType type =
+-            mWindowType != eWindowType_popup || aInitData->mNoAutoHide ?
++            mWindowType != eWindowType_popup ||
++            (aInitData->mNoAutoHide && mIsX11Display) ?
+               GTK_WINDOW_TOPLEVEL : GTK_WINDOW_POPUP;
++
+         mShell = gtk_window_new(type);
+ 
+         // We only move a general managed toplevel window if someone has
+@@ -3698,6 +3753,7 @@ nsWindow::Create(nsIWidget* aParent,
+ #endif
+                 }
+             }
++            // Don't handle noautohide popups on Wayland as toplevel
+             if (aInitData->mNoAutoHide) {
+                 // ... but the window manager does not decorate this window,
+                 // nor provide a separate taskbar icon.
+@@ -3719,9 +3775,11 @@ nsWindow::Create(nsIWidget* aParent,
+ #ifdef MOZ_X11
+                 // ... but when the window manager offers focus through
+                 // WM_TAKE_FOCUS, focus is requested on the parent window.
+-                gtk_widget_realize(mShell);
+-                gdk_window_add_filter(gtk_widget_get_window(mShell),
+-                                      popup_take_focus_filter, nullptr);
++                if (mIsX11Display) {
++                    gtk_widget_realize(mShell);
++                    gdk_window_add_filter(gtk_widget_get_window(mShell),
++                                          popup_take_focus_filter, nullptr);
++                }
+ #endif
+             }
+ 
+@@ -3733,7 +3791,11 @@ nsWindow::Create(nsIWidget* aParent,
+             else {
+                 switch (aInitData->mPopupHint) {
+                     case ePopupTypeMenu:
+-                        gtkTypeHint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
++                        // Use GDK_WINDOW_TYPE_HINT_UTILITY on Wayland which
++                        // guides Gtk to create the popup as subsurface
++                        // instead of xdg_shell popup (rhbz#1457201).
++                        gtkTypeHint = mIsX11Display ? GDK_WINDOW_TYPE_HINT_POPUP_MENU :
++                                                      GDK_WINDOW_TYPE_HINT_UTILITY;
+                         break;
+                     case ePopupTypeTooltip:
+                         gtkTypeHint = GDK_WINDOW_TYPE_HINT_TOOLTIP;
+@@ -3764,7 +3826,6 @@ nsWindow::Create(nsIWidget* aParent,
+         // Create a container to hold child windows and child GtkWidgets.
+         GtkWidget *container = moz_container_new();
+         mContainer = MOZ_CONTAINER(container);
+-
+ #if (MOZ_WIDGET_GTK == 3)
+         // "csd" style is set when widget is realized so we need to call
+         // it explicitly now.
+@@ -3774,15 +3835,21 @@ nsWindow::Create(nsIWidget* aParent,
+         // decorations are enabled. We use container with GdkWindow instead.
+         GtkStyleContext* style = gtk_widget_get_style_context(mShell);
+         shellHasCSD = gtk_style_context_has_class(style, "csd");
++        drawToContainer = shellHasCSD || !mIsX11Display;
+ #endif
+-        if (!shellHasCSD) {
++        if (!drawToContainer) {
+             // Use mShell's window for drawing and events.
+             gtk_widget_set_has_window(container, FALSE);
+-            // Prevent GtkWindow from painting a background to flicker.
++        }
++
++        // Prevent GtkWindow from painting a background to flicker.
++        // We also need that on Wayland to ensure the underlying mShell
++        // window is transparent when CSD is enabled.
++        if (!shellHasCSD) {
+             gtk_widget_set_app_paintable(mShell, TRUE);
+         }
+-        // Set up event widget
+-        eventWidget = shellHasCSD ? container : mShell;
++
++        eventWidget = drawToContainer ? container : mShell;
+         gtk_widget_add_events(eventWidget, kEvents);
+ 
+         gtk_container_add(GTK_CONTAINER(mShell), container);
+@@ -3823,7 +3890,10 @@ nsWindow::Create(nsIWidget* aParent,
+               cairo_rectangle_int_t rect = { 0, 0, 0, 0 };
+               cairo_region_t *region = cairo_region_create_rectangle(&rect);
+ 
+-              gdk_window_input_shape_combine_region(mGdkWindow, region, 0, 0);
++              // Popups may not have SCD enabled so we need to mask
++              // toplevel widget here.
++              GtkWidget *inputWidget = shellHasCSD ? container : mShell;
++              gtk_widget_input_shape_combine_region(inputWidget, region);
+               cairo_region_destroy(region);
+ #endif
+             }
+@@ -3938,7 +4008,7 @@ nsWindow::Create(nsIWidget* aParent,
+                          G_CALLBACK(drag_data_received_event_cb), nullptr);
+ 
+         GtkWidget *widgets[] = { GTK_WIDGET(mContainer),
+-                                 !shellHasCSD ? mShell : nullptr };
++                                 !drawToContainer ? mShell : nullptr };
+         for (size_t i = 0; i < ArrayLength(widgets) && widgets[i]; ++i) {
+             // Visibility events are sent to the owning widget of the relevant
+             // window but do not propagate to parent widgets so connect on
+@@ -3997,7 +4067,7 @@ nsWindow::Create(nsIWidget* aParent,
+     if (mShell) {
+         LOG(("\tmShell %p mContainer %p mGdkWindow %p 0x%lx\n",
+              mShell, mContainer, mGdkWindow,
+-             gdk_x11_window_get_xid(mGdkWindow)));
++             mIsX11Display ? gdk_x11_window_get_xid(mGdkWindow) : 0));
+     } else if (mContainer) {
+         LOG(("\tmContainer %p mGdkWindow %p\n", mContainer, mGdkWindow));
+     }
+@@ -4021,6 +4091,11 @@ nsWindow::Create(nsIWidget* aParent,
+ 
+       mSurfaceProvider.Initialize(mXDisplay, mXWindow, mXVisual, mXDepth);
+     }
++#ifdef MOZ_WAYLAND
++    else if (!mIsX11Display) {
++      mSurfaceProvider.Initialize(this);
++    }
++#endif
+ #endif
+ 
+     return NS_OK;
+@@ -4191,6 +4266,12 @@ nsWindow::NativeMoveResize()
+     }
+ }
+ 
++static void
++show_shell(GdkSeat *seat, GdkWindow *window, gpointer user_data)
++{
++    gtk_widget_show(GTK_WIDGET(user_data));
++}
++
+ void
+ nsWindow::NativeShow(bool aAction)
+ {
+@@ -4203,7 +4284,6 @@ nsWindow::NativeShow(bool aAction)
+             if (mWindowType != eWindowType_invisible) {
+                 SetUserTimeAndStartupIDForActivatedWindow(mShell);
+             }
+-
+             gtk_widget_show(mShell);
+         }
+         else if (mContainer) {
+@@ -4705,6 +4785,12 @@ nsWindow::GrabPointer(guint32 aTime)
+     if (!mGdkWindow)
+         return;
+ 
++    if (!mIsX11Display) {
++        // Don't to the grab on Wayland as it causes a regression
++        // from Bug 1377084.
++        return;
++    }
++
+     gint retval;
+     retval = gdk_pointer_grab(mGdkWindow, TRUE,
+                               (GdkEventMask)(GDK_BUTTON_PRESS_MASK |
+@@ -4736,6 +4822,13 @@ nsWindow::ReleaseGrabs(void)
+     LOG(("ReleaseGrabs\n"));
+ 
+     mRetryPointerGrab = false;
++
++    if (!mIsX11Display) {
++        // Don't to the ungrab on Wayland as it causes a regression
++        // from Bug 1377084.
++        return;
++    }
++
+     gdk_pointer_ungrab(GDK_CURRENT_TIME);
+ }
+ 
+@@ -5084,18 +5177,18 @@ nsWindow::PerformFullscreenTransition(FullscreenTransitionStage aStage,
+                        transitionData, nullptr);
+ }
+ 
++#ifdef MOZ_X11
+ static bool
+ IsFullscreenSupported(GtkWidget* aShell)
+ {
+-#ifdef MOZ_X11
+     GdkScreen* screen = gtk_widget_get_screen(aShell);
+     GdkAtom atom = gdk_atom_intern("_NET_WM_STATE_FULLSCREEN", FALSE);
+     if (!gdk_x11_screen_supports_net_wm_hint(screen, atom)) {
+         return false;
+     }
+-#endif
+     return true;
+ }
++#endif
+ 
+ nsresult
+ nsWindow::MakeFullScreen(bool aFullScreen, nsIScreen* aTargetScreen)
+@@ -5103,9 +5196,11 @@ nsWindow::MakeFullScreen(bool aFullScreen, nsIScreen* aTargetScreen)
+     LOG(("nsWindow::MakeFullScreen [%p] aFullScreen %d\n",
+          (void *)this, aFullScreen));
+ 
+-    if (!IsFullscreenSupported(mShell)) {
++#ifdef MOZ_X11
++    if (mIsX11Display && !IsFullscreenSupported(mShell)) {
+         return NS_ERROR_NOT_AVAILABLE;
+     }
++#endif
+ 
+     if (aFullScreen) {
+         if (mSizeMode != nsSizeMode_Fullscreen)
+@@ -7027,10 +7122,36 @@ nsWindow::RoundsWidgetCoordinatesTo()
+ 
+ void nsWindow::GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInitData* aInitData)
+ {
+-  #ifdef MOZ_X11
+-  *aInitData = mozilla::widget::CompositorWidgetInitData(
++#ifdef MOZ_X11
++#ifdef MOZ_WAYLAND
++  if (!mIsX11Display) {
++    *aInitData = mozilla::widget::CompositorWidgetInitData(
++                                  (uintptr_t)nullptr,
++                                  nsCString(nullptr),
++                                  GetClientSize());
++  } else
++#endif
++  {
++    *aInitData = mozilla::widget::CompositorWidgetInitData(
+                                   mXWindow,
+                                   nsCString(XDisplayString(mXDisplay)),
+                                   GetClientSize());
+-  #endif
++  }
++#endif
++}
++
++#ifdef MOZ_WAYLAND
++wl_display*
++nsWindow::GetWaylandDisplay()
++{
++  GdkDisplay* gdkDisplay = gdk_display_get_default();
++  return mIsX11Display ? nullptr :
++                         gdk_wayland_display_get_wl_display(gdkDisplay);
+ }
++
++wl_surface*
++nsWindow::GetWaylandSurface()
++{
++  return moz_container_get_wl_surface(MOZ_CONTAINER(mContainer));
++}
++#endif
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index 49a8d4b..8acf88b 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -23,6 +23,9 @@
+ #ifdef MOZ_X11
+ #include <gdk/gdkx.h>
+ #endif /* MOZ_X11 */
++#ifdef MOZ_WAYLAND
++#include <gdk/gdkwayland.h>
++#endif
+ 
+ #include "mozilla/widget/WindowSurface.h"
+ #include "mozilla/widget/WindowSurfaceProvider.h"
+@@ -346,9 +349,14 @@ public:
+                                                 nsIObserver* aObserver) override;
+ #endif
+ 
++    bool     IsX11Display() { return mIsX11Display; }
+ #ifdef MOZ_X11
+     Display* XDisplay() { return mXDisplay; }
+ #endif
++#ifdef MOZ_WAYLAND
++    wl_display* GetWaylandDisplay();
++    wl_surface* GetWaylandSurface();
++#endif
+     virtual void GetCompositorWidgetInitData(mozilla::widget::CompositorWidgetInitData* aInitData) override;
+ 
+     // HiDPI scale conversion
+diff --git a/widget/xremoteclient/XRemoteClient.cpp b/widget/xremoteclient/XRemoteClient.cpp
+index c4567f3..51d3e08 100644
+--- a/widget/xremoteclient/XRemoteClient.cpp
++++ b/widget/xremoteclient/XRemoteClient.cpp
+@@ -24,6 +24,10 @@
+ #include <unistd.h>
+ #include <limits.h>
+ #include <X11/Xatom.h>
++#include "nsPrintfCString.h"
++#include <gtk/gtk.h>
++#include <gdk/gdk.h>
++#include <gdk/gdkx.h>
+ 
+ #define MOZILLA_VERSION_PROP   "_MOZILLA_VERSION"
+ #define MOZILLA_LOCK_PROP      "_MOZILLA_LOCK"
+@@ -40,7 +44,7 @@
+ #else
+ #define TO_LITTLE_ENDIAN32(x) (x)
+ #endif
+-    
++
+ #ifndef MAX_PATH
+ #ifdef PATH_MAX
+ #define MAX_PATH PATH_MAX
+@@ -69,6 +73,8 @@ XRemoteClient::XRemoteClient()
+   mMozProfileAtom = 0;
+   mMozProgramAtom = 0;
+   mLockData = 0;
++  mIsX11Display = true;
++  mConnection = nullptr;
+   if (!sRemoteLm)
+     sRemoteLm = PR_NewLogModule("XRemoteClient");
+   MOZ_LOG(sRemoteLm, LogLevel::Debug, ("XRemoteClient::XRemoteClient"));
+@@ -102,24 +108,38 @@ XRemoteClient::Init()
+   if (mInitialized)
+     return NS_OK;
+ 
+-  // try to open the display
+-  mDisplay = XOpenDisplay(0);
+-  if (!mDisplay)
+-    return NS_ERROR_FAILURE;
++  mIsX11Display = GDK_IS_X11_DISPLAY(gdk_display_get_default());
+ 
+-  // get our atoms
+-  XInternAtoms(mDisplay, const_cast<char**>(XAtomNames),
+-               MOZ_ARRAY_LENGTH(XAtomNames), False, XAtoms);
++#ifdef ENABLE_REMOTE_DBUS
++  if (!mIsX11Display) {
++    mConnection = already_AddRefed<DBusConnection>(
++      dbus_bus_get(DBUS_BUS_SESSION, nullptr));
++    if (!mConnection)
++      return NS_ERROR_FAILURE;
+ 
+-  int i = 0;
+-  mMozVersionAtom  = XAtoms[i++];
+-  mMozLockAtom     = XAtoms[i++];
+-  mMozResponseAtom = XAtoms[i++];
+-  mMozWMStateAtom  = XAtoms[i++];
+-  mMozUserAtom     = XAtoms[i++];
+-  mMozProfileAtom  = XAtoms[i++];
+-  mMozProgramAtom  = XAtoms[i++];
+-  mMozCommandLineAtom = XAtoms[i++];
++    dbus_connection_set_exit_on_disconnect(mConnection, false);
++  } else
++#endif
++  {
++    // try to open the display
++    mDisplay = XOpenDisplay(0);
++    if (!mDisplay)
++      return NS_ERROR_FAILURE;
++
++    // get our atoms
++    XInternAtoms(mDisplay, const_cast<char**>(XAtomNames),
++                 MOZ_ARRAY_LENGTH(XAtomNames), False, XAtoms);
++
++    int i = 0;
++    mMozVersionAtom  = XAtoms[i++];
++    mMozLockAtom     = XAtoms[i++];
++    mMozResponseAtom = XAtoms[i++];
++    mMozWMStateAtom  = XAtoms[i++];
++    mMozUserAtom     = XAtoms[i++];
++    mMozProfileAtom  = XAtoms[i++];
++    mMozProgramAtom  = XAtoms[i++];
++    mMozCommandLineAtom = XAtoms[i++];
++  }
+ 
+   mInitialized = true;
+ 
+@@ -134,8 +154,20 @@ XRemoteClient::Shutdown (void)
+   if (!mInitialized)
+     return;
+ 
+-  // shut everything down
+-  XCloseDisplay(mDisplay);
++// shut everything down
++#ifdef ENABLE_REMOTE_DBUS
++  if (!mIsX11Display) {
++    if (mConnection) {
++      // This connection is owned by libdbus and we don't need to close it
++      mConnection = nullptr;
++    }
++  } else
++#endif
++  {
++    if (mDisplay)
++      XCloseDisplay(mDisplay);
++  }
++
+   mDisplay = 0;
+   mInitialized = false;
+   if (mLockData) {
+@@ -151,9 +183,9 @@ HandleBadWindow(Display *display, XErrorEvent *event)
+     sGotBadWindow = true;
+     return 0; // ignored
+   }
+-  else {
++
+     return (*sOldHandler)(display, event);
+-  }
++
+ }
+ 
+ nsresult
+@@ -165,48 +197,55 @@ XRemoteClient::SendCommandLine (const char *aProgram, const char *aUsername,
+ {
+   MOZ_LOG(sRemoteLm, LogLevel::Debug, ("XRemoteClient::SendCommandLine"));
+ 
+-  *aWindowFound = false;
+-
+-  // FindBestWindow() iterates down the window hierarchy, so catch X errors
+-  // when windows get destroyed before being accessed.
+-  sOldHandler = XSetErrorHandler(HandleBadWindow);
+-
+-  Window w = FindBestWindow(aProgram, aUsername, aProfile);
+-
+   nsresult rv = NS_OK;
+ 
+-  if (w) {
+-    // ok, let the caller know that we at least found a window.
+-    *aWindowFound = true;
++#ifdef ENABLE_REMOTE_DBUS
++  if (!mIsX11Display) {
++    rv = DoSendCommandLine(0, argc, argv, aDesktopStartupID, aResponse,
++                           nullptr, aProgram, aProfile);
++    *aWindowFound = NS_SUCCEEDED(rv);
++  } else
++#endif
++  {
++    *aWindowFound = false;
++
++    // FindBestWindow() iterates down the window hierarchy, so catch X errors
++    // when windows get destroyed before being accessed.
++    sOldHandler = XSetErrorHandler(HandleBadWindow);
+ 
+-    // Ignore BadWindow errors up to this point.  The last request from
+-    // FindBestWindow() was a synchronous XGetWindowProperty(), so no need to
+-    // Sync.  Leave the error handler installed to detect if w gets destroyed.
+-    sGotBadWindow = false;
++    Window w = FindBestWindow(aProgram, aUsername, aProfile);
++    if (w) {
++      // ok, let the caller know that we at least found a window.
++      *aWindowFound = true;
+ 
+-    // make sure we get the right events on that window
+-    XSelectInput(mDisplay, w,
+-                 (PropertyChangeMask|StructureNotifyMask));
++      // Ignore BadWindow errors up to this point.  The last request from
++      // FindBestWindow() was a synchronous XGetWindowProperty(), so no need to
++      // Sync.  Leave the error handler installed to detect if w gets destroyed.
++      sGotBadWindow = false;
+ 
+-    bool destroyed = false;
++      // make sure we get the right events on that window
++      XSelectInput(mDisplay, w,
++                   (PropertyChangeMask|StructureNotifyMask));
+ 
+-    // get the lock on the window
+-    rv = GetLock(w, &destroyed);
++      bool destroyed = false;
+ 
+-    if (NS_SUCCEEDED(rv)) {
+-      // send our command
+-      rv = DoSendCommandLine(w, argc, argv, aDesktopStartupID, aResponse,
+-                             &destroyed);
++      // get the lock on the window
++      rv = GetLock(w, &destroyed);
+ 
+-      // if the window was destroyed, don't bother trying to free the
+-      // lock.
+-      if (!destroyed)
+-          FreeLock(w); // doesn't really matter what this returns
++      if (NS_SUCCEEDED(rv)) {
++        // send our command
++        rv = DoSendCommandLine(w, argc, argv, aDesktopStartupID, aResponse,
++                               &destroyed, aProgram, aProfile);
+ 
++        // if the window was destroyed, don't bother trying to free the
++        // lock.
++        if (!destroyed)
++            FreeLock(w); // doesn't really matter what this returns
++      }
+     }
+-  }
+ 
+-  XSetErrorHandler(sOldHandler);
++    XSetErrorHandler(sOldHandler);
++  }
+ 
+   MOZ_LOG(sRemoteLm, LogLevel::Debug, ("SendCommandInternal returning 0x%x\n", rv));
+ 
+@@ -252,11 +291,11 @@ XRemoteClient::CheckChildren(Window aWindow)
+   unsigned long nitems, after;
+   unsigned char *data;
+   Window retval = None;
+-  
++
+   if (!XQueryTree(mDisplay, aWindow, &root, &parent, &children,
+ 		  &nchildren))
+     return None;
+-  
++
+   // scan the list first before recursing into the list of windows
+   // which can get quite deep.
+   for (i=0; !retval && (i < nchildren); i++) {
+@@ -290,7 +329,7 @@ XRemoteClient::GetLock(Window aWindow, bool *aDestroyed)
+   nsresult rv = NS_OK;
+ 
+   if (!mLockData) {
+-    
++
+     char pidstr[32];
+     char sysinfobuf[SYS_INFO_BUFFER_LENGTH];
+     SprintfLiteral(pidstr, "pid%d@", getpid());
+@@ -300,7 +339,7 @@ XRemoteClient::GetLock(Window aWindow, bool *aDestroyed)
+     if (status != PR_SUCCESS) {
+       return NS_ERROR_FAILURE;
+     }
+-    
++
+     // allocate enough space for the string plus the terminating
+     // char
+     mLockData = (char *)malloc(strlen(pidstr) + strlen(sysinfobuf) + 1);
+@@ -353,7 +392,7 @@ XRemoteClient::GetLock(Window aWindow, bool *aDestroyed)
+       /* We tried to grab the lock this time, and failed because someone
+ 	 else is holding it already.  So, wait for a PropertyDelete event
+ 	 to come in, and try again. */
+-      MOZ_LOG(sRemoteLm, LogLevel::Debug, 
++      MOZ_LOG(sRemoteLm, LogLevel::Debug,
+ 	     ("window 0x%x is locked by %s; waiting...\n",
+ 	      (unsigned int) aWindow, data));
+       waited = True;
+@@ -477,7 +516,7 @@ XRemoteClient::FindBestWindow(const char *aProgram, const char *aUsername,
+                                     False, XA_STRING,
+                                     &type, &format, &nitems, &bytesafter,
+                                     &data_return);
+-        
++
+         // If the return name is not the same as what someone passed in,
+         // we don't want this window.
+         if (data_return) {
+@@ -617,9 +656,11 @@ estrcpy(const char* s, char* d)
+ nsresult
+ XRemoteClient::DoSendCommandLine(Window aWindow, int32_t argc, char **argv,
+                                  const char* aDesktopStartupID,
+-                                 char **aResponse, bool *aDestroyed)
++                                 char **aResponse, bool *aDestroyed,
++                                 const char *aProgram, const char *aProfile)
+ {
+-  *aDestroyed = false;
++  if (aDestroyed)
++    *aDestroyed = false;
+ 
+   char cwdbuf[MAX_PATH];
+   if (!getcwd(cwdbuf, MAX_PATH))
+@@ -677,15 +718,21 @@ XRemoteClient::DoSendCommandLine(Window aWindow, int32_t argc, char **argv,
+     printf("  argv[%i]:\t%s\n", debug_i,
+            ((char*) buffer) + TO_LITTLE_ENDIAN32(debug_offset[debug_i]));
+ #endif
++#ifdef ENABLE_REMOTE_DBUS
++  if (!mIsX11Display) {
++    return DoSendDBusCommandLine(aProgram, aProfile, (unsigned char *)buffer,
++                                 bufend - ((char*)buffer));
++  } else
++#endif
++  {
++    XChangeProperty (mDisplay, aWindow, mMozCommandLineAtom, XA_STRING, 8,
++                     PropModeReplace, (unsigned char *) buffer,
++                     bufend - ((char*)buffer));
++    free(buffer);
+ 
+-  XChangeProperty (mDisplay, aWindow, mMozCommandLineAtom, XA_STRING, 8,
+-                   PropModeReplace, (unsigned char *) buffer,
+-                   bufend - ((char*) buffer));
+-  free(buffer);
+-
+-  if (!WaitForResponse(aWindow, aResponse, aDestroyed, mMozCommandLineAtom))
+-    return NS_ERROR_FAILURE;
+-  
++    if (!WaitForResponse(aWindow, aResponse, aDestroyed, mMozCommandLineAtom))
++      return NS_ERROR_FAILURE;
++  }
+   return NS_OK;
+ }
+ 
+@@ -798,8 +845,46 @@ XRemoteClient::WaitForResponse(Window aWindow, char **aResponse,
+               MOZILLA_COMMANDLINE_PROP ".)\n",
+               (unsigned int) aWindow));
+     }
+-    
++
+   }
+ 
+   return accepted;
+ }
++
++nsresult
++XRemoteClient::DoSendDBusCommandLine(const char *aProgram, const char *aProfile,
++                                     unsigned char* aBuffer, int aLength)
++{
++  nsAutoCString interfaceName;
++  interfaceName = nsPrintfCString("org.mozilla.%s.%s", aProgram, aProfile);
++
++  DBusMessage* msg;
++  msg = dbus_message_new_method_call(interfaceName.get(), // target for the method call
++                                     "/org/mozilla/Firefox/Remote", // object to call on
++                                     "org.mozilla.firefox", // interface to call on
++                                     "OpenURL"); // method name
++  if (!msg) {
++    return NS_ERROR_FAILURE;
++  }
++
++  // append arguments
++  if (!dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
++                                &aBuffer, aLength, DBUS_TYPE_INVALID)) {
++    return NS_ERROR_FAILURE;
++  }
++
++  // send message and get a handle for a reply
++  DBusError err;
++  dbus_error_init(&err);
++  DBusMessage* reply = dbus_connection_send_with_reply_and_block(mConnection,
++                                                                 msg, -1, &err);
++  dbus_message_unref(msg);
++
++  if (!reply) {
++    dbus_error_free(&err);
++    return NS_ERROR_FAILURE;
++	} else {
++    dbus_message_unref(reply);
++    return NS_OK;
++  }
++}
+diff --git a/widget/xremoteclient/XRemoteClient.h b/widget/xremoteclient/XRemoteClient.h
+index 840716a..d3fc5f9 100644
+--- a/widget/xremoteclient/XRemoteClient.h
++++ b/widget/xremoteclient/XRemoteClient.h
+@@ -7,6 +7,10 @@
+ #include <X11/Xlib.h>
+ 
+ #include "nsRemoteClient.h"
++#if defined(MOZ_WAYLAND) && defined(MOZ_ENABLE_DBUS)
++#define  ENABLE_REMOTE_DBUS 1
++#include "mozilla/ipc/DBusConnectionRefPtr.h"
++#endif
+ 
+ class XRemoteClient : public nsRemoteClient
+ {
+@@ -35,9 +39,15 @@ private:
+                                    int32_t argc, char **argv,
+                                    const char* aDesktopStartupID,
+                                    char **aResponse,
+-                                   bool *aDestroyed);
++                                   bool *aDestroyed,
++                                   const char *aProgram,
++                                   const char *aProfile);
+   bool           WaitForResponse  (Window aWindow, char **aResponse,
+                                    bool *aDestroyed, Atom aCommandAtom);
++#ifdef ENABLE_REMOTE_DBUS
++  nsresult       DoSendDBusCommandLine(const char *aProgram, const char *aProfile,
++                                       unsigned char* aBuffer, int aLength);
++#endif
+ 
+   Display       *mDisplay;
+ 
+@@ -53,4 +63,8 @@ private:
+   char          *mLockData;
+ 
+   bool           mInitialized;
++#ifdef ENABLE_REMOTE_DBUS
++  bool           mIsX11Display;
++  RefPtr<DBusConnection> mConnection;
++#endif
+ };
+diff --git a/widget/xremoteclient/moz.build b/widget/xremoteclient/moz.build
+index 8d3f01c..2835077 100644
+--- a/widget/xremoteclient/moz.build
++++ b/widget/xremoteclient/moz.build
+@@ -9,3 +9,5 @@ FINAL_LIBRARY = 'xul'
+ SOURCES += [
+     'XRemoteClient.cpp',
+ ]
++
++CXXFLAGS += CONFIG['TK_CFLAGS']
+-- 
+1.9.1
+
