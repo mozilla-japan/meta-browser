@@ -133,14 +133,14 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # Gecko Embedded's Additional wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
-            file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-            file://wayland/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
-            file://wayland/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
-            file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
-            file://wayland/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
-            file://wayland/0001-Remove-unused-show_shell-static-function.patch \
-            file://wayland/0001-Wayland-Fix-a-crash-which-causes-when-there-is-no-ke.patch \
-            file://wayland/0001-Wayland-Fix-a-crash-on-starting-video-playback-of-We.patch \
+            file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
+            file://wayland/gem/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
+            file://wayland/gem/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
+            file://wayland/gem/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
+            file://wayland/gem/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
+            file://wayland/gem/0001-Remove-unused-show_shell-static-function.patch \
+            file://wayland/gem/0001-Wayland-Fix-a-crash-which-causes-when-there-is-no-ke.patch \
+            file://wayland/gem/0001-Wayland-Fix-a-crash-on-starting-video-playback-of-We.patch \
            ', \
            '', d)}"
 
@@ -150,17 +150,17 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # To avoid this issue, force use fullscreen mode.
 # In addition, e10s (multi process window) isn't also supported yet.
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           'file://wayland/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
-            file://wayland/0037-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
-            file://wayland/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
-            file://wayland/0040-GLContextPrividerEGL-Remove-needless-code.patch \
-            file://wayland/0001-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
-            file://wayland/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://wayland/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
-            file://wayland/frameless.patch \
+           'file://wayland/gem/egl/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland/gem/egl/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland/gem/egl/0037-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland/gem/egl/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
+            file://wayland/gem/egl/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
+            file://wayland/gem/egl/0040-GLContextPrividerEGL-Remove-needless-code.patch \
+            file://wayland/gem/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland/gem/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
+            file://wayland/gem/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
+            file://wayland/gem/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
+            file://wayland/gem/egl/frameless.patch \
             file://e10s.js \
            ', \
            '', d)}"
