@@ -7,28 +7,22 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
-LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=39;md5=f7e14664a6dca6a06efe93d70f711c0e"
+LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=31;md5=5678b07ae871ae8f37817b896937266a"
 
-SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${PV}.source.tar.xz;name=archive \
+SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://vendor.js \
            file://autoconfig.js \
            file://autoconfig.cfg \
-           file://fixes/avoid-running-config-status.patch \
-           file://fixes/remove-needless-windows-dependency.patch \
-           file://fixes/0041-Fix-a-broken-build-option-with-gl-provider.patch \
-           file://fixes/0042-Fix-a-build-error-on-enabling-both-Gtk-2-and-EGL.patch \
-           file://fixes/firefox-50-fix-build-error-without-glx.patch \
-           file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            "
 
-SRC_URI[archive.md5sum] = "0cae3ca26466f13f31444ac23dfbb6f8"
-SRC_URI[archive.sha256sum] = "96fab11b7e5bd016f80718161ee8dd8afdf989a2cd03106a148b15def2569457"
+#FIXME: Set exact source revision
+SRCREV = "${AUTOREV}"
 
 PR = "r0"
-S = "${WORKDIR}/firefox-${PV}"
+S = "${WORKDIR}/git"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
@@ -51,15 +45,7 @@ PACKAGECONFIG[canvas-gpu] = ",,,"
 
 # Stransky's wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
-           'file://wayland/0001-Add-Wayland-support.patch \
-            file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-            file://wayland/gem/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
-            file://wayland/gem/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
-            file://wayland/gem/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
-            file://wayland/gem/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
-            file://wayland/gem/0001-Remove-unused-show_shell-static-function.patch \
-            file://wayland/gem/0001-Wayland-Fix-a-crash-which-causes-when-there-is-no-ke.patch \
-            file://wayland/gem/0001-Wayland-Fix-a-crash-on-starting-video-playback-of-We.patch \
+           ' \
            ', \
            '', d)}"
 
@@ -69,17 +55,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # To avoid this issue, force use fullscreen mode.
 # In addition, e10s (multi process window) isn't also supported yet.
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           'file://wayland/gem/egl/0035-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland/gem/egl/0036-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
-            file://wayland/gem/egl/0037-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland/gem/egl/0038-Wayland-Detect-existence-of-wayland-libraries.patch \
-            file://wayland/gem/egl/0039-Wayland-Resize-wl_egl_window-when-the-nsWindow-is-re.patch \
-            file://wayland/gem/egl/0040-GLContextPrividerEGL-Remove-needless-code.patch \
-            file://wayland/gem/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/gem/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
-            file://wayland/gem/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://wayland/gem/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
-            file://wayland/gem/egl/frameless.patch \
+           ' \
             file://e10s.js \
            ', \
            '', d)}"
@@ -89,8 +65,7 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
            'file://gpu.js', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
-           'file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
-            file://openmax/0002-OmxDecoderModule-Fix-a-bug-which-crashes-about-suppo.patch \
+           ' \
             file://openmax/openmax.js \
            ', \
            '', d)}"
