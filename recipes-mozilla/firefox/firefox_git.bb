@@ -19,6 +19,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://vendor.js \
            file://autoconfig.js \
            file://autoconfig.cfg \
+           file://rustc_target_force.patch \
            "
 
 #FIXME: Set exact source revision
