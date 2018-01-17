@@ -3,7 +3,10 @@
 
 DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "curl startup-notification libevent cairo libnotify \
-            virtual/libgl pulseaudio yasm-native icu"
+            virtual/libgl pulseaudio yasm-native icu \
+           "
+#            virtual/${TARGET_PREFIX}rust"
+#            rust-native rust-cross-${TARGET_ARCH} cargo-native libstd-rs"
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
@@ -26,6 +29,7 @@ S = "${WORKDIR}/git"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
+inherit rust-common
 
 DISABLE_STATIC=""
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
@@ -86,6 +90,28 @@ python do_check_variables() {
             bb.warn("%s: Canvas acceleration won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
 }
 addtask check_variables before do_configure
+
+do_configure() {
+    export SHELL=/bin/bash
+    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
+
+    ./mach configure \
+            #--target=${TARGET_SYS}
+            #--host=${HOST_SYS} \
+            #--host=${RUST_HOST_SYS} \
+            #--target=${RUST_TARGET_SYS}
+            #--host="${HOST_ARCH}-unknown-${HOST_OS}" \
+            #--target="${TARGET_ARCH}-unknown-${TARGET_OS}"
+}
+
+do_compile() {
+    export SHELL="/bin/bash"
+    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
+
+    ./mach build \
+            #--target=${TARGET_SYS}
+            #--host=${HOST_SYS} \
+}
 
 do_install_append() {
     install -d ${D}${datadir}/applications
