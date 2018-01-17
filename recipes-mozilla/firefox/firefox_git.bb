@@ -91,6 +91,79 @@ python do_check_variables() {
 }
 addtask check_variables before do_configure
 
+do_dump_env(){
+    LOGFILE="/var/tmp/firefox/env.txt"
+
+    if [ -e `dirname ${LOGFILE}` ]; then
+        if [ -e ${LOGFILE} ]; then
+            rm             ${LOGFILE}
+        fi
+    else
+        mkdir -p           `dirname ${LOGFILE}`
+    fi
+
+    echo ${RUSTC}                       >> ${LOGFILE}
+    echo ""                             >> ${LOGFILE}
+
+    echo ${RUST_BUILD_SYS}              >> ${LOGFILE}
+    echo ${RUST_BUILD_CC}               >> ${LOGFILE}
+    echo ${RUST_BUILD_CXX}              >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${RUST_HOST_SYS}               >> ${LOGFILE}
+    echo ${RUST_HOST_CC}                >> ${LOGFILE}
+    echo ${RUST_HOST_CXX}               >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${RUST_TARGET_SYS}             >> ${LOGFILE}
+    echo ${RUST_TARGET_CC}              >> ${LOGFILE}
+    echo ${RUST_TARGET_CXX}             >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo `pwd`                          >> ${LOGFILE}
+    echo ${S}                           >> ${LOGFILE}
+    echo ${WORKDIR}                     >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${STAGING_BINDIR}              >> ${LOGFILE}
+    echo ${STAGING_BINDIR_CROSS}        >> ${LOGFILE}
+    echo ${STAGING_BINDIR_NATIVE}       >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${bindir}                      >> ${LOGFILE}
+    echo ${BINDIR}                      >> ${LOGFILE}
+    echo ${BUILD_PREFIX}                >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${CC}                          >> ${LOGFILE}
+    echo ${LD}                          >> ${LOGFILE}
+    echo ${CXX}                         >> ${LOGFILE}
+    echo ${CFLAGS}                      >> ${LOGFILE}
+    echo ${CXXFLAGS}                    >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${HOST_CC}                     >> ${LOGFILE}
+    echo ${HOST_LD}                     >> ${LOGFILE}
+    echo ${HOST_CXX}                    >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${BUILD_ARCH}                  >> ${LOGFILE}
+    echo ${BUILD_OS}                    >> ${LOGFILE}
+    echo ${BUILD_SYS}                   >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${HOST_ARCH}                   >> ${LOGFILE}
+    echo ${HOST_OS}                     >> ${LOGFILE}
+    echo ${HOST_SYS}                    >> ${LOGFILE}
+
+    echo ""                             >> ${LOGFILE}
+    echo ${TARGET_ARCH}                 >> ${LOGFILE}
+    echo ${TARGET_OS}                   >> ${LOGFILE}
+    echo ${TARGET_SYS}                  >> ${LOGFILE}
+    echo ${TARGET_PREFIX}               >> ${LOGFILE}
+}
+addtask do_dump_env before do_configure
+
 do_configure() {
     export SHELL=/bin/bash
     export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
