@@ -1,0 +1,13 @@
+diff --git a/build/moz.configure/toolchain.configure b/build/moz.configure/toolchain.configure
+index a948344..974dfa2 100755
+--- a/build/moz.configure/toolchain.configure
++++ b/build/moz.configure/toolchain.configure
+@@ -1457,7 +1457,7 @@ def enable_gnu_linker(enable_gold_option, c_compiler, developer_options, build_e
+             # The -B trick didn't work, removing the directory
+             shutil.rmtree(targetDir)
+ 
+-    if (enable_gold_option or developer_options) and linker_name != 'bfd':
++    if ((enable_gold_option or developer_options) and linker_name != 'bfd') and not (not enable_gold_option and linker_name == 'other'):
+         result = resolve_gold()
+ 
+         if result:
