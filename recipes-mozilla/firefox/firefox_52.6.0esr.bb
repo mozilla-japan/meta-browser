@@ -24,8 +24,8 @@ SRC_URI = "https://archive.mozilla.org/pub/firefox/releases/${PV}/source/firefox
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            "
 
-SRC_URI[archive.md5sum] = "0cae3ca26466f13f31444ac23dfbb6f8"
-SRC_URI[archive.sha256sum] = "96fab11b7e5bd016f80718161ee8dd8afdf989a2cd03106a148b15def2569457"
+SRC_URI[archive.md5sum] = "f08e19c79531d4a9ae4a66a6f8a386ce"
+SRC_URI[archive.sha256sum] = "587cd94a315f5a94bf5c1f85e4a0ea92c9103503b51d649a3c4a4a122d691e42"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-${PV}"
