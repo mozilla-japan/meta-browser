@@ -21,7 +21,6 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://autoconfig.cfg \
            file://rustc_target_force.patch \
            file://disable_gold_linker.patch \
-           file://fix_asm_file_extension.patch \
            "
 
 #FIXME: Set exact source revision
