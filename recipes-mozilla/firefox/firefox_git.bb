@@ -10,7 +10,7 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
-LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=31;md5=5678b07ae871ae8f37817b896937266a"
+LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=32;md5=9ccc4b003ce6a52174487ee0ea8085ee"
 
 SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://mozconfig \
