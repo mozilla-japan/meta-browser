@@ -39,6 +39,7 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
 
+# FIXME: They won't be applied because do_configure is overriden
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d)} \
                    ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)} \
 "
