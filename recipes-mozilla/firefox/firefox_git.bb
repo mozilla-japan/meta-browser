@@ -188,29 +188,34 @@ do_compile() {
             #--host=${HOST_SYS} \
 }
 
+do_install() {
+    export SHELL="/bin/bash"
+    INSTALL_SDK=0 DESTDIR="${D}" ./mach install
+}
+
 do_install_append() {
     install -d ${D}${datadir}/applications
     install -d ${D}${datadir}/pixmaps
 
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
-    install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
-    install -m 0644 ${WORKDIR}/autoconfig.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
-    install -m 0644 ${WORKDIR}/autoconfig.cfg ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/
+    install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}/defaults/pref/
+    install -m 0644 ${WORKDIR}/autoconfig.js ${D}${libdir}/${PN}/defaults/pref/
+    install -m 0644 ${WORKDIR}/autoconfig.cfg ${D}${libdir}/${PN}/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+        install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/e10s.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+        install -m 0644 ${WORKDIR}/e10s.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'webgl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/webgl.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+        install -m 0644 ${WORKDIR}/webgl.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/canvas-gpu.js ${D}${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/defaults/pref/
+        install -m 0644 ${WORKDIR}/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
 
     # Fix ownership of files
@@ -221,15 +226,15 @@ do_install_append() {
 FILES_${PN} = "${bindir}/${PN} \
                ${datadir}/applications/ \
                ${datadir}/pixmaps/ \
-               ${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/* \
-               ${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/.autoreg \
+               ${libdir}/${PN}/* \
+               ${libdir}/${PN}/.autoreg \
                ${bindir}/defaults"
 FILES_${PN}-dev += "${datadir}/idl ${bindir}/${PN}-config ${libdir}/${PN}-devel-*"
 FILES_${PN}-staticdev += "${libdir}/${PN}-devel-*/sdk/lib/*.a"
-FILES_${PN}-dbg += "${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/.debug \
-                    ${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/*/.debug \
-                    ${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/*/*/.debug \
-                    ${libdir}/${PN}-${MOZ_APP_BASE_VERSION}/*/*/*/.debug \
+FILES_${PN}-dbg += "${libdir}/${PN}/.debug \
+                    ${libdir}/${PN}/*/.debug \
+                    ${libdir}/${PN}/*/*/.debug \
+                    ${libdir}/${PN}/*/*/*/.debug \
                     ${libdir}/${PN}-devel-*/*/.debug \
                     ${libdir}/${PN}-devel-*/*/*/.debug \
                     ${libdir}/${PN}-devel-*/*/*/*/.debug \
