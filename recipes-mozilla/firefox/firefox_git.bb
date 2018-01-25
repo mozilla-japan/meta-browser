@@ -21,6 +21,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://autoconfig.cfg \
            file://rustc_target_force.patch \
            file://disable_gold_linker.patch \
+           file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
            "
 
 #FIXME: Set exact source revision
