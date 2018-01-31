@@ -20,7 +20,6 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://autoconfig.js \
            file://autoconfig.cfg \
            file://rustc_target_force.patch \
-           file://disable_gold_linker.patch \
            file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
            "
 
@@ -32,7 +31,7 @@ S = "${WORKDIR}/git"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
-inherit rust-common
+#inherit rust-common
 
 DISABLE_STATIC=""
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
