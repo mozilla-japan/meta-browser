@@ -103,6 +103,12 @@ addtask check_variables before do_configure
 do_configure() {
     export SHELL=/bin/bash
 
+    export BINDGEN_CFLAGS="${BINDGEN_CFLAGS} \
+                           --target=${TARGET_SYS} \
+                           -I${STAGING_INCDIR}/c++/4.9.4 \
+                           -I${STAGING_INCDIR}/c++/4.9.4/${TARGET_SYS} \
+                           -I/usr/lib/llvm-3.9/lib/clang/3.9.1/include"
+
     ./mach configure ${CONFIGURE_ARGS}
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
     ./mach build-backend -b GnMozbuildWriter
