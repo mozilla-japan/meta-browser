@@ -9,7 +9,7 @@ ac_add_options --enable-application=browser
 
 # for ESR60
 ac_add_options --enable-release
-ac_add_options --disable-webrtc
+ac_add_options --enable-webrtc
 ac_add_options --disable-stylo
 ac_add_options --disable-av1
 ac_add_options --enable-default-toolkit=cairo-gtk3-wayland
