@@ -100,14 +100,28 @@ python do_check_variables() {
 }
 addtask check_variables before do_configure
 
+def search_path(pattern):
+    import glob
+
+    result  = glob.glob(pattern)
+    result.sort(reverse=True)
+
+    #result = "" if len(result) == 0 else result[0]
+    result = result[0]      #XXX: Raise exception here if no target found
+
+    return result
+
 do_configure() {
     export SHELL=/bin/bash
 
+    INC_CPP='${@search_path("${STAGING_INCDIR}/c++/*")}'
+    INC_LLVM='${@search_path("/usr/lib/llvm-*/**/clang/*/include")}'
+
     export BINDGEN_CFLAGS="${BINDGEN_CFLAGS} \
                            --target=${TARGET_SYS} \
-                           -I${STAGING_INCDIR}/c++/4.9.4 \
-                           -I${STAGING_INCDIR}/c++/4.9.4/${TARGET_SYS} \
-                           -I/usr/lib/llvm-3.9/lib/clang/3.9.1/include"
+                           -I${INC_CPP} \
+                           -I${INC_CPP}/${TARGET_SYS} \
+                           -I${INC_LLVM}"
 
     ./mach configure ${CONFIGURE_ARGS}
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
