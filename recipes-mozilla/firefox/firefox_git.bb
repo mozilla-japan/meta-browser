@@ -21,7 +21,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://autoconfig.cfg \
            file://rustc_target_force.patch \
            file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-           file://0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
+           file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            "
 
 #FIXME: Set exact source revision
