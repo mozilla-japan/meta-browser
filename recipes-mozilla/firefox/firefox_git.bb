@@ -23,6 +23,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fix-get-cpu-feature-definition-conflict.patch \
+           file://gn-configs/ \
            "
 
 #FIXME: Set exact source revision
@@ -181,8 +182,7 @@ do_configure() {
             #--host="${HOST_ARCH}-unknown-${HOST_OS}" \
             #--target="${TARGET_ARCH}-unknown-${TARGET_OS}"
 
-    ./mach build-backend -b GnConfigGen
-    cp ${S}/firefox-build-dir/media/webrtc/trunk/gn-output/*.json ${S}/media/webrtc/gn-configs/
+    cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
     ./mach build-backend -b GnMozbuildWriter
 }
 
