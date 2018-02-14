@@ -179,6 +179,10 @@ do_configure() {
             #--target=${RUST_TARGET_SYS}
             #--host="${HOST_ARCH}-unknown-${HOST_OS}" \
             #--target="${TARGET_ARCH}-unknown-${TARGET_OS}"
+
+    ./mach build-backend -b GnConfigGen
+    cp ${S}/firefox-build-dir/media/webrtc/trunk/gn-output/*.json ${S}/media/webrtc/gn-configs/
+    ./mach build-backend -b GnMozbuildWriter
 }
 
 do_compile() {
