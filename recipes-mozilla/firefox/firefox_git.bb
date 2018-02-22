@@ -14,10 +14,10 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
-           file://vendor.js \
-           file://autoconfig.js \
-           file://autoconfig.cfg \
-           file://rustc_target_force.patch \
+           file://prefs/vendor.js \
+           file://prefs/autoconfig.js \
+           file://prefs/autoconfig.cfg \
+           file://fixes/rustc_target_force.patch \
            file://fixes/0001-Always-accept-the-configure-option-with-gl-provider.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
@@ -67,13 +67,13 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://e10s.js \
+            file://prefs/disable-e10s.js \
            ', \
            '', d)}"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
-           'file://gpu.js', '', d)}"
+           'file://prefs/gpu.js', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
@@ -82,10 +82,10 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            '', d)}"
 
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'webgl', \
-           'file://webgl.js', '', d)}"
+           'file://prefs/webgl.js', '', d)}"
 
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'canvas-gpu', \
-           'file://canvas-gpu.js', '', d)}"
+           'file://prefs/canvas-gpu.js', '', d)}"
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
@@ -124,11 +124,11 @@ do_install_append() {
 
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
-    install -m 0644 ${WORKDIR}/vendor.js ${D}${libdir}/${PN}/defaults/pref/
-    install -m 0644 ${WORKDIR}/autoconfig.js ${D}${libdir}/${PN}/defaults/pref/
-    install -m 0644 ${WORKDIR}/autoconfig.cfg ${D}${libdir}/${PN}/
+    install -m 0644 ${WORKDIR}/prefs/vendor.js ${D}${libdir}/${PN}/defaults/pref/
+    install -m 0644 ${WORKDIR}/prefs/autoconfig.js ${D}${libdir}/${PN}/defaults/pref/
+    install -m 0644 ${WORKDIR}/prefs/autoconfig.cfg ${D}${libdir}/${PN}/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/gpu.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}/defaults/pref/
@@ -137,13 +137,13 @@ do_install_append() {
         install -m 0644 ${WORKDIR}/wayland/wayland-hacks.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/e10s.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/disable-e10s.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'webgl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/webgl.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/webgl.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
 
     # Fix ownership of files
