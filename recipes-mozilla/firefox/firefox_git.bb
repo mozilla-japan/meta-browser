@@ -60,11 +60,13 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 
 # Gecko Embedded's Additional wayland patches to support EGL
 #
-# Current EGL patches doesn't work well on windowed mode.
-# To avoid this issue, force use fullscreen mode.
-# In addition, e10s (multi process window) isn't also supported yet.
+# TODO: Most of them aren't ported to ESR60 yet
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
+            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
+            file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
+            file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://e10s.js \
            ', \
            '', d)}"
