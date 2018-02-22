@@ -18,6 +18,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://autoconfig.js \
            file://autoconfig.cfg \
            file://rustc_target_force.patch \
+           file://fixes/0001-Always-accept-the-configure-option-with-gl-provider.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://gn-configs/ \
@@ -38,13 +39,13 @@ EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
 
 ARM_INSTRUCTION_SET = "arm"
 
-# FIXME: They won't be applied because do_configure is overriden
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d)} \
                    ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)} \
 "
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
+# GLContextProviderEGL will be enabled by default on Wayland
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
 PACKAGECONFIG[webgl] = ",,,"
@@ -100,7 +101,7 @@ addtask check_variables before do_configure
 do_configure() {
     export SHELL=/bin/bash
 
-    ./mach configure
+    ./mach configure ${CONFIGURE_ARGS}
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
     ./mach build-backend -b GnMozbuildWriter
 }
