@@ -32,7 +32,6 @@ S = "${WORKDIR}/git"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
-#inherit rust-common
 
 DISABLE_STATIC=""
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
@@ -51,7 +50,6 @@ PACKAGECONFIG[openmax] = ",,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
 
-# Stransky's wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
             file://wayland/wayland-hacks.js \
