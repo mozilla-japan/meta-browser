@@ -77,6 +77,10 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
+            file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
+            file://openmax/0002-OmxDecoderModule-Fix-a-bug-which-crashes-about-suppo.patch \
+            file://openmax/0003-omx-Adopt-on-59.0a-code-base.patch \
+            file://openmax/0004-OmxCoreLibLinker-Remove-needless-return-statement.patch \
             file://openmax/openmax.js \
            ', \
            '', d)}"

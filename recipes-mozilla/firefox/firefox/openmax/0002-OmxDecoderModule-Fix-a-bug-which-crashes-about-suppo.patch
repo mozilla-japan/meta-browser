@@ -1,7 +1,7 @@
-From aa13cd2ee1c37f56a60da197fb44ee7a5a3bb8e3 Mon Sep 17 00:00:00 2001
+From 89df74ce821bd7a7cf0fe5b212a7b103ed349890 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Thu, 11 May 2017 14:13:54 +0900
-Subject: [PATCH 2/2] OmxDecoderModule: Fix a bug which crashes about:support
+Subject: [PATCH 2/4] OmxDecoderModule: Fix a bug which crashes about:support
  page
 
 In the current version TaskQueue should be recieved via
@@ -9,69 +9,64 @@ CreateDecoderParams instead of using AbstractThread::GetCurrent().
 
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
- dom/media/platforms/omx/OmxDataDecoder.cpp   | 4 ++--
- dom/media/platforms/omx/OmxDataDecoder.h     | 1 +
- dom/media/platforms/omx/OmxDecoderModule.cpp | 2 ++
- 3 files changed, 5 insertions(+), 2 deletions(-)
+ dom/media/platforms/omx/OmxDataDecoder.cpp   | 6 +++++-
+ dom/media/platforms/omx/OmxDataDecoder.h     | 2 ++
+ dom/media/platforms/omx/OmxDecoderModule.cpp | 4 ++++
+ 3 files changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index 33f9dad303f5..66c0df288a02 100644
+index db3a32b7e91d..719ae5dd7864 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
-@@ -96,10 +96,12 @@ protected:
+@@ -100,8 +100,12 @@ protected:
  };
  
  OmxDataDecoder::OmxDataDecoder(const TrackInfo& aTrackInfo,
 +                               TaskQueue* aTaskQueue,
-                                MediaDataDecoderCallback* aCallback,
++                               MediaDataDecoderCallback* aCallback,
                                 layers::ImageContainer* aImageContainer)
-   : mMonitor("OmxDataDecoder")
-   , mOmxTaskQueue(CreateMediaDecodeTaskQueue())
+-  : mOmxTaskQueue(CreateMediaDecodeTaskQueue("OmxDataDecoder::mOmxTaskQueue"))
++  : mMonitor("OmxDataDecoder")
++  , mOmxTaskQueue(CreateMediaDecodeTaskQueue())
 +  , mReaderTaskQueue(aTaskQueue)
    , mImageContainer(aImageContainer)
    , mWatchManager(this, mOmxTaskQueue)
    , mOmxState(OMX_STATETYPE::OMX_StateInvalid, "OmxDataDecoder::mOmxState")
-@@ -152,8 +154,6 @@ RefPtr<MediaDataDecoder::InitPromise>
- OmxDataDecoder::Init()
- {
-   LOG("");
--  mReaderTaskQueue = AbstractThread::GetCurrent()->AsTaskQueue();
--  MOZ_ASSERT(mReaderTaskQueue);
- 
-   RefPtr<InitPromise> p = mInitPromise.Ensure(__func__);
-   RefPtr<OmxDataDecoder> self = this;
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
-index ea75b2a2ac75..ed8fe0e6d693 100644
+index d6199b5b29ba..f3e65e8d3645 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.h
 +++ b/dom/media/platforms/omx/OmxDataDecoder.h
-@@ -61,6 +61,7 @@ protected:
+@@ -67,6 +67,8 @@ protected:
  
  public:
    OmxDataDecoder(const TrackInfo& aTrackInfo,
 +                 TaskQueue* aTaskQueue,
-                  MediaDataDecoderCallback* aCallback,
++                 MediaDataDecoderCallback* aCallback,
                   layers::ImageContainer* aImageContainer);
  
+   RefPtr<InitPromise> Init() override;
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 16cb3bff80b4..3088b5bb36b8 100644
+index 69e94b6c63c0..8b014534082a 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
-@@ -39,6 +39,7 @@ already_AddRefed<MediaDataDecoder>
+@@ -39,6 +39,8 @@ already_AddRefed<MediaDataDecoder>
  OmxDecoderModule::CreateVideoDecoder(const CreateDecoderParams& aParams)
  {
    RefPtr<OmxDataDecoder> decoder = new OmxDataDecoder(aParams.mConfig,
 +                                                      aParams.mTaskQueue,
-                                                       aParams.mCallback,
++                                                      aParams.mCallback,
                                                        aParams.mImageContainer);
    return decoder.forget();
-@@ -48,6 +49,7 @@ already_AddRefed<MediaDataDecoder>
+ }
+@@ -47,6 +49,8 @@ already_AddRefed<MediaDataDecoder>
  OmxDecoderModule::CreateAudioDecoder(const CreateDecoderParams& aParams)
  {
    RefPtr<OmxDataDecoder> decoder = new OmxDataDecoder(aParams.mConfig,
 +                                                      aParams.mTaskQueue,
-                                                       aParams.mCallback,
++                                                      aParams.mCallback,
                                                        nullptr);
    return decoder.forget();
+ }
 -- 
-2.11.0
+2.14.1
 

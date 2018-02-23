@@ -1,0 +1,28 @@
+From b55b48d8443dea66b91886fc774e24e9a66d7018 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Fri, 23 Feb 2018 10:26:30 +0900
+Subject: [PATCH 4/4] OmxCoreLibLinker: Remove needless return statement
+
+media.pdm-omx.core-lib-path is ignorable since known paths are
+supplied when it's empty.
+---
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
+index 4f88d9f2bba6..d5e15a1909e0 100644
+--- a/dom/media/platforms/omx/OmxCoreLibLinker.cpp
++++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
+@@ -71,9 +71,6 @@ OmxCoreLibLinker::Link()
+ 
+   nsAutoCString libPath;
+   auto rv = Preferences::GetCString("media.pdm-omx.core-lib-path", libPath);
+-  if (NS_FAILED(rv)) {
+-    return false;
+-  }
+   if (!libPath.IsEmpty() && TryLinkingLibrary(libPath.Data()))
+     return true;
+ 
+-- 
+2.14.1
+
