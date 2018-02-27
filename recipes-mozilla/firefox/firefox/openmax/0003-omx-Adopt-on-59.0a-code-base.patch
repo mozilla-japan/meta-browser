@@ -1,18 +1,19 @@
-From 74aa2dd938cec46ba9d7d46c10a2bb908075ed51 Mon Sep 17 00:00:00 2001
+From 7d547c4ee8a50618cdc9ffa5cb85a66678b8fec6 Mon Sep 17 00:00:00 2001
 From: Hiroshi Hatake <hatake@clear-code.com>
 Date: Mon, 27 Nov 2017 15:06:57 +0900
 Subject: [PATCH 3/4] omx: Adopt on 59.0a code base
 
+Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     |  7 ++++++-
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 10 +++++++---
  dom/media/platforms/omx/OmxDataDecoder.cpp       |  4 +---
  dom/media/platforms/omx/OmxDataDecoder.h         |  3 ++-
  dom/media/platforms/omx/OmxDecoderModule.cpp     |  2 --
  dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 24 +++++++++++++++---------
- 5 files changed, 24 insertions(+), 16 deletions(-)
+ 5 files changed, 25 insertions(+), 18 deletions(-)
 
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
-index 78f951f30f63..4f88d9f2bba6 100644
+index 78f951f30f63..5fb3dd031db4 100644
 --- a/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 @@ -6,6 +6,7 @@
@@ -23,19 +24,22 @@ index 78f951f30f63..4f88d9f2bba6 100644
  #include "MainThreadUtils.h"
  #include "prlink.h"
  #include "PlatformDecoderModule.h"
-@@ -68,7 +69,11 @@ OmxCoreLibLinker::Link()
+@@ -68,9 +69,12 @@ OmxCoreLibLinker::Link()
  
    MOZ_ASSERT(NS_IsMainThread());
  
 -  auto libPath = Preferences::GetCString("media.pdm-omx.core-lib-path");
+-  if (!libPath.IsEmpty() && TryLinkingLibrary(libPath.Data()))
+-    return true;
 +  nsAutoCString libPath;
-+  auto rv = Preferences::GetCString("media.pdm-omx.core-lib-path", libPath);
-+  if (NS_FAILED(rv)) {
-+    return false;
++  nsresult rv = Preferences::GetCString("media.pdm-omx.core-lib-path", libPath);
++  if (NS_SUCCEEDED(rv) && !libPath.IsEmpty()) {
++    if (TryLinkingLibrary(libPath.Data()))
++      return true;
 +  }
-   if (!libPath.IsEmpty() && TryLinkingLibrary(libPath.Data()))
-     return true;
  
+   // try known paths
+   for (size_t i = 0; i < ArrayLength(sLibNames); i++) {
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
 index 719ae5dd7864..f22a4b829b8c 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp

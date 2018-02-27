@@ -1,4 +1,4 @@
-From 9d1451b6f0cbb140756e5c149695f76070f22395 Mon Sep 17 00:00:00 2001
+From c6b5c1f8f7a76f019df689bdc1f9dcc7f76ae1c9 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Thu, 11 May 2017 14:08:05 +0900
 Subject: [PATCH 1/4] Add initial implementation of PureOmxPlatformLayer
@@ -996,10 +996,10 @@ index 6ae24dd6e7b0..fbdbce4a0cd6 100644
  
  if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
-index 1035e3b613e0..1be009d631e2 100644
+index 21edf6e72e78..6a2af86cff97 100644
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -406,6 +406,7 @@ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
+@@ -409,6 +409,7 @@ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
  pref("media.wmf.play-stand-alone", true);
  pref("media.wmf.use-sync-texture", true);
  #endif

@@ -1,0 +1,46 @@
+From 965493c350215e6427afd0d3a8b103c12b67cd2b Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Tue, 27 Feb 2018 09:48:38 +0900
+Subject: [PATCH 4/4] OmxDataDecoder: Fix a stall issue on shutting down
+
+Because the closure awaits finishing itself by
+TaskQueue::AwaitShutdownAndIdle(), the function blocks infinitely.
+
+The code is wrongly introduced at the following commit:
+
+  * https://bugzilla.mozilla.org/show_bug.cgi?id=1319987
+    * https://hg.mozilla.org/mozilla-central/rev/b2171e3e8b69
+
+It introduces async shutdown mechanism so that calling
+AwaitShutdownAndIdle() isn't needed anymore.
+
+Signed-off-by: Takuro Ashie <ashie@clear-code.com>
+---
+ dom/media/platforms/omx/OmxDataDecoder.cpp | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
+index f22a4b829b8c..8e512ac898e3 100644
+--- a/dom/media/platforms/omx/OmxDataDecoder.cpp
++++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
+@@ -281,8 +281,6 @@ OmxDataDecoder::DoAsyncShutdown()
+              self->mMediaDataHelper = nullptr;
+ 
+              self->mShuttingDown = false;
+-             self->mOmxTaskQueue->BeginShutdown();
+-             self->mOmxTaskQueue->AwaitShutdownAndIdle();
+              self->mShutdownPromise.Resolve(true, __func__);
+            },
+            [self] () {
+@@ -292,8 +290,6 @@ OmxDataDecoder::DoAsyncShutdown()
+              self->mMediaDataHelper = nullptr;
+ 
+              self->mShuttingDown = false;
+-             self->mOmxTaskQueue->BeginShutdown();
+-             self->mOmxTaskQueue->AwaitShutdownAndIdle();
+              self->mShutdownPromise.Resolve(true, __func__);
+            });
+   return mShutdownPromise.Ensure(__func__);
+-- 
+2.14.1
+

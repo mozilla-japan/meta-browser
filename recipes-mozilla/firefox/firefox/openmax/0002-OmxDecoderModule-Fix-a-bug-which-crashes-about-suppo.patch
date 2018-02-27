@@ -1,4 +1,4 @@
-From 89df74ce821bd7a7cf0fe5b212a7b103ed349890 Mon Sep 17 00:00:00 2001
+From 343a896d00f3d5e73f7192e8cd1fd4690ea25739 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Thu, 11 May 2017 14:13:54 +0900
 Subject: [PATCH 2/4] OmxDecoderModule: Fix a bug which crashes about:support

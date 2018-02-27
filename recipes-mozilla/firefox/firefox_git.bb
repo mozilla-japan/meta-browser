@@ -80,7 +80,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
             file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
             file://openmax/0002-OmxDecoderModule-Fix-a-bug-which-crashes-about-suppo.patch \
             file://openmax/0003-omx-Adopt-on-59.0a-code-base.patch \
-            file://openmax/0004-OmxCoreLibLinker-Remove-needless-return-statement.patch \
+            file://openmax/0004-OmxDataDecoder-Fix-a-stall-issue-on-shutting-down.patch \
             file://openmax/openmax.js \
            ', \
            '', d)}"
