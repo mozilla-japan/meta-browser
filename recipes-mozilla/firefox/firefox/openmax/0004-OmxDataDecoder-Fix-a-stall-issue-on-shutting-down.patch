@@ -1,4 +1,4 @@
-From 965493c350215e6427afd0d3a8b103c12b67cd2b Mon Sep 17 00:00:00 2001
+From c8cd0ca2e914a2bd4c7f7fc15d49feffd6c1ae41 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Tue, 27 Feb 2018 09:48:38 +0900
 Subject: [PATCH 4/4] OmxDataDecoder: Fix a stall issue on shutting down
@@ -16,31 +16,53 @@ AwaitShutdownAndIdle() isn't needed anymore.
 
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
- dom/media/platforms/omx/OmxDataDecoder.cpp | 4 ----
- 1 file changed, 4 deletions(-)
+ dom/media/platforms/omx/OmxDataDecoder.cpp | 11 ++---------
+ dom/media/platforms/omx/OmxDataDecoder.h   |  1 -
+ 2 files changed, 2 insertions(+), 10 deletions(-)
 
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index f22a4b829b8c..8e512ac898e3 100644
+index f22a4b829b8c..85a8e7c749d6 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
-@@ -281,8 +281,6 @@ OmxDataDecoder::DoAsyncShutdown()
+@@ -279,24 +279,17 @@ OmxDataDecoder::DoAsyncShutdown()
+              self->mWatchManager.Shutdown();
+              self->mOmxLayer = nullptr;
               self->mMediaDataHelper = nullptr;
- 
+-
               self->mShuttingDown = false;
 -             self->mOmxTaskQueue->BeginShutdown();
 -             self->mOmxTaskQueue->AwaitShutdownAndIdle();
-              self->mShutdownPromise.Resolve(true, __func__);
+-             self->mShutdownPromise.Resolve(true, __func__);
             },
             [self] () {
-@@ -292,8 +290,6 @@ OmxDataDecoder::DoAsyncShutdown()
+              self->mOmxLayer->Shutdown();
+              self->mWatchManager.Shutdown();
+              self->mOmxLayer = nullptr;
               self->mMediaDataHelper = nullptr;
- 
+-
               self->mShuttingDown = false;
 -             self->mOmxTaskQueue->BeginShutdown();
 -             self->mOmxTaskQueue->AwaitShutdownAndIdle();
-              self->mShutdownPromise.Resolve(true, __func__);
+-             self->mShutdownPromise.Resolve(true, __func__);
             });
-   return mShutdownPromise.Ensure(__func__);
+-  return mShutdownPromise.Ensure(__func__);
++
++  return mOmxTaskQueue->BeginShutdown();
+ }
+ 
+ void
+diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
+index 9bc480670e07..2d5b36c36da5 100644
+--- a/dom/media/platforms/omx/OmxDataDecoder.h
++++ b/dom/media/platforms/omx/OmxDataDecoder.h
+@@ -188,7 +188,6 @@ protected:
+   MozPromiseHolder<DecodePromise> mDecodePromise;
+   MozPromiseHolder<DecodePromise> mDrainPromise;
+   MozPromiseHolder<FlushPromise> mFlushPromise;
+-  MozPromiseHolder<ShutdownPromise> mShutdownPromise;
+   // Where decoded samples will be stored until the decode promise is resolved.
+   DecodedData mDecodedData;
+ 
 -- 
 2.14.1
 
