@@ -44,7 +44,6 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
-# GLContextProviderEGL will be enabled by default on Wayland
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
 PACKAGECONFIG[webgl] = ",,,"
