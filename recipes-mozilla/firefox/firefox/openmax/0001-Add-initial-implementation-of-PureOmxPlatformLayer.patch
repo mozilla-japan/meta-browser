@@ -1,28 +1,35 @@
-From c6b5c1f8f7a76f019df689bdc1f9dcc7f76ae1c9 Mon Sep 17 00:00:00 2001
+From 6323414a8808214a8f844d38718036ac84f9c49c Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
-Date: Thu, 11 May 2017 14:08:05 +0900
-Subject: [PATCH 1/4] Add initial implementation of PureOmxPlatformLayer
+Date: Tue, 27 Feb 2018 17:36:51 +0900
+Subject: [PATCH 1/2] Add initial implementation of PureOmxPlatformLayer
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
-libraries directly.
+libraries directly. It will be usable on various embedded linux systems.
+Note that it's not enabled by default yet. Add the following setting to
+your prefs to enable it.
+
+  user_pref("media.pdm-omx.enabled", true);
+
+TODO: Implement zero-copy mode
 
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
-Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
 ---
- dom/media/MediaPrefs.h                           |   4 +
+ dom/media/MediaPrefs.h                           |   3 +
  dom/media/platforms/PDMFactory.cpp               |  12 +
- dom/media/platforms/moz.build                    |  12 +-
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 111 ++++++
+ dom/media/platforms/moz.build                    |  10 +
+ dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 114 ++++++
  dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
- dom/media/platforms/omx/OmxDecoderModule.cpp     |  24 ++
+ dom/media/platforms/omx/OmxDataDecoder.cpp       |   2 +
+ dom/media/platforms/omx/OmxDataDecoder.h         |   3 +
+ dom/media/platforms/omx/OmxDecoderModule.cpp     |  26 ++
  dom/media/platforms/omx/OmxDecoderModule.h       |   4 +
  dom/media/platforms/omx/OmxFunctionList.h        |  13 +
  dom/media/platforms/omx/OmxPlatformLayer.cpp     |  27 +-
- dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 439 +++++++++++++++++++++++
+ dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 444 +++++++++++++++++++++++
  dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
  dom/media/platforms/omx/moz.build                |   7 +
- modules/libpref/init/all.js                      |   1 +
- 13 files changed, 805 insertions(+), 2 deletions(-)
+ modules/libpref/init/all.js                      |   3 +
+ 15 files changed, 820 insertions(+), 1 deletion(-)
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
  create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
  create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
@@ -30,15 +37,10 @@ Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
  create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.h
 
 diff --git a/dom/media/MediaPrefs.h b/dom/media/MediaPrefs.h
-index 8bd06a774ab9..ecff0442caa1 100644
+index 8bd06a774ab9..455174fd56e6 100644
 --- a/dom/media/MediaPrefs.h
 +++ b/dom/media/MediaPrefs.h
-@@ -121,10 +121,14 @@ private:
- #ifdef MOZ_WIDGET_ANDROID
-   DECL_MEDIA_PREF("media.android-media-codec.enabled",        PDMAndroidMediaCodecEnabled, bool, false);
-   DECL_MEDIA_PREF("media.android-media-codec.preferred",      PDMAndroidMediaCodecPreferred, bool, false);
-+  DECL_MEDIA_PREF("media.android-remote-codec.enabled",       PDMAndroidRemoteCodecEnabled, bool, false);
-   DECL_MEDIA_PREF("media.navigator.hardware.vp8_encode.acceleration_remote_enabled", RemoteMediaCodecVP8EncoderEnabled, bool, false);
+@@ -125,6 +125,9 @@ private:
  #endif
    // WebRTC
    DECL_MEDIA_PREF("media.navigator.mediadatadecoder_enabled", MediaDataDecoderEnabled, bool, false);
@@ -86,7 +88,7 @@ index d303ae77be5d..5dabe5b26025 100644
    if (MediaPrefs::PDMFFVPXEnabled()) {
      m = FFVPXRuntimeLinker::CreateDecoderModule();
 diff --git a/dom/media/platforms/moz.build b/dom/media/platforms/moz.build
-index 7cd0bf62dc07..ab2ecac1f562 100644
+index 7cd0bf62dc07..02624d8d78bb 100644
 --- a/dom/media/platforms/moz.build
 +++ b/dom/media/platforms/moz.build
 @@ -4,6 +4,8 @@
@@ -102,7 +104,7 @@ index 7cd0bf62dc07..ab2ecac1f562 100644
          'agnostic/AOMDecoder.cpp',
      ]
  
-+if toolkit == 'gtk2' or toolkit == 'gtk3':
++if toolkit == 'gtk3':
 +    EXPORTS += [
 +        'omx/OmxCoreLibLinker.h',
 +    ]
@@ -113,21 +115,12 @@ index 7cd0bf62dc07..ab2ecac1f562 100644
  if CONFIG['MOZ_APPLEMEDIA']:
    EXPORTS += [
        'apple/AppleDecoderModule.h',
-@@ -87,7 +97,7 @@ if CONFIG['MOZ_APPLEMEDIA']:
- 
- include('/ipc/chromium/chromium-config.mozbuild')
- 
--if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'android':
-+if toolkit == 'android':
-     EXPORTS += [
-         'android/AndroidDecoderModule.h',
-         'android/JavaCallbacksSupport.h',
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 new file mode 100644
-index 000000000000..78f951f30f63
+index 000000000000..0966d844e2ad
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,114 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -136,6 +129,7 @@ index 000000000000..78f951f30f63
 +
 +#include "OmxCoreLibLinker.h"
 +#include "mozilla/ArrayUtils.h"
++#include "mozilla/Preferences.h"
 +#include "MainThreadUtils.h"
 +#include "prlink.h"
 +#include "PlatformDecoderModule.h"
@@ -153,9 +147,8 @@ index 000000000000..78f951f30f63
 +  LinkStatus_INIT;
 +
 +const char* OmxCoreLibLinker::sLibNames[] = {
-+  "/usr/local/lib/libomxr_core.so", // Renesas (RZ/G): Our first target
-+  "/usr/lib/libomxr_core.so", // Renesas (R-Car): Our second target
-+  "/opt/vc/lib/libopenmaxil.so", // Raspberry Pi: Our postponed target
++  "libopenmaxil.so",        // Raspberry Pi
++  "libomxr_core.so",        // Renesas R-Car, RZ/G
 +  "libomxil-bellagio.so.0", // Bellagio: An OSS implementation of OpenMAX IL
 +};
 +
@@ -198,9 +191,12 @@ index 000000000000..78f951f30f63
 +
 +  MOZ_ASSERT(NS_IsMainThread());
 +
-+  auto libPath = Preferences::GetCString("media.pdm-omx.core-lib-path");
-+  if (!libPath.IsEmpty() && TryLinkingLibrary(libPath.Data()))
-+    return true;
++  nsAutoCString libPath;
++  nsresult rv = Preferences::GetCString("media.pdm-omx.core-lib-path", libPath);
++  if (NS_SUCCEEDED(rv) && !libPath.IsEmpty()) {
++    if (TryLinkingLibrary(libPath.Data()))
++      return true;
++  }
 +
 +  // try known paths
 +  for (size_t i = 0; i < ArrayLength(sLibNames); i++) {
@@ -283,11 +279,47 @@ index 000000000000..389a156bd412
 +}
 +
 +#endif // __OmxCoreLibLinker_h__
+diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
+index db3a32b7e91d..4e8230dd1ec0 100644
+--- a/dom/media/platforms/omx/OmxDataDecoder.cpp
++++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
+@@ -100,8 +100,10 @@ protected:
+ };
+ 
+ OmxDataDecoder::OmxDataDecoder(const TrackInfo& aTrackInfo,
++                               TaskQueue* aTaskQueue,
+                                layers::ImageContainer* aImageContainer)
+   : mOmxTaskQueue(CreateMediaDecodeTaskQueue("OmxDataDecoder::mOmxTaskQueue"))
++  , mReaderTaskQueue(aTaskQueue)
+   , mImageContainer(aImageContainer)
+   , mWatchManager(this, mOmxTaskQueue)
+   , mOmxState(OMX_STATETYPE::OMX_StateInvalid, "OmxDataDecoder::mOmxState")
+diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
+index d6199b5b29ba..9bc480670e07 100644
+--- a/dom/media/platforms/omx/OmxDataDecoder.h
++++ b/dom/media/platforms/omx/OmxDataDecoder.h
+@@ -67,6 +67,7 @@ protected:
+ 
+ public:
+   OmxDataDecoder(const TrackInfo& aTrackInfo,
++                 TaskQueue* aTaskQueue,
+                  layers::ImageContainer* aImageContainer);
+ 
+   RefPtr<InitPromise> Init() override;
+@@ -160,6 +161,8 @@ protected:
+   // The Omx TaskQueue.
+   RefPtr<TaskQueue> mOmxTaskQueue;
+ 
++  RefPtr<TaskQueue> mReaderTaskQueue;
++
+   RefPtr<layers::ImageContainer> mImageContainer;
+ 
+   WatchManager<OmxDataDecoder> mWatchManager;
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 3d36c2cff153..69e94b6c63c0 100644
+index 3d36c2cff153..4fa0925b5e9a 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
-@@ -9,8 +9,32 @@
+@@ -9,12 +9,37 @@
  #include "OmxDataDecoder.h"
  #include "OmxPlatformLayer.h"
  
@@ -320,6 +352,19 @@ index 3d36c2cff153..69e94b6c63c0 100644
  already_AddRefed<MediaDataDecoder>
  OmxDecoderModule::CreateVideoDecoder(const CreateDecoderParams& aParams)
  {
+   RefPtr<OmxDataDecoder> decoder = new OmxDataDecoder(aParams.mConfig,
++                                                      aParams.mTaskQueue,
+                                                       aParams.mImageContainer);
+   return decoder.forget();
+ }
+@@ -23,6 +48,7 @@ already_AddRefed<MediaDataDecoder>
+ OmxDecoderModule::CreateAudioDecoder(const CreateDecoderParams& aParams)
+ {
+   RefPtr<OmxDataDecoder> decoder = new OmxDataDecoder(aParams.mConfig,
++                                                      aParams.mTaskQueue,
+                                                       nullptr);
+   return decoder.forget();
+ }
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.h b/dom/media/platforms/omx/OmxDecoderModule.h
 index 1e4e72391dd3..58f053b1a945 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.h
@@ -406,10 +451,10 @@ index 55b576b50b03..568a3e2ee464 100644
  }
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 000000000000..60950df5cb66
+index 000000000000..eca79158fb4b
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,439 @@
+@@ -0,0 +1,444 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -443,9 +488,8 @@ index 000000000000..60950df5cb66
 +  LOG_BUF("");
 +
 +  if (ShouldUseEGLImage()) {
++    // TODO
 +    LOG_BUF("OMX_UseEGLImage() seems available but using it isn't implemented yet.");
-+  } else {
-+    // Renesas RZ/G doesn't support it
 +  }
 +
 +  OMX_ERRORTYPE err;
@@ -696,9 +740,11 @@ index 000000000000..60950df5cb66
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
 +  nsCOMPtr<nsIRunnable> r =
-+    NS_NewRunnableFunction([self, eEventType, nData1, nData2, pEventData] () {
-+      self->EventHandler(eEventType, nData1, nData2, pEventData);
-+    });
++    NS_NewRunnableFunction(
++        "mozilla::PureOmxPlatformLayer::EventHandler",
++        [self, eEventType, nData1, nData2, pEventData] () {
++          self->EventHandler(eEventType, nData1, nData2, pEventData);
++        });
 +  self->mTaskQueue->Dispatch(r.forget());
 +  return OMX_ErrorNone;
 +}
@@ -709,9 +755,11 @@ index 000000000000..60950df5cb66
 +                                      OMX_IN OMX_BUFFERHEADERTYPE* pBuffer)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
-+    self->EmptyBufferDone(pBuffer);
-+  });
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction(
++      "mozilla::PureOmxPlatformLayer::EmptyBufferDone",
++      [self, pBuffer] () {
++        self->EmptyBufferDone(pBuffer);
++      });
 +  self->mTaskQueue->Dispatch(r.forget());
 +  return OMX_ErrorNone;
 +}
@@ -722,9 +770,11 @@ index 000000000000..60950df5cb66
 +                                     OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer)
 +{
 +  PureOmxPlatformLayer* self = static_cast<PureOmxPlatformLayer*>(pAppData);
-+  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction([self, pBuffer] () {
-+    self->FillBufferDone(pBuffer);
-+  });
++  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction(
++      "mozilla::PureOmxPlatformLayer::FillBufferDone",
++      [self, pBuffer] () {
++        self->FillBufferDone(pBuffer);
++      });
 +  self->mTaskQueue->Dispatch(r.forget());
 +  return OMX_ErrorNone;
 +}
@@ -971,7 +1021,7 @@ index 000000000000..2c68d07230d7
 +
 +#endif // PureOmxPlatformLayer_h_
 diff --git a/dom/media/platforms/omx/moz.build b/dom/media/platforms/omx/moz.build
-index 6ae24dd6e7b0..fbdbce4a0cd6 100644
+index 6ae24dd6e7b0..009c4d041a96 100644
 --- a/dom/media/platforms/omx/moz.build
 +++ b/dom/media/platforms/omx/moz.build
 @@ -4,6 +4,8 @@
@@ -987,7 +1037,7 @@ index 6ae24dd6e7b0..fbdbce4a0cd6 100644
  
  include('/ipc/chromium/chromium-config.mozbuild')
  
-+if toolkit == 'gtk2' or toolkit == 'gtk3':
++if toolkit == 'gtk3':
 +    UNIFIED_SOURCES += [
 +        'PureOmxPlatformLayer.cpp',
 +    ]
@@ -996,14 +1046,16 @@ index 6ae24dd6e7b0..fbdbce4a0cd6 100644
  
  if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
-index 21edf6e72e78..6a2af86cff97 100644
+index 21edf6e72e78..04ae605cf153 100644
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -409,6 +409,7 @@ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
+@@ -409,6 +409,9 @@ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
  pref("media.wmf.play-stand-alone", true);
  pref("media.wmf.use-sync-texture", true);
  #endif
++#if defined(MOZ_WIDGET_GTK)
 +pref("media.pdm-omx.enabled", false);
++#endif
  #if defined(MOZ_FFMPEG)
  #if defined(XP_MACOSX)
  pref("media.ffmpeg.enabled", false);

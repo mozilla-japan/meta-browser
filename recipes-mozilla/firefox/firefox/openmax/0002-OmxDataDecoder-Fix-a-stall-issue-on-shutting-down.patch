@@ -1,9 +1,9 @@
-From c8cd0ca2e914a2bd4c7f7fc15d49feffd6c1ae41 Mon Sep 17 00:00:00 2001
+From cdadc6a0870bc7a6d4cab05a99276f0817feed83 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Tue, 27 Feb 2018 09:48:38 +0900
-Subject: [PATCH 4/4] OmxDataDecoder: Fix a stall issue on shutting down
+Subject: [PATCH 2/2] OmxDataDecoder: Fix a stall issue on shutting down
 
-Because the closure awaits finishing itself by
+Because the shutdown closure awaits finishing itself by
 TaskQueue::AwaitShutdownAndIdle(), the function blocks infinitely.
 
 The code is wrongly introduced at the following commit:
@@ -21,7 +21,7 @@ Signed-off-by: Takuro Ashie <ashie@clear-code.com>
  2 files changed, 2 insertions(+), 10 deletions(-)
 
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index f22a4b829b8c..85a8e7c749d6 100644
+index 4e8230dd1ec0..2e0f860d660b 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
 @@ -279,24 +279,17 @@ OmxDataDecoder::DoAsyncShutdown()
