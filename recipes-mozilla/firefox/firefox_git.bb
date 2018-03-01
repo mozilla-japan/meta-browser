@@ -20,6 +20,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/rustc_target_force.patch \
            file://fixes/0001-Always-accept-the-configure-option-with-gl-provider.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
+           file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://gn-configs/ \
            "
