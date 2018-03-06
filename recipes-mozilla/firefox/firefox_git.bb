@@ -49,6 +49,7 @@ PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = ",,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
+PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
@@ -130,6 +131,11 @@ def search_path(pattern):
 do_configure() {
     export SHELL=/bin/bash
 
+    # TODO:
+    # Detect include paths more decently.
+    # In addition we should fix the build sysetem of firefox instead of
+    # setting BINDGEN_CFLAGS.
+    #
     INC_CPP='${@search_path("${STAGING_INCDIR}/c++/*")}'
     INC_LLVM='${@search_path("/usr/lib/llvm-*/**/clang/*/include")}'
 
