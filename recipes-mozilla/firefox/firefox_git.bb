@@ -17,7 +17,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://prefs/vendor.js \
            file://prefs/autoconfig.js \
            file://prefs/autoconfig.cfg \
-           file://fixes/rustc_target_force.patch \
+           file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/0001-Always-accept-the-configure-option-with-gl-provider.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
@@ -144,6 +144,11 @@ do_configure() {
                            -I${INC_CPP} \
                            -I${INC_CPP}/${TARGET_SYS} \
                            -I${INC_LLVM}"
+
+    # TODO:
+    # It will be removed later.
+    # It should be used only by local.conf or vendor's layer.
+    export RUST_TARGET="armv7-unknown-linux-gnueabihf"
 
     ./mach configure ${CONFIGURE_ARGS}
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
