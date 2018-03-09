@@ -1,4 +1,4 @@
-From 8e0629231aeae23d31fbf9cc6024f1241c7cccf6 Mon Sep 17 00:00:00 2001
+From a631685209f6b50f6a8ca783c5f2c4262c1e2291 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Fri, 9 Mar 2018 12:26:36 +0900
 Subject: [PATCH 2/2] OmxDataDecoder: Fix a stall issue on shutting down
@@ -16,15 +16,15 @@ avoid the issue.
 
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
- dom/media/platforms/omx/OmxDataDecoder.cpp | 27 +++++++++++++++++++--------
- dom/media/platforms/omx/OmxDataDecoder.h   |  4 ++++
- 2 files changed, 23 insertions(+), 8 deletions(-)
+ dom/media/platforms/omx/OmxDataDecoder.cpp | 25 +++++++++++++++++--------
+ dom/media/platforms/omx/OmxDataDecoder.h   |  2 ++
+ 2 files changed, 19 insertions(+), 8 deletions(-)
 
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index db466626a7e7..1c3ad2f16051 100644
+index db466626a7e7..107a544032c8 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
-@@ -279,26 +279,37 @@ OmxDataDecoder::DoAsyncShutdown()
+@@ -279,26 +279,35 @@ OmxDataDecoder::DoAsyncShutdown()
               self->mWatchManager.Shutdown();
               self->mOmxLayer = nullptr;
               self->mMediaDataHelper = nullptr;
@@ -54,33 +54,29 @@ index db466626a7e7..1c3ad2f16051 100644
 +OmxDataDecoder::FinalizeAsyncShutdown()
 +{
 +  LOG("");
-+  InvokeAsync(mReaderTaskQueue, this, __func__, &OmxDataDecoder::DoFinalizeAsyncShutdown);
-+}
-+
-+RefPtr<ShutdownPromise>
-+OmxDataDecoder::DoFinalizeAsyncShutdown()
-+{
-+  LOG("");
-+  mOmxTaskQueue->BeginShutdown();
-+  mOmxTaskQueue->AwaitShutdownAndIdle();
-+  mShutdownPromise.Resolve(true, __func__);
-+  return ShutdownPromise::CreateAndResolve(true, __func__);
++  RefPtr<OmxDataDecoder> self = this;
++  InvokeAsync(mReaderTaskQueue, __func__,
++              [self] () {
++                // Since all tasks are already done, it will return immediately.
++                self->mOmxTaskQueue->BeginShutdown();
++                self->mOmxTaskQueue->AwaitShutdownAndIdle();
++                self->mShutdownPromise.Resolve(true, __func__);
++                return ShutdownPromise::CreateAndResolve(true, __func__);
++              });
 +}
 +
  void
  OmxDataDecoder::FillBufferDone(BufferData* aData)
  {
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
-index 9bc480670e07..f3bde4903a44 100644
+index 9bc480670e07..7f1fc238564e 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.h
 +++ b/dom/media/platforms/omx/OmxDataDecoder.h
-@@ -140,6 +140,10 @@ protected:
+@@ -140,6 +140,8 @@ protected:
  
    RefPtr<ShutdownPromise> DoAsyncShutdown();
  
 +  void FinalizeAsyncShutdown();
-+
-+  RefPtr<ShutdownPromise> DoFinalizeAsyncShutdown();
 +
    RefPtr<FlushPromise> DoFlush();
  
