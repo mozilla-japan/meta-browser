@@ -10,7 +10,9 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
 
-SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
+MOZ_HG_REV="93daac564022a618daa8ae32c422a0ffac8a73d0"
+
+SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.tar.bz2;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
@@ -25,11 +27,11 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://gn-configs/ \
            "
 
-#FIXME: Set exact source revision
-SRCREV = "${AUTOREV}"
+SRC_URI[archive.md5sum] = "6b6fc962b4d157f9fd7271364d81dc9e"
+SRC_URI[archive.sha256sum] = "0d7a9b1ba4bc7709d05aa7e6c0646e6adc37670cffd13cbb4a9d4f437cf60d53"
 
 PR = "r0"
-S = "${WORKDIR}/git"
+S = "${WORKDIR}/mozilla-beta-${MOZ_HG_REV}"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
