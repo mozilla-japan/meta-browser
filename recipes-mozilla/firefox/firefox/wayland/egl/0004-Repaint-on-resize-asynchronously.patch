@@ -1,0 +1,42 @@
+From 2e90c790fc83ee7d32414fa4e569c437ce66eade Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@clear-code.com>
+Date: Tue, 13 Mar 2018 09:34:58 +0900
+Subject: [PATCH 4/4] Repaint on resize asynchronously
+
+Otherwise nsViewManager::Refresh() is blocked infinitely when
+CompositorOGL is enabled with EGL.
+---
+ gfx/thebes/gfxPrefs.h | 2 +-
+ widget/gtk/nsWindow.h | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/gfx/thebes/gfxPrefs.h b/gfx/thebes/gfxPrefs.h
+index 290f3c4b33b6..ba467b0a404e 100644
+--- a/gfx/thebes/gfxPrefs.h
++++ b/gfx/thebes/gfxPrefs.h
+@@ -628,7 +628,7 @@ private:
+   DECL_GFX_PREF(Live, "layers.progressive-paint",              ProgressivePaint, bool, false);
+   DECL_GFX_PREF(Live, "layers.shared-buffer-provider.enabled", PersistentBufferProviderSharedEnabled, bool, false);
+   DECL_GFX_PREF(Live, "layers.single-tile.enabled",            LayersSingleTileEnabled, bool, true);
+-  DECL_GFX_PREF(Live, "layers.force-synchronous-resize",       LayersForceSynchronousResize, bool, true);
++  DECL_GFX_PREF(Live, "layers.force-synchronous-resize",       LayersForceSynchronousResize, bool, false);
+ 
+   // We allow for configurable and rectangular tile size to avoid wasting memory on devices whose
+   // screen size does not align nicely to the default tile size. Although layers can be any size,
+diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
+index 096a206fd28e..f3b858c2385e 100644
+--- a/widget/gtk/nsWindow.h
++++ b/widget/gtk/nsWindow.h
+@@ -578,6 +578,9 @@ private:
+ 
+     void CleanLayerManagerRecursive();
+ 
++    virtual bool SynchronouslyRepaintOnResize() override
++    { return false; }
++
+     virtual int32_t RoundsWidgetCoordinatesTo() override;
+ 
+     /**
+-- 
+2.14.1
+

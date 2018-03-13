@@ -1,0 +1,34 @@
+From bbcf4e4d651f699650e59905be9f9e56939f4609 Mon Sep 17 00:00:00 2001
+From: Takuro Ashie <ashie@homa.ne.jp>
+Date: Fri, 8 Jul 2016 12:57:16 +0900
+Subject: [PATCH 2/4] Disable query EGL_EXTENSIONS
+
+Because it causes crash on some environments, and it's not needed
+on most environments.
+
+Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
+---
+ gfx/gl/GLLibraryEGL.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
+index 2977d280e9dd..2ea2dc184d99 100644
+--- a/gfx/gl/GLLibraryEGL.cpp
++++ b/gfx/gl/GLLibraryEGL.cpp
+@@ -765,11 +765,13 @@ GLLibraryEGL::InitClientExtensions()
+ 
+     const char* rawExtString = nullptr;
+ 
++#if 0
+ #ifndef ANDROID
+     // Bug 1209612: Crashes on a number of android drivers.
+     // Ideally we would only blocklist this there, but for now we don't need the client
+     // extension list on ANDROID (we mostly need it on ANGLE), and we'd rather not crash.
+     rawExtString = (const char*)fQueryString(nullptr, LOCAL_EGL_EXTENSIONS);
++#endif
+ #endif
+ 
+     if (!rawExtString) {
+-- 
+2.14.1
+

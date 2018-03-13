@@ -64,6 +64,10 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # TODO: Most of them aren't ported to ESR60 yet
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
+            file://wayland/egl/0001-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
+            file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
+            file://wayland/egl/0003-Use-wl_egl_window-as-a-native-EGL-window-on-Wayland.patch \
+            file://wayland/egl/0004-Repaint-on-resize-asynchronously.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
