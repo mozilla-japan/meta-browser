@@ -4,6 +4,7 @@
 DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "curl startup-notification libevent cairo libnotify \
             virtual/libgl pulseaudio yasm-native icu \
+            rust-cross-${TARGET_ARCH} cargo-native \
            "
 RDEPENDS_${PN}-dev = "dbus"
 
@@ -123,6 +124,7 @@ do_configure() {
 
 do_compile() {
     export SHELL="/bin/bash"
+    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
 
     ./mach build
 }
