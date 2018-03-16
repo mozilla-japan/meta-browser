@@ -27,8 +27,8 @@ SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.ta
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "6b6fc962b4d157f9fd7271364d81dc9e"
-SRC_URI[archive.sha256sum] = "0d7a9b1ba4bc7709d05aa7e6c0646e6adc37670cffd13cbb4a9d4f437cf60d53"
+SRC_URI[archive.md5sum] = "876b55bcb649b146758de577c41deea9"
+SRC_URI[archive.sha256sum] = "0b83dd89bdd42adc2d35296921b7c0e52a485fc72b24e4cbb750c23d1d52afe9"
 
 PR = "r0"
 S = "${WORKDIR}/mozilla-beta-${MOZ_HG_REV}"
