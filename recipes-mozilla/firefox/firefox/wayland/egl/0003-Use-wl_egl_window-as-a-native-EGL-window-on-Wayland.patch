@@ -1,4 +1,4 @@
-From 6872c5e491ad441b34d2ade673e9c6d59d042c12 Mon Sep 17 00:00:00 2001
+From 61f9139c901e9d05584082dab2090bce1ecba478 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Tue, 20 Feb 2018 17:17:11 +0900
 Subject: [PATCH 3/4] Use wl_egl_window as a native EGL window on Wayland
@@ -15,12 +15,12 @@ Signed-off-by: Takuro Ashie <ashie@clear-code.com>
  config/system-headers.mozbuild   |  6 ++++++
  gfx/gl/GLContextProviderEGL.cpp  |  6 ++----
  toolkit/library/moz.build        |  6 ++++++
- widget/gtk/mozcontainer.cpp      | 34 ++++++++++++++++++++++++++++++++++
- widget/gtk/mozcontainer.h        |  2 ++
+ widget/gtk/mozcontainer.cpp      | 40 ++++++++++++++++++++++++++++++++++++++++
+ widget/gtk/mozcontainer.h        |  3 +++
  widget/gtk/mozgtk/gtk3/moz.build |  7 +++++++
- widget/gtk/nsWindow.cpp          | 13 +++++++++++++
+ widget/gtk/nsWindow.cpp          | 23 +++++++++++++++++++++++
  widget/nsIWidget.h               |  1 +
- 8 files changed, 71 insertions(+), 4 deletions(-)
+ 8 files changed, 88 insertions(+), 4 deletions(-)
 
 diff --git a/config/system-headers.mozbuild b/config/system-headers.mozbuild
 index 0872969ae159..a027458f2792 100644
@@ -71,7 +71,7 @@ index b0df6b98b91f..df36ec3f3cf1 100644
      OS_LIBS += [
          'rt',
 diff --git a/widget/gtk/mozcontainer.cpp b/widget/gtk/mozcontainer.cpp
-index fe61989ff65b..634a5640dc83 100644
+index fe61989ff65b..0c497354100a 100644
 --- a/widget/gtk/mozcontainer.cpp
 +++ b/widget/gtk/mozcontainer.cpp
 @@ -10,6 +10,7 @@
@@ -114,7 +114,7 @@ index fe61989ff65b..634a5640dc83 100644
  #endif
  }
  
-@@ -559,4 +571,26 @@ moz_container_get_wl_surface(MozContainer *container)
+@@ -559,4 +571,32 @@ moz_container_get_wl_surface(MozContainer *container)
  
      return container->surface;
  }
@@ -140,9 +140,15 @@ index fe61989ff65b..634a5640dc83 100644
 +
 +    return container->eglwindow;
 +}
++
++gboolean
++moz_container_has_wl_egl_window(MozContainer *container)
++{
++    return container->eglwindow ? TRUE : FALSE;
++}
  #endif
 diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
-index c22a96032971..a8627c2966b4 100644
+index c22a96032971..a16e325173d7 100644
 --- a/widget/gtk/mozcontainer.h
 +++ b/widget/gtk/mozcontainer.h
 @@ -72,6 +72,7 @@ struct _MozContainer
@@ -153,11 +159,12 @@ index c22a96032971..a8627c2966b4 100644
  #endif
  };
  
-@@ -95,6 +96,7 @@ void       moz_container_move          (MozContainer *container,
+@@ -95,6 +96,8 @@ void       moz_container_move          (MozContainer *container,
  
  #ifdef MOZ_WAYLAND
  struct wl_surface* moz_container_get_wl_surface(MozContainer *container);
 +struct wl_egl_window* moz_container_get_wl_egl_window(MozContainer *container);
++gboolean moz_container_has_wl_egl_window(MozContainer *container);
  #endif
  
  #endif /* __MOZ_CONTAINER_H__ */
@@ -178,7 +185,7 @@ index 4e9379565dd6..c1662adb992c 100644
 +
  OS_LIBS += as_needed
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index 40015764d2e0..368b3eafa9d3 100644
+index 40015764d2e0..9caa487d5ffd 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
 @@ -1737,6 +1737,19 @@ nsWindow::GetNativeData(uint32_t aDataType)
@@ -201,6 +208,23 @@ index 40015764d2e0..368b3eafa9d3 100644
      default:
          NS_WARNING("nsWindow::GetNativeData called with bad value");
          return nullptr;
+@@ -4238,6 +4251,16 @@ nsWindow::NativeShow(bool aAction)
+         }
+     }
+     else {
++#ifdef MOZ_WAYLAND
++        if (mContainer && moz_container_has_wl_egl_window(mContainer)) {
++            // Because wl_egl_window is destroyed on moz_container_unmap(),
++            // the current compositor cannot use it anymore. To avoid crash,
++            // destroy the compositor & recreate a new compositor on next
++            // expose event.
++            DestroyLayerManager();
++        }
++#endif
++
+         if (mIsTopLevel) {
+             // Workaround window freezes on GTK versions before 3.21.2 by
+             // ensuring that configure events get dispatched to windows before
 diff --git a/widget/nsIWidget.h b/widget/nsIWidget.h
 index 7f8cfa5ed31c..af57eae9b199 100644
 --- a/widget/nsIWidget.h
