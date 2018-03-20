@@ -136,19 +136,21 @@ def search_path(pattern):
 do_configure() {
     export SHELL=/bin/bash
 
-    # TODO:
-    # Detect include paths more decently.
-    # In addition we should fix the build sysetem of firefox instead of
-    # setting BINDGEN_CFLAGS.
+    # Uncomment following lines to build Stylo.
+    # If it's enabled, you need to build core-image-weston without firefox once,
+    # then build firefox after that. Since these lines break scratch building of
+    # core-image-weston, they are commented out by default.
+    # In addition, we will remove these lines after we introduce meta-rust (they
+    # aren't needed against meta-rust).
     #
-    INC_CPP='${@search_path("${STAGING_INCDIR}/c++/*")}'
-    INC_LLVM='${@search_path("/usr/lib/llvm-*/**/clang/*/include")}'
-
-    export BINDGEN_CFLAGS="${BINDGEN_CFLAGS} \
-                           --target=${TARGET_SYS} \
-                           -I${INC_CPP} \
-                           -I${INC_CPP}/${TARGET_SYS} \
-                           -I${INC_LLVM}"
+    #INC_CPP='${@search_path("${STAGING_INCDIR}/c++/*")}'
+    #INC_LLVM='${@search_path("/usr/lib/llvm-*/**/clang/*/include")}'
+    #
+    #export BINDGEN_CFLAGS="${BINDGEN_CFLAGS} \
+    #                       --target=${TARGET_SYS} \
+    #                       -I${INC_CPP} \
+    #                       -I${INC_CPP}/${TARGET_SYS} \
+    #                       -I${INC_LLVM}"
 
     # TODO:
     # It will be removed later.
