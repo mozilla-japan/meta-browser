@@ -10,7 +10,7 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
 
-MOZ_HG_REV="1dfbedb54c39abae38da9329f4a79571fee74661"
+MOZ_HG_REV="760d74c088b29012c8f37a8ef61981b80fda22ac"
 
 SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.tar.bz2;name=archive \
            file://mozconfig \
@@ -27,8 +27,8 @@ SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.ta
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "4793d67edacdc7a41b7c7b4cec352182"
-SRC_URI[archive.sha256sum] = "eed3b69ab205a2cbbe788b37cf7405ed7745214f4581de8869fc118df41b1b99"
+SRC_URI[archive.md5sum] = "081a19fc10b83429657274ec775c5282"
+SRC_URI[archive.sha256sum] = "ab161f239834201009477368d9744ad57ebb4743e4eb6594236439e360c1a67c"
 
 PR = "r0"
 S = "${WORKDIR}/mozilla-beta-${MOZ_HG_REV}"
