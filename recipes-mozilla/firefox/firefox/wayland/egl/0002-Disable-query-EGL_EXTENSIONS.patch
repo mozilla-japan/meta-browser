@@ -1,4 +1,4 @@
-From bbcf4e4d651f699650e59905be9f9e56939f4609 Mon Sep 17 00:00:00 2001
+From 20482acc67720fa5235a2da8621cd11293e1f668 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Fri, 8 Jul 2016 12:57:16 +0900
 Subject: [PATCH 2/4] Disable query EGL_EXTENSIONS
@@ -12,10 +12,10 @@ Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
-index 2977d280e9dd..2ea2dc184d99 100644
+index 16c399af651a..dbc0649cded8 100644
 --- a/gfx/gl/GLLibraryEGL.cpp
 +++ b/gfx/gl/GLLibraryEGL.cpp
-@@ -765,11 +765,13 @@ GLLibraryEGL::InitClientExtensions()
+@@ -769,11 +769,13 @@ GLLibraryEGL::InitClientExtensions()
  
      const char* rawExtString = nullptr;
  

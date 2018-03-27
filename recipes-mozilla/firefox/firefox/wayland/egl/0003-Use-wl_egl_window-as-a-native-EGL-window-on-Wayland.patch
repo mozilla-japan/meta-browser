@@ -1,15 +1,8 @@
-From 61f9139c901e9d05584082dab2090bce1ecba478 Mon Sep 17 00:00:00 2001
+From f618652f21e944f60870b67d47484634fb2b9c94 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Tue, 20 Feb 2018 17:17:11 +0900
 Subject: [PATCH 3/4] Use wl_egl_window as a native EGL window on Wayland
 
-Note that it doesn't work correctly yet. Although it can enable
-CompositorOGL, it breaks window handling. I'll replace the path
-with a proper one later.
-
-This commit is originated from a07fa6d5e29c9785326fc5b26ec65a8128ffb61f.
-
-Signed-off-by: Hiroshi Hatake <hatake@clear-code.com>
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
  config/system-headers.mozbuild   |  6 ++++++
@@ -185,10 +178,10 @@ index 4e9379565dd6..c1662adb992c 100644
 +
  OS_LIBS += as_needed
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index 40015764d2e0..9caa487d5ffd 100644
+index 08e6db95586f..e17abbcb8b86 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -1737,6 +1737,19 @@ nsWindow::GetNativeData(uint32_t aDataType)
+@@ -1738,6 +1738,19 @@ nsWindow::GetNativeData(uint32_t aDataType)
      case NS_NATIVE_COMPOSITOR_DISPLAY:
          return gfxPlatformGtk::GetPlatform()->GetCompositorDisplay();
  #endif // MOZ_X11
@@ -208,7 +201,7 @@ index 40015764d2e0..9caa487d5ffd 100644
      default:
          NS_WARNING("nsWindow::GetNativeData called with bad value");
          return nullptr;
-@@ -4238,6 +4251,16 @@ nsWindow::NativeShow(bool aAction)
+@@ -4266,6 +4279,16 @@ nsWindow::NativeShow(bool aAction)
          }
      }
      else {

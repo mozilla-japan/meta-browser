@@ -1,4 +1,4 @@
-From 6e9a4ecec121936ed1814ff170c33e29d964baa5 Mon Sep 17 00:00:00 2001
+From 3d0c818d2d512768792fd879d8706924e482afc9 Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@homa.ne.jp>
 Date: Mon, 10 Apr 2017 17:03:35 +0900
 Subject: [PATCH 1/4] GLLibraryEGL: Use wl_display to get EGLDisplay on Wayland
@@ -16,7 +16,7 @@ Signed-off-by: Takuro Ashie <ashie@clear-code.com>
  1 file changed, 23 insertions(+), 1 deletion(-)
 
 diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
-index c152cd8821b3..2977d280e9dd 100644
+index e1d59786bc3a..16c399af651a 100644
 --- a/gfx/gl/GLLibraryEGL.cpp
 +++ b/gfx/gl/GLLibraryEGL.cpp
 @@ -31,6 +31,13 @@
@@ -33,7 +33,7 @@ index c152cd8821b3..2977d280e9dd 100644
  
  namespace mozilla {
  namespace gl {
-@@ -566,7 +573,22 @@ GLLibraryEGL::EnsureInitialized(bool forceAccel, nsACString* const out_failureId
+@@ -570,7 +577,22 @@ GLLibraryEGL::EnsureInitialized(bool forceAccel, nsACString* const out_failureId
              mIsWARP = true;
          }
      } else {
