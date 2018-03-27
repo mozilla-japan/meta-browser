@@ -22,6 +22,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/60.0b7/source/firefox-60
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
+           file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://gn-configs/ \
            "
 
