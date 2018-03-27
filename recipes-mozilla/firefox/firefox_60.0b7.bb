@@ -10,9 +10,7 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
 
-MOZ_HG_REV="760d74c088b29012c8f37a8ef61981b80fda22ac"
-
-SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.tar.bz2;name=archive \
+SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/60.0b7/source/firefox-60.0b7.source.tar.xz;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
@@ -27,17 +25,17 @@ SRC_URI = "https://hg.mozilla.org/releases/mozilla-beta/archive/${MOZ_HG_REV}.ta
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "9d33302f43660411bf6674cd3f79caac"
-SRC_URI[archive.sha256sum] = "a07e049267b3df21215424d89bec03693c42f2fe2677c1933c21d9a1d333ce82"
+SRC_URI[archive.md5sum] = "711ad599cfe737c17edbdb7ef7fd4fe6"
+SRC_URI[archive.sha256sum] = "e53c4b6dd0c45fc3a1a7b739c0ab931234d1aa6a77fe18841cbb6be8aea31b88"
 
 PR = "r0"
-S = "${WORKDIR}/mozilla-beta-${MOZ_HG_REV}"
+S = "${WORKDIR}/firefox-60.0"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla
 
 DISABLE_STATIC=""
-EXTRA_OEMAKE += "installdir=${libdir}/${PN}-${MOZ_APP_BASE_VERSION}"
+EXTRA_OEMAKE += "installdir=${libdir}/${PN}"
 
 ARM_INSTRUCTION_SET = "arm"
 
