@@ -23,6 +23,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/60.0b7/source/firefox-60
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
+           file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
            file://gn-configs/ \
            "
 
@@ -134,16 +135,9 @@ def search_path(pattern):
 
 do_configure() {
     export SHELL=/bin/bash
-
-    # We will remove these lines after we introduce meta-rust.
-    # They aren't needed against meta-rust.
-    INC_CPP='${@search_path("${STAGING_INCDIR}/c++/*")}'
-    INC_LLVM='${@search_path("/usr/lib/llvm-*/**/clang/*/include")}'
-    export BINDGEN_CFLAGS="${BINDGEN_CFLAGS} \
-                           --target=${TARGET_SYS} \
-                           -I${INC_CPP} \
-                           -I${INC_CPP}/${TARGET_SYS} \
-                           -I${INC_LLVM}"
+    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
+    export BINDGEN_INCCPP=${STAGING_INCDIR}
+    export BINDGEN_LLVM_BASE=/usr/lib
 
     # TODO:
     # It will be replaced with ${RUST_TARGET_SYS} which is provided by
