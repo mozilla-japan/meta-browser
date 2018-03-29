@@ -106,33 +106,6 @@ python do_check_variables() {
 }
 addtask check_variables before do_configure
 
-def path_ver_cmp(a):
-    import os
-    import string
-    import re
-
-    a               = os.path.abspath(a)
-    parse           = string.split(a, "/")
-    var             = []
-    var_pattern     = re.compile(r"\bv?(\d+(?:.\d+)*)$")
-    for seg in reversed(parse):     #Find version no from the bottom of the path
-        var_seg     = var_pattern.findall(seg)
-        if len(var_seg) > 0:
-            var = map(int, var_seg[len(var_seg) - 1].split("."))
-            break
-
-    return (var, os.path.dirname(a), os.path.basename(a))
-
-def search_path(pattern):
-    import glob
-
-    result  = sorted(glob.glob(pattern), key=path_ver_cmp, reverse=True)
-
-    result = "" if len(result) == 0 else result[0]
-    #result = result[0]      #XXX: Raise exception here if no target found
-
-    return result
-
 do_configure() {
     export SHELL=/bin/bash
     export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
