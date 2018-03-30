@@ -35,7 +35,7 @@ PR = "r0"
 S = "${WORKDIR}/firefox-60.0"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
-inherit mozilla
+inherit mozilla rust-common
 
 DISABLE_STATIC=""
 EXTRA_OEMAKE += "installdir=${libdir}/${PN}"
@@ -115,7 +115,7 @@ do_configure() {
     # TODO:
     # It will be replaced with ${RUST_TARGET_SYS} which is provided by
     # meta-rust.
-    export RUST_TARGET="armv7-unknown-linux-gnueabihf"
+    export RUST_TARGET="${RUST_TARGET_SYS}"
 
     ./mach configure ${CONFIGURE_ARGS}
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
