@@ -10,7 +10,7 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
 
-SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/60.0b7/source/firefox-60.0b7.source.tar.xz;name=archive \
+SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}.source.tar.xz;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
@@ -27,8 +27,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/60.0b7/source/firefox-60
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "711ad599cfe737c17edbdb7ef7fd4fe6"
-SRC_URI[archive.sha256sum] = "e53c4b6dd0c45fc3a1a7b739c0ab931234d1aa6a77fe18841cbb6be8aea31b88"
+SRC_URI[archive.md5sum] = "a7635d58f49559100baf9bf442467d3c"
+SRC_URI[archive.sha256sum] = "0b5fd78980734b3df833df1b4c54d071ed1c04413e8877ac54add82d4d4bbe79"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-60.0"
