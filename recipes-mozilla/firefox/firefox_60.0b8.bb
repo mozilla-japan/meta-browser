@@ -48,7 +48,7 @@ PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
-PACKAGECONFIG[openmax] = ",,,"
+PACKAGECONFIG[openmax] = "--enable-openmax,--disable-openmax,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
@@ -85,7 +85,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
             file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
             file://openmax/0002-OmxDataDecoder-Fix-a-stall-issue-on-shutting-down.patch \
-            file://openmax/openmax.js \
            ', \
            '', d)}"
 
@@ -145,9 +144,6 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/prefs/autoconfig.cfg ${D}${libdir}/${PN}/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/gpu.js ${D}${libdir}/${PN}/defaults/pref/
-    fi
-    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/openmax/openmax.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/wayland/wayland-hacks.js ${D}${libdir}/${PN}/defaults/pref/

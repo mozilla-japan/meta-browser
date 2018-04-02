@@ -1,84 +1,98 @@
-From 6323414a8808214a8f844d38718036ac84f9c49c Mon Sep 17 00:00:00 2001
-From: Takuro Ashie <ashie@clear-code.com>
-Date: Tue, 27 Feb 2018 17:36:51 +0900
-Subject: [PATCH 1/2] Add initial implementation of PureOmxPlatformLayer
+# HG changeset patch
+# User Takuro Ashie <ashie@clear-code.com>
+# Date 1522228864 -32400
+#      Wed Mar 28 18:21:04 2018 +0900
+# Node ID b8c671a02a4fce085433b16db998c9b04ace87db
+# Parent  a64a0f3c1662e8b17b1062f12243dadbce6f9032
+Bug 1306529 - Add initial implementation of PureOmxPlatformLayer
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
 libraries directly. It will be usable on various embedded linux systems.
-Note that it's not enabled by default yet. Add the following setting to
-your prefs to enable it.
+Note that it's not enabled by default yet. Add the following config to
+your mozconfig.
 
-  user_pref("media.pdm-omx.enabled", true);
+  ac_add_options --enable-openmax
 
 TODO: Implement zero-copy mode
 
-Signed-off-by: Takuro Ashie <ashie@clear-code.com>
----
- dom/media/MediaPrefs.h                           |   3 +
- dom/media/platforms/PDMFactory.cpp               |  12 +
- dom/media/platforms/moz.build                    |  10 +
- dom/media/platforms/omx/OmxCoreLibLinker.cpp     | 114 ++++++
- dom/media/platforms/omx/OmxCoreLibLinker.h       |  38 ++
- dom/media/platforms/omx/OmxDataDecoder.cpp       |   2 +
- dom/media/platforms/omx/OmxDataDecoder.h         |   3 +
- dom/media/platforms/omx/OmxDecoderModule.cpp     |  26 ++
- dom/media/platforms/omx/OmxDecoderModule.h       |   4 +
- dom/media/platforms/omx/OmxFunctionList.h        |  13 +
- dom/media/platforms/omx/OmxPlatformLayer.cpp     |  27 +-
- dom/media/platforms/omx/PureOmxPlatformLayer.cpp | 444 +++++++++++++++++++++++
- dom/media/platforms/omx/PureOmxPlatformLayer.h   | 115 ++++++
- dom/media/platforms/omx/moz.build                |   7 +
- modules/libpref/init/all.js                      |   3 +
- 15 files changed, 820 insertions(+), 1 deletion(-)
- create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.cpp
- create mode 100644 dom/media/platforms/omx/OmxCoreLibLinker.h
- create mode 100644 dom/media/platforms/omx/OmxFunctionList.h
- create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.cpp
- create mode 100644 dom/media/platforms/omx/PureOmxPlatformLayer.h
+MozReview-Commit-ID: EMEXAKzzR64
 
 diff --git a/dom/media/MediaPrefs.h b/dom/media/MediaPrefs.h
-index 8bd06a774ab9..455174fd56e6 100644
 --- a/dom/media/MediaPrefs.h
 +++ b/dom/media/MediaPrefs.h
-@@ -125,6 +125,9 @@ private:
+@@ -119,16 +119,19 @@ private:
+   DECL_MEDIA_PREF("media.gpu-process-decoder",                PDMUseGPUDecoder, bool, false);
+ #ifdef MOZ_WIDGET_ANDROID
+   DECL_MEDIA_PREF("media.android-media-codec.enabled",        PDMAndroidMediaCodecEnabled, bool, false);
+   DECL_MEDIA_PREF("media.android-media-codec.preferred",      PDMAndroidMediaCodecPreferred, bool, false);
+   DECL_MEDIA_PREF("media.navigator.hardware.vp8_encode.acceleration_remote_enabled", RemoteMediaCodecVP8EncoderEnabled, bool, false);
  #endif
    // WebRTC
    DECL_MEDIA_PREF("media.navigator.mediadatadecoder_enabled", MediaDataDecoderEnabled, bool, false);
-+#ifdef MOZ_WIDGET_GTK
-+  DECL_MEDIA_PREF("media.pdm-omx.enabled",                    PDMOmxEnabled, bool, false);
++#ifdef MOZ_OMX
++  DECL_MEDIA_PREF("media.omx.enabled",                        PDMOmxEnabled, bool, false);
 +#endif
  #ifdef MOZ_FFMPEG
    DECL_MEDIA_PREF("media.ffmpeg.enabled",                     PDMFFmpegEnabled, bool, true);
    DECL_MEDIA_PREF("media.libavcodec.allow-obsolete",          LibavcodecAllowObsolete, bool, false);
+ #endif
+ #if defined(MOZ_FFMPEG) || defined(MOZ_FFVPX)
+   DECL_MEDIA_PREF("media.ffmpeg.low-latency.enabled",         PDMFFmpegLowLatencyEnabled, bool, false);
+ #endif
+ #ifdef MOZ_FFVPX
 diff --git a/dom/media/platforms/PDMFactory.cpp b/dom/media/platforms/PDMFactory.cpp
-index d303ae77be5d..5dabe5b26025 100644
 --- a/dom/media/platforms/PDMFactory.cpp
 +++ b/dom/media/platforms/PDMFactory.cpp
-@@ -22,6 +22,9 @@
+@@ -17,16 +17,19 @@
+ #include "FFmpegRuntimeLinker.h"
+ #endif
+ #ifdef MOZ_APPLEMEDIA
+ #include "AppleDecoderModule.h"
+ #endif
  #ifdef MOZ_WIDGET_ANDROID
  #include "AndroidDecoderModule.h"
  #endif
-+#ifdef MOZ_WIDGET_GTK
++#ifdef MOZ_OMX
 +#include "OmxDecoderModule.h"
 +#endif
  #include "GMPDecoderModule.h"
  
  #include "mozilla/CDMProxy.h"
-@@ -63,6 +66,9 @@ public:
+ #include "mozilla/ClearOnShutdown.h"
+ #include "mozilla/SharedThreadPool.h"
+ #include "mozilla/StaticPtr.h"
+ #include "mozilla/SyncRunnable.h"
+ #include "mozilla/TaskQueue.h"
+@@ -58,16 +61,19 @@ public:
+   PDMFactoryImpl()
+   {
+ #ifdef XP_WIN
+     WMFDecoderModule::Init();
+ #endif
  #ifdef MOZ_APPLEMEDIA
      AppleDecoderModule::Init();
  #endif
-+#ifdef MOZ_WIDGET_GTK
++#ifdef MOZ_OMX
 +    OmxDecoderModule::Init();
 +#endif
  #ifdef MOZ_FFVPX
      FFVPXRuntimeLinker::Init();
  #endif
-@@ -352,6 +358,12 @@ PDMFactory::CreatePDMs()
+ #ifdef MOZ_FFMPEG
+     FFmpegRuntimeLinker::Init();
+ #endif
+   }
+ };
+@@ -347,16 +353,22 @@ PDMFactory::CreatePDMs()
+     m = new WMFDecoderModule();
+     RefPtr<PlatformDecoderModule> remote = new dom::RemoteDecoderModule(m);
+     StartupPDM(remote);
+     mWMFFailedToLoad = !StartupPDM(m);
+   } else {
      mWMFFailedToLoad = MediaPrefs::DecoderDoctorWMFDisabledIsFailure();
    }
  #endif
-+#ifdef MOZ_WIDGET_GTK
++#ifdef MOZ_OMX
 +  if (MediaPrefs::PDMOmxEnabled()) {
 +    m = OmxDecoderModule::Create();
 +    StartupPDM(m);
@@ -87,24 +101,24 @@ index d303ae77be5d..5dabe5b26025 100644
  #ifdef MOZ_FFVPX
    if (MediaPrefs::PDMFFVPXEnabled()) {
      m = FFVPXRuntimeLinker::CreateDecoderModule();
+     StartupPDM(m);
+   }
+ #endif
+ #ifdef MOZ_FFMPEG
+   if (MediaPrefs::PDMFFmpegEnabled()) {
 diff --git a/dom/media/platforms/moz.build b/dom/media/platforms/moz.build
-index 7cd0bf62dc07..02624d8d78bb 100644
 --- a/dom/media/platforms/moz.build
 +++ b/dom/media/platforms/moz.build
-@@ -4,6 +4,8 @@
- # License, v. 2.0. If a copy of the MPL was not distributed with this
- # file, You can obtain one at http://mozilla.org/MPL/2.0/.
- 
-+toolkit = CONFIG['MOZ_WIDGET_TOOLKIT']
-+
- EXPORTS += [
-     'agnostic/AgnosticDecoderModule.h',
-     'agnostic/DummyMediaDataDecoder.h',
-@@ -70,6 +72,14 @@ if CONFIG['MOZ_AV1']:
+@@ -65,16 +65,24 @@ if CONFIG['MOZ_FFMPEG']:
+ if CONFIG['MOZ_AV1']:
+     EXPORTS += [
+         'agnostic/AOMDecoder.h',
+     ]
+     UNIFIED_SOURCES += [
          'agnostic/AOMDecoder.cpp',
      ]
  
-+if toolkit == 'gtk3':
++if CONFIG['MOZ_OMX']:
 +    EXPORTS += [
 +        'omx/OmxCoreLibLinker.h',
 +    ]
@@ -115,12 +129,16 @@ index 7cd0bf62dc07..02624d8d78bb 100644
  if CONFIG['MOZ_APPLEMEDIA']:
    EXPORTS += [
        'apple/AppleDecoderModule.h',
+   ]
+   UNIFIED_SOURCES += [
+       'apple/AppleATDecoder.cpp',
+       'apple/AppleCMLinker.cpp',
+       'apple/AppleDecoderModule.cpp',
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.cpp b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
 new file mode 100644
-index 000000000000..0966d844e2ad
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.cpp
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,118 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -169,7 +187,6 @@ index 000000000000..0966d844e2ad
 +  if (sLinkedLib) {
 +    if (Bind(libName)) {
 +      sLibName = libName;
-+      sLinkStatus = LinkStatus_SUCCEEDED;
 +      LOG("Succeeded to load %s", libName);
 +      return true;
 +    } else {
@@ -192,17 +209,22 @@ index 000000000000..0966d844e2ad
 +  MOZ_ASSERT(NS_IsMainThread());
 +
 +  nsAutoCString libPath;
-+  nsresult rv = Preferences::GetCString("media.pdm-omx.core-lib-path", libPath);
++  nsresult rv = Preferences::GetCString("media.omx.core-lib-path", libPath);
 +  if (NS_SUCCEEDED(rv) && !libPath.IsEmpty()) {
-+    if (TryLinkingLibrary(libPath.Data()))
++    if (TryLinkingLibrary(libPath.Data())) {
++      sLinkStatus = LinkStatus_SUCCEEDED;
 +      return true;
++    }
 +  }
 +
 +  // try known paths
 +  for (size_t i = 0; i < ArrayLength(sLibNames); i++) {
-+    if (TryLinkingLibrary(sLibNames[i]))
++    if (TryLinkingLibrary(sLibNames[i])) {
++      sLinkStatus = LinkStatus_SUCCEEDED;
 +      return true;
++    }
 +  }
++  sLinkStatus = LinkStatus_FAILED;
 +  return false;
 +}
 +
@@ -237,10 +259,9 @@ index 000000000000..0966d844e2ad
 +} // namespace mozilla
 diff --git a/dom/media/platforms/omx/OmxCoreLibLinker.h b/dom/media/platforms/omx/OmxCoreLibLinker.h
 new file mode 100644
-index 000000000000..389a156bd412
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxCoreLibLinker.h
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,39 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -269,7 +290,8 @@ index 000000000000..389a156bd412
 +  static bool TryLinkingLibrary(const char *libName);
 +  static bool Bind(const char* aLibName);
 +
-+  static enum LinkStatus {
++  static enum LinkStatus
++  {
 +    LinkStatus_INIT = 0,
 +    LinkStatus_FAILED,
 +    LinkStatus_SUCCEEDED
@@ -280,25 +302,38 @@ index 000000000000..389a156bd412
 +
 +#endif // __OmxCoreLibLinker_h__
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
-index db3a32b7e91d..4e8230dd1ec0 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
-@@ -100,8 +100,10 @@ protected:
+@@ -95,18 +95,20 @@ protected:
+ 
+   AudioCompactor mAudioCompactor;
+ 
+   // video output
+   RefPtr<layers::ImageContainer> mImageContainer;
  };
  
  OmxDataDecoder::OmxDataDecoder(const TrackInfo& aTrackInfo,
 +                               TaskQueue* aTaskQueue,
                                 layers::ImageContainer* aImageContainer)
    : mOmxTaskQueue(CreateMediaDecodeTaskQueue("OmxDataDecoder::mOmxTaskQueue"))
-+  , mReaderTaskQueue(aTaskQueue)
++  , mTaskQueue(aTaskQueue)
    , mImageContainer(aImageContainer)
    , mWatchManager(this, mOmxTaskQueue)
    , mOmxState(OMX_STATETYPE::OMX_StateInvalid, "OmxDataDecoder::mOmxState")
+   , mTrackInfo(aTrackInfo.Clone())
+   , mFlushing(false)
+   , mShuttingDown(false)
+   , mCheckingInputExhausted(false)
+   , mPortSettingsChanged(-1, "OmxDataDecoder::mPortSettingsChanged")
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.h b/dom/media/platforms/omx/OmxDataDecoder.h
-index d6199b5b29ba..9bc480670e07 100644
 --- a/dom/media/platforms/omx/OmxDataDecoder.h
 +++ b/dom/media/platforms/omx/OmxDataDecoder.h
-@@ -67,6 +67,7 @@ protected:
+@@ -62,16 +62,17 @@ class OmxDataDecoder
+   : public MediaDataDecoder
+   , public DecoderDoctorLifeLogger<OmxDataDecoder>
+ {
+ protected:
+   virtual ~OmxDataDecoder();
  
  public:
    OmxDataDecoder(const TrackInfo& aTrackInfo,
@@ -306,24 +341,43 @@ index d6199b5b29ba..9bc480670e07 100644
                   layers::ImageContainer* aImageContainer);
  
    RefPtr<InitPromise> Init() override;
-@@ -160,6 +161,8 @@ protected:
+   RefPtr<DecodePromise> Decode(MediaRawData* aSample) override;
+   RefPtr<DecodePromise> Drain() override;
+   RefPtr<FlushPromise> Flush() override;
+   RefPtr<ShutdownPromise> Shutdown() override;
+ 
+@@ -155,16 +156,18 @@ protected:
+ 
+   // aType could be OMX_DirMax for all types.
+   RefPtr<OmxPromiseLayer::OmxBufferPromise::AllPromiseType>
+   CollectBufferPromises(OMX_DIRTYPE aType);
+ 
    // The Omx TaskQueue.
    RefPtr<TaskQueue> mOmxTaskQueue;
  
-+  RefPtr<TaskQueue> mReaderTaskQueue;
++  RefPtr<TaskQueue> mTaskQueue;
 +
    RefPtr<layers::ImageContainer> mImageContainer;
  
    WatchManager<OmxDataDecoder> mWatchManager;
+ 
+   // It is accessed in omx TaskQueue.
+   Watchable<OMX_STATETYPE> mOmxState;
+ 
+   RefPtr<OmxPromiseLayer> mOmxLayer;
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.cpp b/dom/media/platforms/omx/OmxDecoderModule.cpp
-index 3d36c2cff153..4fa0925b5e9a 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.cpp
 +++ b/dom/media/platforms/omx/OmxDecoderModule.cpp
-@@ -9,12 +9,37 @@
+@@ -4,30 +4,56 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "OmxDecoderModule.h"
+ 
  #include "OmxDataDecoder.h"
  #include "OmxPlatformLayer.h"
  
-+#ifdef MOZ_WIDGET_GTK
++#ifdef MOZ_OMX
 +#include "PureOmxPlatformLayer.h"
 +#endif
 +
@@ -332,7 +386,7 @@ index 3d36c2cff153..4fa0925b5e9a 100644
 +/* static */ bool
 +OmxDecoderModule::Init()
 +{
-+#ifdef MOZ_WIDGET_GTK
++#ifdef MOZ_OMX
 +  return PureOmxPlatformLayer::Init();
 +#endif
 +  return false;
@@ -341,10 +395,10 @@ index 3d36c2cff153..4fa0925b5e9a 100644
 +OmxDecoderModule*
 +OmxDecoderModule::Create()
 +{
-+#ifdef MOZ_WIDGET_GTK
-+  if (!Init())
-+    return nullptr;
-+  return new OmxDecoderModule();
++#ifdef MOZ_OMX
++  if (Init()) {
++    return new OmxDecoderModule();
++  }
 +#endif
 +  return nullptr;
 +}
@@ -357,7 +411,8 @@ index 3d36c2cff153..4fa0925b5e9a 100644
                                                        aParams.mImageContainer);
    return decoder.forget();
  }
-@@ -23,6 +48,7 @@ already_AddRefed<MediaDataDecoder>
+ 
+ already_AddRefed<MediaDataDecoder>
  OmxDecoderModule::CreateAudioDecoder(const CreateDecoderParams& aParams)
  {
    RefPtr<OmxDataDecoder> decoder = new OmxDataDecoder(aParams.mConfig,
@@ -365,11 +420,20 @@ index 3d36c2cff153..4fa0925b5e9a 100644
                                                        nullptr);
    return decoder.forget();
  }
+ 
+ bool
+ OmxDecoderModule::SupportsMimeType(const nsACString& aMimeType,
+                                    DecoderDoctorDiagnostics* aDiagnostics) const
+ {
 diff --git a/dom/media/platforms/omx/OmxDecoderModule.h b/dom/media/platforms/omx/OmxDecoderModule.h
-index 1e4e72391dd3..58f053b1a945 100644
 --- a/dom/media/platforms/omx/OmxDecoderModule.h
 +++ b/dom/media/platforms/omx/OmxDecoderModule.h
-@@ -14,6 +14,10 @@ namespace mozilla {
+@@ -9,16 +9,20 @@
+ 
+ #include "PlatformDecoderModule.h"
+ 
+ namespace mozilla {
+ 
  class OmxDecoderModule : public PlatformDecoderModule
  {
  public:
@@ -380,9 +444,13 @@ index 1e4e72391dd3..58f053b1a945 100644
    already_AddRefed<MediaDataDecoder>
    CreateVideoDecoder(const CreateDecoderParams& aParams) override;
  
+   already_AddRefed<MediaDataDecoder>
+   CreateAudioDecoder(const CreateDecoderParams& aParams) override;
+ 
+   bool SupportsMimeType(const nsACString& aMimeType,
+                         DecoderDoctorDiagnostics* aDiagnostics) const override;
 diff --git a/dom/media/platforms/omx/OmxFunctionList.h b/dom/media/platforms/omx/OmxFunctionList.h
 new file mode 100644
-index 000000000000..e1e92bfe6522
 --- /dev/null
 +++ b/dom/media/platforms/omx/OmxFunctionList.h
 @@ -0,0 +1,13 @@
@@ -400,28 +468,41 @@ index 000000000000..e1e92bfe6522
 +OMX_FUNC(OMX_SetupTunnel)
 +OMX_FUNC(OMX_GetContentPipe)
 diff --git a/dom/media/platforms/omx/OmxPlatformLayer.cpp b/dom/media/platforms/omx/OmxPlatformLayer.cpp
-index 55b576b50b03..568a3e2ee464 100644
 --- a/dom/media/platforms/omx/OmxPlatformLayer.cpp
 +++ b/dom/media/platforms/omx/OmxPlatformLayer.cpp
-@@ -8,6 +8,11 @@
+@@ -3,16 +3,20 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "OmxPlatformLayer.h"
  
  #include "OMX_VideoExt.h" // For VP8.
  
-+#ifdef MOZ_WIDGET_GTK
-+#define OMX_PLATFORM_PURE
++#ifdef MOZ_OMX
 +#include "PureOmxPlatformLayer.h"
 +#endif
 +
  #include "VPXDecoder.h"
  
  #ifdef LOG
-@@ -282,7 +287,26 @@ OmxPlatformLayer::CompressionFormat()
+ #undef LOG
+ #endif
+ 
+ #define LOG(arg, ...) MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("OmxPlatformLayer -- %s: " arg, __func__, ##__VA_ARGS__))
+ 
+@@ -277,25 +281,46 @@ OmxPlatformLayer::CompressionFormat()
+   } else if (VPXDecoder::IsVP8(mInfo->mMimeType)) {
+     return static_cast<OMX_VIDEO_CODINGTYPE>(OMX_VIDEO_CodingVP8);
+   } else {
+     MOZ_ASSERT_UNREACHABLE("Unsupported compression format");
+     return OMX_VIDEO_CodingUnused;
    }
  }
  
 -// For platforms without OMX IL support.
 +// Implementations for different platforms will be defined in their own files.
-+#if defined(OMX_PLATFORM_PURE)
++#if defined(MOZ_OMX)
 +
 +bool
 +OmxPlatformLayer::SupportsMimeType(const nsACString& aMimeType)
@@ -435,7 +516,8 @@ index 55b576b50b03..568a3e2ee464 100644
 +                         TaskQueue* aTaskQueue,
 +                         layers::ImageContainer* aImageContainer)
 +{
-+  return new PureOmxPlatformLayer(aDataDecoder, aPromiseLayer, aTaskQueue, aImageContainer);
++  return new PureOmxPlatformLayer(aDataDecoder, aPromiseLayer,
++                                  aTaskQueue, aImageContainer);
 +}
 +
 +#else // For platforms without OMX IL support.
@@ -443,7 +525,15 @@ index 55b576b50b03..568a3e2ee464 100644
  bool
  OmxPlatformLayer::SupportsMimeType(const nsACString& aMimeType)
  {
-@@ -298,4 +322,5 @@ OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
+   return false;
+ }
+ 
+ OmxPlatformLayer*
+ OmxPlatformLayer::Create(OmxDataDecoder* aDataDecoder,
+                         OmxPromiseLayer* aPromiseLayer,
+                         TaskQueue* aTaskQueue,
+                         layers::ImageContainer* aImageContainer)
+ {
    return nullptr;
  }
  
@@ -451,10 +541,9 @@ index 55b576b50b03..568a3e2ee464 100644
  }
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
 new file mode 100644
-index 000000000000..eca79158fb4b
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,444 @@
+@@ -0,0 +1,453 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -539,8 +628,9 @@ index 000000000000..eca79158fb4b
 +/* static */ bool
 +PureOmxPlatformLayer::Init(void)
 +{
-+  if (!OmxCoreLibLinker::Link())
++  if (!OmxCoreLibLinker::Link()) {
 +    return false;
++  }
 +
 +  OMX_ERRORTYPE err = OMX_Init();
 +  if (err != OMX_ErrorNone) {
@@ -572,8 +662,9 @@ index 000000000000..eca79158fb4b
 +PureOmxPlatformLayer::~PureOmxPlatformLayer()
 +{
 +  LOG("");
-+  if (mComponent)
++  if (mComponent) {
 +    OMX_FreeHandle(mComponent);
++  }
 +}
 +
 +OMX_ERRORTYPE
@@ -581,8 +672,9 @@ index 000000000000..eca79158fb4b
 +{
 +  LOG("");
 +
-+  if (!aInfo)
++  if (!aInfo) {
 +    return OMX_ErrorUndefined;
++  }
 +  mInfo = aInfo;
 +
 +  return CreateComponent();
@@ -608,8 +700,9 @@ index 000000000000..eca79158fb4b
 +                                  OMX_PTR aCmdData)
 +{
 +  LOG("aCmd: 0x%08x", aCmd);
-+  if (!mComponent)
++  if (!mComponent) {
 +    return OMX_ErrorUndefined;
++  }
 +  return OMX_SendCommand(mComponent, aCmd, aParam1, aCmdData);
 +}
 +
@@ -646,8 +739,9 @@ index 000000000000..eca79158fb4b
 +
 +  OMX_PARAM_PORTDEFINITIONTYPE portDef;
 +  nsresult result = FindPortDefinition(aType, portDef);
-+  if (result != NS_OK)
++  if (result != NS_OK) {
 +    return result;
++  }
 +
 +  LOG("nBufferCountActual: %d, nBufferSize: %d",
 +      portDef.nBufferCountActual, portDef.nBufferSize);
@@ -687,8 +781,9 @@ index 000000000000..eca79158fb4b
 +{
 +  LOG("");
 +
-+  if (mComponent)
++  if (mComponent) {
 +    return OMX_GetState(mComponent, aType);
++  }
 +
 +  return OMX_ErrorUndefined;
 +}
@@ -700,8 +795,9 @@ index 000000000000..eca79158fb4b
 +{
 +  LOG("aParamIndex: 0x%08x", aParamIndex);
 +
-+  if (!mComponent)
++  if (!mComponent) {
 +    return OMX_ErrorUndefined;
++  }
 +
 +  return OMX_GetParameter(mComponent,
 +                          aParamIndex,
@@ -715,8 +811,9 @@ index 000000000000..eca79158fb4b
 +{
 +  LOG("aParamIndex: 0x%08x", aParamIndex);
 +
-+  if (!mComponent)
++  if (!mComponent) {
 +    return OMX_ErrorUndefined;
++  }
 +
 +  return OMX_SetParameter(mComponent,
 +                          aParamIndex,
@@ -745,8 +842,8 @@ index 000000000000..eca79158fb4b
 +        [self, eEventType, nData1, nData2, pEventData] () {
 +          self->EventHandler(eEventType, nData1, nData2, pEventData);
 +        });
-+  self->mTaskQueue->Dispatch(r.forget());
-+  return OMX_ErrorNone;
++  nsresult rv = self->mTaskQueue->Dispatch(r.forget());
++  return NS_SUCCEEDED(rv) ? OMX_ErrorNone : OMX_ErrorUndefined;
 +}
 +
 +/* static */ OMX_ERRORTYPE
@@ -760,8 +857,8 @@ index 000000000000..eca79158fb4b
 +      [self, pBuffer] () {
 +        self->EmptyBufferDone(pBuffer);
 +      });
-+  self->mTaskQueue->Dispatch(r.forget());
-+  return OMX_ErrorNone;
++  nsresult rv = self->mTaskQueue->Dispatch(r.forget());
++  return NS_SUCCEEDED(rv) ? OMX_ErrorNone : OMX_ErrorUndefined;
 +}
 +
 +/* static */ OMX_ERRORTYPE
@@ -775,8 +872,8 @@ index 000000000000..eca79158fb4b
 +      [self, pBuffer] () {
 +        self->FillBufferDone(pBuffer);
 +      });
-+  self->mTaskQueue->Dispatch(r.forget());
-+  return OMX_ErrorNone;
++  nsresult rv = self->mTaskQueue->Dispatch(r.forget());
++  return NS_SUCCEEDED(rv) ? OMX_ErrorNone : OMX_ErrorUndefined;
 +}
 +
 +OMX_ERRORTYPE
@@ -846,16 +943,20 @@ index 000000000000..eca79158fb4b
 +  OMX_ERRORTYPE err;
 +  err = OMX_GetComponentsOfRole(const_cast<OMX_STRING>(role.Data()),
 +                                &nComponents, nullptr);
-+  if (err != OMX_ErrorNone || nComponents <= 0)
++  if (err != OMX_ErrorNone || nComponents <= 0) {
 +    return false;
-+  if (!aComponentName)
++  }
++  if (!aComponentName) {
 +    return true;
++  }
 +
 +  // TODO:
 +  // Only the first component will be used.
 +  // We should detect the most preferred component.
 +  OMX_U8* componentNames[1];
-+  componentNames[0] = reinterpret_cast<OMX_U8*>(malloc(OMX_MAX_STRINGNAME_SIZE));
++  UniquePtr<OMX_U8[]> componentName;
++  componentName = MakeUniqueFallible<OMX_U8[]>(OMX_MAX_STRINGNAME_SIZE);
++  componentNames[0] = componentName.get();
 +  nComponents = 1;
 +  err = OMX_GetComponentsOfRole(const_cast<OMX_STRING>(role.Data()),
 +                                &nComponents, componentNames);
@@ -865,7 +966,6 @@ index 000000000000..eca79158fb4b
 +             __func__, aMimeType.Data(), componentNames[0]));
 +    aComponentName->Assign(reinterpret_cast<char*>(componentNames[0]));
 +  }
-+  free(componentNames[0]);
 +
 +  return err == OMX_ErrorNone;
 +}
@@ -876,10 +976,8 @@ index 000000000000..eca79158fb4b
 +  nsAutoCString componentName;
 +  if (aComponentName) {
 +    componentName = *aComponentName;
-+  } else {
-+    bool found = FindStandardComponent(mInfo->mMimeType, &componentName);
-+    if (!found)
-+      return OMX_ErrorComponentNotFound;
++  } else if (!FindStandardComponent(mInfo->mMimeType, &componentName)) {
++    return OMX_ErrorComponentNotFound;
 +  }
 +
 +  OMX_ERRORTYPE err;
@@ -901,10 +999,9 @@ index 000000000000..eca79158fb4b
 +}
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.h b/dom/media/platforms/omx/PureOmxPlatformLayer.h
 new file mode 100644
-index 000000000000..2c68d07230d7
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.h
-@@ -0,0 +1,115 @@
+@@ -0,0 +1,117 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -920,7 +1017,8 @@ index 000000000000..2c68d07230d7
 +
 +class PureOmxPlatformLayer;
 +
-+class PureOmxBufferData : public OmxPromiseLayer::BufferData {
++class PureOmxBufferData : public OmxPromiseLayer::BufferData
++{
 +protected:
 +  virtual ~PureOmxBufferData();
 +
@@ -938,7 +1036,8 @@ index 000000000000..2c68d07230d7
 +  const OMX_PARAM_PORTDEFINITIONTYPE mPortDef;
 +};
 +
-+class PureOmxPlatformLayer : public OmxPlatformLayer {
++class PureOmxPlatformLayer : public OmxPlatformLayer
++{
 +public:
 +  static bool Init(void);
 +
@@ -951,31 +1050,31 @@ index 000000000000..2c68d07230d7
 +
 +  virtual ~PureOmxPlatformLayer();
 +
-+  virtual OMX_ERRORTYPE InitOmxToStateLoaded(const TrackInfo* aInfo) override;
++  OMX_ERRORTYPE InitOmxToStateLoaded(const TrackInfo* aInfo) override;
 +
-+  virtual OMX_ERRORTYPE EmptyThisBuffer(BufferData* aData) override;
++  OMX_ERRORTYPE EmptyThisBuffer(BufferData* aData) override;
 +
-+  virtual OMX_ERRORTYPE FillThisBuffer(BufferData* aData) override;
++  OMX_ERRORTYPE FillThisBuffer(BufferData* aData) override;
 +
-+  virtual OMX_ERRORTYPE SendCommand(OMX_COMMANDTYPE aCmd,
-+                                    OMX_U32 aParam1,
-+                                    OMX_PTR aCmdData) override;
++  OMX_ERRORTYPE SendCommand(OMX_COMMANDTYPE aCmd,
++                            OMX_U32 aParam1,
++                            OMX_PTR aCmdData) override;
 +
-+  virtual nsresult AllocateOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
++  nsresult AllocateOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
 +
-+  virtual nsresult ReleaseOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
++  nsresult ReleaseOmxBuffer(OMX_DIRTYPE aType, BUFFERLIST* aBufferList) override;
 +
-+  virtual OMX_ERRORTYPE GetState(OMX_STATETYPE* aType) override;
++  OMX_ERRORTYPE GetState(OMX_STATETYPE* aType) override;
 +
-+  virtual OMX_ERRORTYPE GetParameter(OMX_INDEXTYPE aParamIndex,
-+                                     OMX_PTR aComponentParameterStructure,
-+                                     OMX_U32 aComponentParameterSize) override;
++  OMX_ERRORTYPE GetParameter(OMX_INDEXTYPE aParamIndex,
++                             OMX_PTR aComponentParameterStructure,
++                             OMX_U32 aComponentParameterSize) override;
 +
-+  virtual OMX_ERRORTYPE SetParameter(OMX_INDEXTYPE aParamIndex,
-+                                     OMX_PTR aComponentParameterStructure,
-+                                     OMX_U32 aComponentParameterSize) override;
++  OMX_ERRORTYPE SetParameter(OMX_INDEXTYPE aParamIndex,
++                             OMX_PTR aComponentParameterStructure,
++                             OMX_U32 aComponentParameterSize) override;
 +
-+  virtual nsresult Shutdown() override;
++  nsresult Shutdown() override;
 +
 +  OMX_HANDLETYPE GetComponent() const { return mComponent; };
 +
@@ -1021,23 +1120,18 @@ index 000000000000..2c68d07230d7
 +
 +#endif // PureOmxPlatformLayer_h_
 diff --git a/dom/media/platforms/omx/moz.build b/dom/media/platforms/omx/moz.build
-index 6ae24dd6e7b0..009c4d041a96 100644
 --- a/dom/media/platforms/omx/moz.build
 +++ b/dom/media/platforms/omx/moz.build
-@@ -4,6 +4,8 @@
- # License, v. 2.0. If a copy of the MPL was not distributed with this
- # file, You can obtain one at http://mozilla.org/MPL/2.0/.
- 
-+toolkit = CONFIG['MOZ_WIDGET_TOOLKIT']
-+
- EXPORTS += [
-     'OmxDecoderModule.h',
+@@ -16,16 +16,21 @@ UNIFIED_SOURCES += [
  ]
-@@ -21,6 +23,11 @@ LOCAL_INCLUDES += [
+ 
+ LOCAL_INCLUDES += [
+     '/media/openmax_il/il112',
+ ]
  
  include('/ipc/chromium/chromium-config.mozbuild')
  
-+if toolkit == 'gtk3':
++if CONFIG['MOZ_OMX']:
 +    UNIFIED_SOURCES += [
 +        'PureOmxPlatformLayer.cpp',
 +    ]
@@ -1045,20 +1139,66 @@ index 6ae24dd6e7b0..009c4d041a96 100644
  FINAL_LIBRARY = 'xul'
  
  if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
+     CXXFLAGS += ['-Wno-error=shadow']
+ 
+ if CONFIG['CC_TYPE'] in ('msvc', 'clang-cl'):
+     # Avoid warnings from third-party code that we can not modify.
+     if CONFIG['CC_TYPE'] == 'clang-cl':
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
-index 21edf6e72e78..04ae605cf153 100644
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -409,6 +409,9 @@ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
+@@ -403,16 +403,20 @@ pref("media.wmf.amd.highres.enabled", tr
+ pref("media.wmf.allow-unsupported-resolutions", false);
+ pref("media.wmf.use-nv12-format", true);
+ pref("media.wmf.disable-d3d11-for-dlls", "igd11dxva64.dll: 20.19.15.4463, 20.19.15.4454, 20.19.15.4444, 20.19.15.4416, 20.19.15.4404, 20.19.15.4390, 20.19.15.4380, 20.19.15.4377, 20.19.15.4364, 20.19.15.4360, 20.19.15.4352, 20.19.15.4331, 20.19.15.4326, 20.19.15.4300; igd10iumd32.dll: 20.19.15.4444, 20.19.15.4424, 20.19.15.4409, 20.19.15.4390, 20.19.15.4380, 20.19.15.4360, 10.18.10.4358, 20.19.15.4331, 20.19.15.4312, 20.19.15.4300, 10.18.15.4281, 10.18.15.4279, 10.18.10.4276, 10.18.15.4268, 10.18.15.4256, 10.18.10.4252, 10.18.15.4248, 10.18.14.4112, 10.18.10.3958, 10.18.10.3496, 10.18.10.3431, 10.18.10.3412, 10.18.10.3355, 9.18.10.3234, 9.18.10.3071, 9.18.10.3055, 9.18.10.3006; igd10umd32.dll: 9.17.10.4229, 9.17.10.3040, 9.17.10.2884, 9.17.10.2857, 8.15.10.2274, 8.15.10.2272, 8.15.10.2246, 8.15.10.1840, 8.15.10.1808; igd10umd64.dll: 9.17.10.4229, 9.17.10.2884, 9.17.10.2857, 10.18.10.3496; isonyvideoprocessor.dll: 4.1.2247.8090, 4.1.2153.6200; tosqep.dll: 1.2.15.526, 1.1.12.201, 1.0.11.318, 1.0.11.215, 1.0.10.1224; tosqep64.dll: 1.1.12.201, 1.0.11.215; nvwgf2um.dll: 22.21.13.8253, 22.21.13.8233, 22.21.13.8205, 22.21.13.8189, 22.21.13.8178, 22.21.13.8165, 21.21.13.7892, 21.21.13.7878, 21.21.13.7866, 21.21.13.7849, 21.21.13.7654, 21.21.13.7653, 21.21.13.7633, 21.21.13.7619, 21.21.13.7563, 21.21.13.7306, 21.21.13.7290, 21.21.13.7270, 21.21.13.7254, 21.21.13.6939, 21.21.13.6926, 21.21.13.6909, 21.21.13.4201, 21.21.13.4200, 10.18.13.6881, 10.18.13.6839, 10.18.13.6510, 10.18.13.6472, 10.18.13.6143, 10.18.13.5946, 10.18.13.5923, 10.18.13.5921, 10.18.13.5891, 10.18.13.5887, 10.18.13.5582, 10.18.13.5445, 10.18.13.5382, 10.18.13.5362, 9.18.13.4788, 9.18.13.4752, 9.18.13.4725, 9.18.13.4709, 9.18.13.4195, 9.18.13.4192, 9.18.13.4144, 9.18.13.4052, 9.18.13.3788, 9.18.13.3523, 9.18.13.3235, 9.18.13.3165, 9.18.13.2723, 9.18.13.2702, 9.18.13.1422, 9.18.13.1407, 9.18.13.1106, 9.18.13.546; atidxx32.dll: 21.19.151.3, 21.19.142.257, 21.19.137.514, 21.19.137.1, 21.19.134.1, 21.19.128.7, 21.19.128.4, 20.19.0.32837, 20.19.0.32832, 8.17.10.682, 8.17.10.671, 8.17.10.661, 8.17.10.648, 8.17.10.644, 8.17.10.625, 8.17.10.605, 8.17.10.581, 8.17.10.569, 8.17.10.560, 8.17.10.545, 8.17.10.539, 8.17.10.531, 8.17.10.525, 8.17.10.520, 8.17.10.519, 8.17.10.514, 8.17.10.511, 8.17.10.494, 8.17.10.489, 8.17.10.483, 8.17.10.453, 8.17.10.451, 8.17.10.441, 8.17.10.436, 8.17.10.432, 8.17.10.425, 8.17.10.418, 8.17.10.414, 8.17.10.401, 8.17.10.395, 8.17.10.385, 8.17.10.378, 8.17.10.362, 8.17.10.355, 8.17.10.342, 8.17.10.331, 8.17.10.318, 8.17.10.310, 8.17.10.286, 8.17.10.269, 8.17.10.261, 8.17.10.247, 8.17.10.240, 8.15.10.212; atidxx64.dll: 21.19.151.3, 21.19.142.257, 21.19.137.514, 21.19.137.1, 21.19.134.1, 21.19.128.7, 21.19.128.4, 20.19.0.32832, 8.17.10.682, 8.17.10.661, 8.17.10.644, 8.17.10.625; nvumdshim.dll: 10.18.13.6822");
+ pref("media.wmf.disable-d3d9-for-dlls", "igdumd64.dll: 8.15.10.2189, 8.15.10.2119, 8.15.10.2104, 8.15.10.2102, 8.771.1.0; atiumd64.dll: 7.14.10.833, 7.14.10.867, 7.14.10.885, 7.14.10.903, 7.14.10.911, 8.14.10.768, 9.14.10.1001, 9.14.10.1017, 9.14.10.1080, 9.14.10.1128, 9.14.10.1162, 9.14.10.1171, 9.14.10.1183, 9.14.10.1197, 9.14.10.945, 9.14.10.972, 9.14.10.984, 9.14.10.996");
+ pref("media.wmf.deblacklisting-for-telemetry-in-gpu-process", true);
  pref("media.wmf.play-stand-alone", true);
  pref("media.wmf.use-sync-texture", true);
  #endif
-+#if defined(MOZ_WIDGET_GTK)
-+pref("media.pdm-omx.enabled", false);
++#if defined(MOZ_OMX)
++pref("media.omx.enabled", true);
++pref("media.omx.core-lib-path", "");
 +#endif
  #if defined(MOZ_FFMPEG)
  #if defined(XP_MACOSX)
  pref("media.ffmpeg.enabled", false);
--- 
-2.14.1
-
+ #else
+ pref("media.ffmpeg.enabled", true);
+ #endif
+ pref("media.libavcodec.allow-obsolete", false);
+ #endif
+diff --git a/toolkit/moz.configure b/toolkit/moz.configure
+--- a/toolkit/moz.configure
++++ b/toolkit/moz.configure
+@@ -393,16 +393,30 @@ def fmp4(value, target, wmf, applemedia)
+         enabled = wmf or applemedia or target.os == 'Android'
+     if enabled:
+         return True
+ 
+ set_config('MOZ_FMP4', fmp4)
+ set_define('MOZ_FMP4', fmp4)
+ add_old_configure_assignment('MOZ_FMP4', fmp4)
+ 
++# OpenMAX IL Decoding Support
++# ==============================================================
++option('--enable-openmax',
++       help='Enable OpenMAX IL for video/audio decoding')
++
++@depends('--enable-openmax', target)
++def openmax(value, target):
++    enabled = bool(value)
++    if enabled:
++        return True
++
++set_config('MOZ_OMX', openmax)
++set_define('MOZ_OMX', openmax)
++
+ # EME Support
+ # ==============================================================
+ # Widevine is enabled by default in desktop browser builds.
+ @depends(build_project, '--help')
+ def eme_default(build_project, help):
+     if build_project == 'browser':
+         return 'widevine'
+ 
