@@ -62,8 +62,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            '', d)}"
 
 # Gecko Embedded's Additional wayland patches to support EGL
-#
-# TODO: Most of them aren't ported to ESR60 yet
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
             file://wayland/egl/0001-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
