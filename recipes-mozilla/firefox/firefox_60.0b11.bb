@@ -75,7 +75,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://prefs/e10s.js \
+            file://prefs/disable-e10s.js \
            ', \
            '', d)}"
 
@@ -158,7 +158,7 @@ do_install_append() {
         install -m 0644 ${WORKDIR}/prefs/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/prefs/e10s.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/disable-e10s.js ${D}${libdir}/${PN}/defaults/pref/
     fi
 
     # Fix ownership of files
