@@ -113,9 +113,6 @@ do_configure() {
     export BINDGEN_INCCPP=${STAGING_INCDIR}
     export BINDGEN_LLVM_BASE=/usr/lib
 
-    # TODO:
-    # It will be replaced with ${RUST_TARGET_SYS} which is provided by
-    # meta-rust.
     export RUST_TARGET="${RUST_TARGET_SYS}"
 
     ./mach configure ${CONFIGURE_ARGS}
