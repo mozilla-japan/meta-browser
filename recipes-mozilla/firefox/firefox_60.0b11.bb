@@ -154,7 +154,7 @@ do_install_append() {
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
-    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/disable-e10s.js ${D}${libdir}/${PN}/defaults/pref/
     fi
 
