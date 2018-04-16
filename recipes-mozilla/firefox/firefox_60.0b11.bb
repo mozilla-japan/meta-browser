@@ -90,10 +90,10 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ', \
            '', d)}"
 
-SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'webgl', \
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'webgl', \
            'file://prefs/webgl.js', '', d)}"
 
-SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'canvas-gpu', \
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', \
            'file://prefs/canvas-gpu.js', '', d)}"
 
 python do_check_variables() {
