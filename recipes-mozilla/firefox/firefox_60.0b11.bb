@@ -73,7 +73,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/0004-Repaint-on-resize-asynchronously.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://prefs/disable-e10s.js \
            ', \
