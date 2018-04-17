@@ -78,7 +78,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/gem/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/gem/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/gem/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://wayland/gem/egl/0001-Call-fEGLImageTargetTexture2D-eariler.patch \
             file://wayland/gem/egl/frameless.patch \
             file://e10s.js \
            ', \
