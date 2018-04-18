@@ -28,8 +28,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "89c88889b5ac694f2c1ca37c918d2dd5"
-SRC_URI[archive.sha256sum] = "32bb82c6ad1d92c024d17def09c2d2d953f1eb99fb0b1fc102a51e66e9eace7a"
+SRC_URI[archive.md5sum] = "9bb4b75521a259ea4ef0071f9870f667"
+SRC_URI[archive.sha256sum] = "d889b8d37e11c44ce4fc71c34955c6eea72aca83da3bf8786cbd93cebeabcb08"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-60.0"
@@ -59,6 +59,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/wayland-hacks.js \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
+            file://wayland/bug1417892-1.patch \
+            file://wayland/bug1417892-2.patch \
+            file://wayland/bug1449490.patch \
            ', \
            '', d)}"
 
