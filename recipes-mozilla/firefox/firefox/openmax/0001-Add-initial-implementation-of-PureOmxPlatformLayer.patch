@@ -2,9 +2,9 @@
 # User Takuro Ashie <ashie@clear-code.com>
 # Date 1522228864 -32400
 #      Wed Mar 28 18:21:04 2018 +0900
-# Node ID b8c671a02a4fce085433b16db998c9b04ace87db
-# Parent  a64a0f3c1662e8b17b1062f12243dadbce6f9032
-Bug 1306529 - Add initial implementation of PureOmxPlatformLayer
+# Node ID 5dd153432affe684c4eda339fea603b694e7bfbd
+# Parent  83de58ddda2057f1cb949537f6b111e3b115ea3d
+Bug 1306529 - Add initial implementation of PureOmxPlatformLayer r?jya
 
 It's a concrete class of OmxPlatformLayer for accessing OpenMAX IL
 libraries directly. It will be usable on various embedded linux systems.
@@ -543,7 +543,7 @@ diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platfo
 new file mode 100644
 --- /dev/null
 +++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
-@@ -0,0 +1,453 @@
+@@ -0,0 +1,452 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* vim:set ts=2 sw=2 sts=2 et cindent: */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -765,9 +765,8 @@ new file mode 100644
 +    PureOmxBufferData* buffer =
 +      static_cast<PureOmxBufferData*>(aBufferList->ElementAt(i).get());
 +
-+    // Although the ref count of the buffer may not be 0 at this moment, we need
-+    // to force release all OpenMAX buffers to flush OMX_CommandStateSet for
-+    // switching the state to OMX_StateLoaded.
++    // All raw OpenMAX buffers have to be released here to flush
++    // OMX_CommandStateSet for switching the state to OMX_StateLoaded.
 +    // See OmxDataDecoder::DoAsyncShutdown() for more detail.
 +    buffer->ReleaseBuffer();
 +  }
@@ -1185,8 +1184,8 @@ diff --git a/toolkit/moz.configure b/toolkit/moz.configure
 +option('--enable-openmax',
 +       help='Enable OpenMAX IL for video/audio decoding')
 +
-+@depends('--enable-openmax', target)
-+def openmax(value, target):
++@depends('--enable-openmax')
++def openmax(value):
 +    enabled = bool(value)
 +    if enabled:
 +        return True

@@ -2,9 +2,9 @@
 # User Takuro Ashie <ashie@clear-code.com>
 # Date 1522136241 -32400
 #      Tue Mar 27 16:37:21 2018 +0900
-# Node ID 2712ea03c3be1df1fa634c97e03594e4bd1b66fd
-# Parent  daa54bbac6d92860a93f1804be77c71941cc5507
-Bug 1306529 - OmxDataDecoder: Fix a stall issue on shutting down
+# Node ID eb0a2bb44f95f195343fed284efcdd524a7bb868
+# Parent  5dd153432affe684c4eda339fea603b694e7bfbd
+Bug 1306529 - OmxDataDecoder: Fix a stall issue on shutting down r?jya
 
 Because the shutdown closure awaits finishing itself by
 TaskQueue::AwaitShutdownAndIdle(), the function blocks infinitely.
@@ -22,7 +22,7 @@ MozReview-Commit-ID: 4qmX2QlniEG
 diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/omx/OmxDataDecoder.cpp
 --- a/dom/media/platforms/omx/OmxDataDecoder.cpp
 +++ b/dom/media/platforms/omx/OmxDataDecoder.cpp
-@@ -268,38 +268,42 @@ OmxDataDecoder::DoAsyncShutdown()
+@@ -268,35 +268,39 @@ OmxDataDecoder::DoAsyncShutdown()
  
               return p;
             },
@@ -64,13 +64,9 @@ diff --git a/dom/media/platforms/omx/OmxDataDecoder.cpp b/dom/media/platforms/om
 -             self->mShuttingDown = false;
               self->mOmxTaskQueue->BeginShutdown();
               self->mOmxTaskQueue->AwaitShutdownAndIdle();
--             self->mShutdownPromise.Resolve(true, __func__);
-+             self->mShutdownPromise.Reject(false, __func__);
+              self->mShutdownPromise.Resolve(true, __func__);
             });
    return mShutdownPromise.Ensure(__func__);
  }
  
  void
- OmxDataDecoder::FillBufferDone(BufferData* aData)
- {
-   MOZ_ASSERT(!aData || aData->mStatus == BufferData::BufferStatus::OMX_CLIENT);
