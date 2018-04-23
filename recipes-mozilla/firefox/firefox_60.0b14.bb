@@ -62,6 +62,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/bug1417892-1.patch \
             file://wayland/bug1417892-2.patch \
             file://wayland/bug1449490.patch \
+            file://wayland/bug1438131.patch \
            ', \
            '', d)}"
 
