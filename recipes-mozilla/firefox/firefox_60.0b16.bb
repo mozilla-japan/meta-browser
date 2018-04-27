@@ -59,9 +59,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/wayland-hacks.js \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
-            file://wayland/bug1417892-1.patch \
-            file://wayland/bug1417892-2.patch \
-            file://wayland/bug1449490.patch \
             file://wayland/bug1438131.patch \
            ', \
            '', d)}"
