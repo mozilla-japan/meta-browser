@@ -29,8 +29,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "3d89ee8a722279c4e883a7a8af81c21d"
-SRC_URI[archive.sha256sum] = "4bc4fd997e6239f53e16a70b04f197791e5c5d09367e2916bcfe4a427999f842"
+SRC_URI[archive.md5sum] = "4bba81e30486a2d1bb181b9fb34d8735"
+SRC_URI[archive.sha256sum] = "d3df941612fce7c89755d63a5afe46ed60414dbb47bc9c18bddfb1ae429d5322"
 
 PR = "r0"
 S = "${WORKDIR}/firefox-60.0"
