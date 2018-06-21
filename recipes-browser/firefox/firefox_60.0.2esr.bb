@@ -59,7 +59,7 @@ PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
-            file://wayland/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
+            file://wayland/bug1468670-enable-alt-modifier-on-wayland.patch \
             file://wayland/bug1438131.patch \
             file://wayland/bug1460810.patch \
             file://wayland/bug1438136.patch \
