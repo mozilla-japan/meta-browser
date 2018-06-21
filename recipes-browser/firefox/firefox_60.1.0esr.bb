@@ -110,6 +110,12 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'webgl', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', \
            'file://prefs/canvas-gpu.js', '', d)}"
 
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'kiosk', \
+           ' \
+            file://wayland/kiosk/0001-Make-the-window-fullscreen-by-default.patch \
+           ', \
+           '', d)}"
+
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
         bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
