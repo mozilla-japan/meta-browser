@@ -82,7 +82,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/bug1460605-Provide-NS_NATIVE_EGL_WINDOW-to-get-a-native-EGL-window-on-wa.patch \
             file://wayland/egl/bug1460605-Use-NS_NATIVE_EGL_WINDOW-instead-of-NS_NATIVE_WINDOW-on-GTK.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
-            file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
             file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
