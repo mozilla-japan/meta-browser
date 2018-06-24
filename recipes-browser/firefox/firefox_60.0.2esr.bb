@@ -67,7 +67,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/bug1462622-Dont-use-GLXVsyncSource-on-non-X11-displays.patch \
             file://wayland/bug1462640-Allow-content-processes-to-mincore.patch \
             file://wayland/bug1464808-Set-move-as-default-Drag-Drop-action.patch \
-            file://wayland/workaround-for-select.patch \
+            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
            ', \
            '', d)}"
