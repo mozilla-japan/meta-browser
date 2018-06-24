@@ -54,12 +54,12 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            'file://wayland/0001-Add-Wayland-support.patch \
             file://wayland/gem/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/gem/0001-Add-ad-hoc-solution-to-enable-Alt-modifier-on-Waylan.patch \
-            file://wayland/gem/0001-Set-ui.popup.disable_autohide-as-true-to-enable-clic.patch \
             file://wayland/gem/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
             file://wayland/gem/0001-Don-t-connect-when-profile-name-is-not-provided.patch \
             file://wayland/gem/0001-Remove-unused-show_shell-static-function.patch \
             file://wayland/gem/0001-Wayland-Fix-a-crash-which-causes-when-there-is-no-ke.patch \
             file://wayland/gem/0001-Wayland-Fix-a-crash-on-starting-video-playback-of-We.patch \
+            file://wayland/gem/bug1451816-workaround-for-grabbing-popup.patch \
            ', \
            '', d)}"
 
