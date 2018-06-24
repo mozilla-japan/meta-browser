@@ -21,7 +21,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
-           file://fixes/bug1458492.patch \
+           file://fixes/bug1458492-csd-window-placement.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
@@ -60,13 +60,13 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/bug1468670-enable-alt-modifier-on-wayland.patch \
-            file://wayland/bug1438131.patch \
-            file://wayland/bug1460810.patch \
+            file://wayland/bug1438131-Implement-Drop-on-Wayland.patch \
+            file://wayland/bug1460810-fix-segfault-while-pasting-text.patch \
             file://wayland/bug1438136-clipboard-text-null-terminate.patch \
-            file://wayland/bug1461306.patch \
-            file://wayland/bug1462622.patch \
-            file://wayland/bug1462640.patch \
-            file://wayland/bug1464808.patch \
+            file://wayland/bug1461306-fix-size-of-mime-type-array.patch \
+            file://wayland/bug1462622-Dont-use-GLXVsyncSource-on-non-X11-displays.patch \
+            file://wayland/bug1462640-Allow-content-processes-to-mincore.patch \
+            file://wayland/bug1464808-Set-move-as-default-Drag-Drop-action.patch \
             file://wayland/workaround-for-select.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
            ', \
@@ -84,8 +84,8 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/0001-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
-            file://wayland/egl/bug1462642.patch \
-            file://wayland/egl/bug1464823.patch \
+            file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
+            file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
             file://prefs/disable-e10s.js \
            ', \
            '', d)}"
