@@ -26,7 +26,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
-           file://fixes/arm64-skia.patch \
+           file://fixes/bug1453892-arm64-skia.patch \
            file://gn-configs/ \
            "
 
