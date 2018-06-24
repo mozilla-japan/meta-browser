@@ -19,7 +19,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://prefs/autoconfig.js \
            file://prefs/autoconfig.cfg \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
-           file://fixes/0001-Always-accept-the-configure-option-with-gl-provider.patch \
+           file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/0001-Fix-a-build-error-of-Gecko-Profiler-for-Linux-ARM.patch \
            file://fixes/bug1458492.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
