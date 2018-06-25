@@ -85,6 +85,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
             file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
+            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
             file://prefs/disable-e10s.js \
            ', \
            '', d)}"
