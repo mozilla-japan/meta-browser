@@ -83,7 +83,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/bug1460605-Use-NS_NATIVE_EGL_WINDOW-instead-of-NS_NATIVE_WINDOW-on-GTK.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/egl/0001-Create-workaround-to-use-BasicCompositor-to-prevent-.patch \
             file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
             file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
             file://prefs/disable-e10s.js \
@@ -92,7 +91,11 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
-           'file://prefs/gpu.js', '', d)}"
+           '\
+            file://fixes/suppress-multiple-compositors.patch \
+            file://prefs/gpu.js \
+            file://prefs/single-compositor.js \
+	   ', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
@@ -159,6 +162,7 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/prefs/autoconfig.cfg ${D}${libdir}/${PN}/
     if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/gpu.js ${D}${libdir}/${PN}/defaults/pref/
+        install -m 0644 ${WORKDIR}/prefs/single-compositor.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/openmax.js ${D}${libdir}/${PN}/defaults/pref/
