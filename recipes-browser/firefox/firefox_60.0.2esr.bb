@@ -18,15 +18,15 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://prefs/vendor.js \
            file://prefs/autoconfig.js \
            file://prefs/autoconfig.cfg \
-           file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/bug1434526-Fix-a-build-error-of-Gecko-Profiler.patch \
            file://fixes/bug1458492-csd-window-placement.patch \
+           file://fixes/bug1453892-arm64-skia.patch \
+           file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
+           file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
-           file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
-           file://fixes/bug1453892-arm64-skia.patch \
            file://gn-configs/ \
            "
 
@@ -58,7 +58,6 @@ PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
-            file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/bug1468670-enable-alt-modifier-on-wayland.patch \
             file://wayland/bug1438131-Implement-Drop-on-Wayland.patch \
             file://wayland/bug1460810-fix-segfault-while-pasting-text.patch \
@@ -68,6 +67,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/bug1462640-Allow-content-processes-to-mincore.patch \
             file://wayland/bug1464808-Set-move-as-default-Drag-Drop-action.patch \
             file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
+            file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
            ', \
            '', d)}"
@@ -78,13 +78,13 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
             file://wayland/egl/bug1460603-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/bug1460605-Provide-NS_NATIVE_EGL_WINDOW-to-get-a-native-EGL-window-on-wa.patch \
             file://wayland/egl/bug1460605-Use-NS_NATIVE_EGL_WINDOW-instead-of-NS_NATIVE_WINDOW-on-GTK.patch \
-            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
             file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
             file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
+            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
+            file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
             file://prefs/disable-e10s.js \
            ', \
@@ -93,9 +93,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
            '\
-            file://fixes/suppress-multiple-compositors.patch \
             file://prefs/gpu.js \
             file://prefs/single-compositor.js \
+            file://fixes/suppress-multiple-compositors.patch \
 	   ', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
