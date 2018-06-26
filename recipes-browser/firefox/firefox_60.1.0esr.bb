@@ -20,8 +20,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://prefs/autoconfig.cfg \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/bug1434526-Fix-a-build-error-of-Gecko-Profiler.patch \
-           file://fixes/bug1458492-csd-window-placement.patch \
-           file://fixes/bug1453892-arm64-skia.patch \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
@@ -30,8 +28,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://gn-configs/ \
            "
 
-SRC_URI[archive.md5sum] = "cfb8e63d58bcf1827df4ed4cee1803ad"
-SRC_URI[archive.sha256sum] = "4c629edac14e15c41b04320b0f66a46f25537661324cdc0ed30dc0799d7708a0"
+SRC_URI[archive.md5sum] = "46deec3c581279f986a1abb2d42697ef"
+SRC_URI[archive.sha256sum] = "a4e7bb80e7ebab19769b2b8940966349136a99aabd497034662cffa54ea30e40"
 
 PR = "r0"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
