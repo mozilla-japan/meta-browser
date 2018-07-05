@@ -1,0 +1,19 @@
+diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
+--- a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
++++ b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
+@@ -70,12 +70,14 @@ void PureOmxBufferData::ReleaseBuffer()
+ 
+ bool PureOmxBufferData::ShouldUseEGLImage()
+ {
+-  OMX_ERRORTYPE err;
++  OMX_ERRORTYPE err = OMX_ErrorNotImplemented;
++#if 0
+   err = OMX_UseEGLImage(mPlatformLayer.GetComponent(),
+                         nullptr,
+                         mPortDef.nPortIndex,
+                         nullptr,
+                         nullptr);
++#endif
+   return (err != OMX_ErrorNotImplemented);
+ }
+ 
