@@ -8,7 +8,7 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
            "
 RDEPENDS_${PN}-dev = "dbus"
 
-LICENSE = "MPLv2 | GPLv2+ | LGPLv2.1+"
+LICENSE = "MPLv2"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
 
 SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}.source.tar.xz;name=archive \
