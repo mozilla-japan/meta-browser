@@ -3,7 +3,7 @@
 
 DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "curl startup-notification libevent cairo libnotify \
-            virtual/libgl pulseaudio yasm-native icu \
+            virtual/libgl pulseaudio yasm-native icu unzip-native \
             rust-cross-${TARGET_ARCH} cargo-native \
            "
 RDEPENDS_${PN}-dev = "dbus"
