@@ -45,6 +45,7 @@ ARM_INSTRUCTION_SET = "arm"
 
 PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d)} \
                    ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)} \
+                   ${@bb.utils.contains_any("TARGET_ARCH", "x86_64 arm aarch64", "webrtc", "", d)} \
 "
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
@@ -54,6 +55,7 @@ PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
+PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
