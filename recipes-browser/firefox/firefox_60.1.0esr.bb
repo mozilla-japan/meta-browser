@@ -25,7 +25,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
-           file://gn-configs/ \
+           file://gn-configs/x64_False_arm64_linux.json \
+           file://gn-configs/x64_False_arm_linux.json \
            "
 
 SRC_URI[archive.md5sum] = "46deec3c581279f986a1abb2d42697ef"
