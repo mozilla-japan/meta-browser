@@ -2,8 +2,8 @@
 # User Takuro Ashie <ashie@clear-code.com>
 # Date 1536566532 -32400
 #      Mon Sep 10 17:02:12 2018 +0900
-# Node ID 119260545b752ef1c7ca54afa7c94a3b090b8199
-# Parent  9bb0f7fc73ad2109e4ea777e9ba65a16a6acc9cd
+# Node ID 99918b1ab5968a17733bff6b0cc7d7dac5e3bb42
+# Parent  fea371cafd2c73be689184ca6670e33c3fd1636c
 Plug memory leak of PureOmxPlatformLayer
 
 diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platforms/omx/PureOmxPlatformLayer.cpp
@@ -29,7 +29,7 @@ diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platfo
    LOG("");
  
    if (!aInfo) {
-@@ -272,16 +269,22 @@ PureOmxPlatformLayer::SetParameter(OMX_I
+@@ -272,16 +269,24 @@ PureOmxPlatformLayer::SetParameter(OMX_I
                            aParamIndex,
                            aComponentParameterStructure);
  }
@@ -40,8 +40,10 @@ diff --git a/dom/media/platforms/omx/PureOmxPlatformLayer.cpp b/dom/media/platfo
    LOG("");
 +  if (mComponent) {
 +    OMX_FreeHandle(mComponent);
++    mComponent = nullptr;
 +  }
-+  mComponent = nullptr;
++  mImageContainer = nullptr;
++  mTaskQueue = nullptr;
 +  mPromiseLayer = nullptr;
 +  mDataDecoder = nullptr;
    return NS_OK;
