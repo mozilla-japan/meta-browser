@@ -223,6 +223,8 @@ PRIVATE_LIBS = " \
     libmozwayland.so \
     libmozsqlite3.so \
     libclearkey.so \
+    libmozavcodec.so \
+    libmozavutil.so \
 "
 
 # mark libraries also provided by nss as private too
