@@ -1,4 +1,4 @@
-From 3e98dfa70289b1297b103f78a1c21a88f68d4659 Mon Sep 17 00:00:00 2001
+From ef357cc034c8f17ef344a2d42c44831fb53334ca Mon Sep 17 00:00:00 2001
 From: Hiroshi Hatake <hatake@clear-code.com>
 Date: Fri, 2 Nov 2018 09:34:33 +0000
 Subject: [PATCH] Observe didcomposite
@@ -8,14 +8,14 @@ Composite and Resize are exclusive operation on R-Car Gen3 series' PVR driver.
 So, we should avoid this deadlock with DidCompositeOserver.
 Because this patch makes more determinisitic EGL operation than previous.
 ---
- widget/gtk/mozcontainer.cpp | 44 ++++++++++++++++++++++++++++++++++++--------
- widget/gtk/mozcontainer.h   |  6 ++++++
- widget/gtk/nsWindow.cpp     | 37 +++++++++++++++++++++++++++++++++++++
+ widget/gtk/mozcontainer.cpp | 42 ++++++++++++++++++++++++++++++++++--------
+ widget/gtk/mozcontainer.h   |  4 ++++
+ widget/gtk/nsWindow.cpp     | 30 ++++++++++++++++++++++++++++++
  widget/gtk/nsWindow.h       |  2 ++
- 4 files changed, 81 insertions(+), 8 deletions(-)
+ 4 files changed, 70 insertions(+), 8 deletions(-)
 
 diff --git a/widget/gtk/mozcontainer.cpp b/widget/gtk/mozcontainer.cpp
-index 82fbfc6..8d240a3 100644
+index 82fbfc6..b750c3a 100644
 --- a/widget/gtk/mozcontainer.cpp
 +++ b/widget/gtk/mozcontainer.cpp
 @@ -213,6 +213,9 @@ moz_container_init (MozContainer *container)
@@ -57,15 +57,13 @@ index 82fbfc6..8d240a3 100644
      }
      return container->eglwindow;
  }
-@@ -618,4 +619,31 @@ moz_container_is_committed(MozContainer *container)
+@@ -618,4 +619,29 @@ moz_container_is_committed(MozContainer *container)
  {
      return container->committed;
  }
 +
 +void
-+moz_container_set_wl_egl_window_size(MozContainer *container,
-+                                     gint width,
-+                                     gint height)
++moz_container_adjust_wl_egl_window_size(MozContainer *container)
 +{
 +    if (!container->eglwindow)
 +        return;
@@ -90,7 +88,7 @@ index 82fbfc6..8d240a3 100644
 +}
  #endif
 diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
-index a78f089..d12fca3 100644
+index a78f089..b10244b 100644
 --- a/widget/gtk/mozcontainer.h
 +++ b/widget/gtk/mozcontainer.h
 @@ -74,6 +74,9 @@ struct _MozContainer
@@ -103,30 +101,27 @@ index a78f089..d12fca3 100644
  #endif
  };
  
-@@ -100,6 +103,9 @@ struct wl_surface* moz_container_get_wl_surface(MozContainer *container);
+@@ -100,6 +103,7 @@ struct wl_surface* moz_container_get_wl_surface(MozContainer *container);
  struct wl_egl_window* moz_container_get_wl_egl_window(MozContainer *container);
  gboolean moz_container_has_wl_egl_window(MozContainer *container);
  gboolean moz_container_is_committed(MozContainer *container);
-+void     moz_container_set_wl_egl_window_size(MozContainer *container,
-+                                              gint width,
-+                                              gint height);
++void     moz_container_adjust_wl_egl_window_size(MozContainer *container);
  #endif
  
  #endif /* __MOZ_CONTAINER_H__ */
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index a6a0b8c..7d11076 100644
+index a6a0b8c..5048d51 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -345,6 +345,32 @@ private:
+@@ -345,6 +345,25 @@ private:
      TimeStamp  mAsyncUpdateStart;
  };
  
 +class nsWindowDidCompositeObserver final : public DidCompositeObserver
 +{
 +public:
-+  nsWindowDidCompositeObserver(MozContainer *aContainer, LayerManager* aLayerManager)
-+    : mContainer(aContainer),
-+      mLayerManager(aLayerManager)
++  nsWindowDidCompositeObserver(MozContainer *aContainer)
++    : mContainer(aContainer)
 +  {
 +  }
 +
@@ -134,23 +129,17 @@ index a6a0b8c..7d11076 100644
 +  }
 +
 +  void DidComposite() override {
-+    GtkAllocation allocation;
-+    GtkWidget* widget = GTK_WIDGET(mContainer);
-+    gtk_widget_get_allocation (widget, &allocation);
-+    moz_container_set_wl_egl_window_size(mContainer,
-+                                         allocation.width,
-+                                         allocation.height);
++    moz_container_adjust_wl_egl_window_size(mContainer);
 +  }
 +
 +private:
 +  MozContainer* mContainer;
-+  RefPtr<LayerManager> mLayerManager;
 +};
 +
  } // namespace mozilla
  
  static NS_DEFINE_IID(kCDragServiceCID,  NS_DRAGSERVICE_CID);
-@@ -488,6 +514,9 @@ nsWindow::nsWindow()
+@@ -488,6 +507,9 @@ nsWindow::nsWindow()
      mPendingConfigures = 0;
      mCSDSupportLevel = CSD_SUPPORT_NONE;
      mDrawInTitlebar = false;
@@ -160,16 +149,16 @@ index a6a0b8c..7d11076 100644
  }
  
  nsWindow::~nsWindow()
-@@ -2089,6 +2118,14 @@ nsWindow::OnExposeEvent(cairo_t *cr)
+@@ -2089,6 +2111,14 @@ nsWindow::OnExposeEvent(cairo_t *cr)
      if (GetLayerManager()->AsKnowsCompositor() && mCompositorSession) {
          // We need to paint to the screen even if nothing changed, since if we
          // don't have a compositing window manager, our pixels could be stale.
 +#ifdef MOZ_WAYLAND
 +        if (mContainer) {
 +            if (!mDidCompositeObserver) {
-+                mDidCompositeObserver = MakeUnique<nsWindowDidCompositeObserver>(mContainer, GetLayerManager());
-+                GetLayerManager()->AddDidCompositeObserver(mDidCompositeObserver.get());
++                mDidCompositeObserver = MakeUnique<nsWindowDidCompositeObserver>(mContainer);
 +            }
++            GetLayerManager()->AddDidCompositeObserver(mDidCompositeObserver.get());
 +        }
 +#endif
          GetLayerManager()->SetNeedsComposite(true);
