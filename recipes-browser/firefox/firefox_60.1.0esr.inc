@@ -74,6 +74,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
             file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
+            file://wayland/bug1504689-Wayland-Clipboard-Don-t-delete-clipboard.patch \
            ', \
            '', d)}"
 
