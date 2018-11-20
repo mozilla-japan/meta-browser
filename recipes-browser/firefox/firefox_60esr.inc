@@ -25,7 +25,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/bug1434526-Fix-a-build-error-of-Gecko-Profiler.patch \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
-           file://fixes/0001-Add-generating-cflags-for-bindgen-mechanism.patch \
+           file://fixes/0001-Add-clang-s-include-path-on-cross-compiling.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
@@ -137,11 +137,10 @@ addtask check_variables before do_configure
 
 do_configure() {
     export SHELL=/bin/bash
-    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
-    export BINDGEN_INCCPP=${STAGING_INCDIR}
-    export BINDGEN_LLVM_BASE=/usr/lib
-
     export RUST_TARGET="${RUST_TARGET_SYS}"
+    export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
+    export BINDGEN_MFLOAT="${@bb.utils.contains('TUNE_CCARGS_MFLOAT', 'hard', '-mfloat-abi=hard', '', d)}"
+    export BINDGEN_CFLAGS="--target=${TARGET_SYS} --sysroot=${RECIPE_SYSROOT} ${BINDGEN_MFLOAT}"
 
     # We still need to support Yocto 2.1.
     # After migrating Yocto 2.4, it can be removed.
