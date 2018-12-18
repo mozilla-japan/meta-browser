@@ -1,4 +1,4 @@
-include firefox_60.1.0esr.inc
+include firefox_60.4.0esr.inc
 
 SRC_URI_append = "file://mozilla-firefox.png \
                   file://mozilla-firefox.desktop"
