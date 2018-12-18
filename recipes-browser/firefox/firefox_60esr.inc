@@ -31,6 +31,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
+           file://fixes/Bug-1500850-Wayland-Add-missing-dbus-header-dbus-gli.patch \
            file://gn-configs/x64_False_arm64_linux.json \
            file://gn-configs/x64_False_arm_linux.json \
            "
