@@ -24,6 +24,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://prefs/autoconfig.cfg \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/bug1434526-Fix-a-build-error-of-Gecko-Profiler.patch \
+           file://fixes/bug1479540-Accept-triplet-strings-with-only-two.patch \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/rustc_cross_flags.patch \
            file://fixes/0001-Add-clang-s-include-path-on-cross-compiling.patch \
