@@ -1,0 +1,63 @@
+From e8604d82eb46f8f9fc539e6e1ed247bdccd98158 Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Wed, 9 Jan 2019 11:20:44 +0900
+Subject: [PATCH] Inject configurable reftest-wait class script in marionette
+
+---
+ testing/marionette/listener.js | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/testing/marionette/listener.js b/testing/marionette/listener.js
+index d55fd31..60df06e 100644
+--- a/testing/marionette/listener.js
++++ b/testing/marionette/listener.js
+@@ -13,6 +13,7 @@ const winUtil = content.QueryInterface(Ci.nsIInterfaceRequestor)
+ ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
+ ChromeUtils.import("resource://gre/modules/Log.jsm");
+ ChromeUtils.import("resource://gre/modules/Services.jsm");
++ChromeUtils.import("resource://gre/modules/Preferences.jsm");
+ 
+ ChromeUtils.import("chrome://marionette/content/accessibility.js");
+ ChromeUtils.import("chrome://marionette/content/action.js");
+@@ -64,6 +65,7 @@ const SUPPORTED_STRATEGIES = new Set([
+   element.Strategy.TagName,
+   element.Strategy.XPath,
+ ]);
++const PREF_REFTEST_WAIT = "reftest.wait.milliseconds";
+ 
+ Object.defineProperty(this, "capabilities", {
+   get() {
+@@ -1615,6 +1617,14 @@ function flushRendering() {
+   return windowUtils.isMozAfterPaintPending;
+ }
+ 
++function injectWaitScript(document, waitSeconds) {
++  document.documentElement.classList.add("reftest-wait");
++  let testWaitScript = document.createElement("script");
++  testWaitScript.setAttribute("type", "text/javascript");
++  testWaitScript.textContent = `setTimeout(() => document.documentElement.classList.remove(\"reftest-wait\"), ${waitSeconds});`;
++  document.getElementsByTagName("head")[0].appendChild(testWaitScript);
++}
++
+ async function reftestWait(url, remote) {
+   let win = curContainer.frame;
+   let document = curContainer.frame.document;
+@@ -1624,6 +1634,7 @@ async function reftestWait(url, remote) {
+ 
+ 
+   let reftestWait = false;
++  let reftestWaitSeconds = Preferences.get(PREF_REFTEST_WAIT) || 1000;
+ 
+   if (document.location.href !== url || document.readyState != "complete") {
+     logger.debug(truncate`Waiting for page load of ${url}`);
+@@ -1633,6 +1644,7 @@ async function reftestWait(url, remote) {
+             event.target.location.href === url) {
+           win = curContainer.frame;
+           document = curContainer.frame.document;
++          injectWaitScript(document, reftestWaitSeconds);
+           reftestWait = document.documentElement.classList.contains("reftest-wait");
+           removeEventListener("load", maybeResolve, {once: true});
+           win.setTimeout(resolve, 0);
+-- 
+2.11.0
+
