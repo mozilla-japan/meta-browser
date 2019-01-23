@@ -93,6 +93,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
             file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
             file://wayland/egl/Observe-didcomposite.patch \
+            file://wayland/egl/bug1489902-Use-wl_callback_listener-instead-of-after-paint-even.patch \
             file://prefs/disable-e10s.js \
            ', \
            '', d)}"

@@ -1,0 +1,90 @@
+From 481abb24860221b1f53855a30d166fef20901ced Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Wed, 23 Jan 2019 16:55:58 +0900
+Subject: [PATCH] Use wl_callback_listener instead of after-paint event
+
+Based on Bug 1489902 - [Wayland/OpenGL] Don't draw to wl_surface owned
+by GtkWidget (mozcontainer) until it's commited, r=jhorak patch.
+
+ref: https://phabricator.services.mozilla.com/D13722
+---
+ widget/gtk/mozcontainer.cpp | 27 ++++++++++++++-------------
+ widget/gtk/mozcontainer.h   |  1 +
+ 2 files changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/widget/gtk/mozcontainer.cpp b/widget/gtk/mozcontainer.cpp
+index b750c3a..544faf5 100644
+--- a/widget/gtk/mozcontainer.cpp
++++ b/widget/gtk/mozcontainer.cpp
+@@ -212,6 +212,7 @@ moz_container_init (MozContainer *container)
+       container->surface = nullptr;
+       container->subsurface = nullptr;
+       container->eglwindow = nullptr;
++      container->frame_callback_handler = nullptr;
+       container->committed = FALSE;
+       container->egl_window_width = -1;
+       container->egl_window_height = -1;
+@@ -243,18 +244,17 @@ moz_container_init (MozContainer *container)
+ *  for reference.
+  */
+ 
+-static void
+-on_after_paint(GdkFrameClock *clock, MozContainer *container)
+-{
+-    // wl_surface_commit() is called at this signal.
+-    // https://github.com/GNOME/gtk/blob/7e0b9704ed59e2886321594e7b26afdd0515a520/gdk/wayland/gdkwindow-wayland.c#L626
+-    container->committed = TRUE;
+-    g_signal_handlers_disconnect_by_func
+-        (clock,
+-         reinterpret_cast<gpointer>(on_after_paint),
+-         container);
++static void frame_callback_handler(void *data, struct wl_callback *callback,
++                                   uint32_t time) {
++  MozContainer *container = MOZ_CONTAINER(data);
++  g_clear_pointer(&container->frame_callback_handler, wl_callback_destroy);
++  container->committed = TRUE;
+ }
+ 
++static const struct wl_callback_listener frame_listener = {
++    frame_callback_handler
++};
++
+ static gboolean
+ moz_container_map_surface(MozContainer *container)
+ {
+@@ -288,9 +288,9 @@ moz_container_map_surface(MozContainer *container)
+           // to mContainer.
+           return false;
+         }
+-        GdkFrameClock *clock = gdk_window_get_frame_clock (window);
+-        g_signal_connect_after(clock, "after-paint",
+-                               G_CALLBACK (on_after_paint), container);
++        container->frame_callback_handler = wl_surface_frame(gtk_surface);
++        wl_callback_add_listener(container->frame_callback_handler, &frame_listener,
++                                 container);
+ 
+         container->subsurface =
+           wl_subcompositor_get_subsurface (container->subcompositor,
+@@ -319,6 +319,7 @@ moz_container_unmap_surface(MozContainer *container)
+     g_clear_pointer(&container->eglwindow, wl_egl_window_destroy);
+     g_clear_pointer(&container->subsurface, wl_subsurface_destroy);
+     g_clear_pointer(&container->surface, wl_surface_destroy);
++    g_clear_pointer(&container->frame_callback_handler, wl_callback_destroy);
+ }
+ 
+ #endif
+diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
+index b10244b..85b13db 100644
+--- a/widget/gtk/mozcontainer.h
++++ b/widget/gtk/mozcontainer.h
+@@ -73,6 +73,7 @@ struct _MozContainer
+     struct wl_surface       *surface;
+     struct wl_subsurface    *subsurface;
+     struct wl_egl_window    *eglwindow;
++    struct wl_callback *frame_callback_handler;
+     gboolean committed;
+     gint egl_window_width;
+     gint egl_window_height;
+-- 
+2.11.0
+
