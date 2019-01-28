@@ -60,6 +60,7 @@ PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
+PACKAGECONFIG[kiosk] = ",,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
