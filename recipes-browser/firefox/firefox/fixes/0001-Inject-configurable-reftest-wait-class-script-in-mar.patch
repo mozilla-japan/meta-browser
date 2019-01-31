@@ -1,14 +1,14 @@
-From e8604d82eb46f8f9fc539e6e1ed247bdccd98158 Mon Sep 17 00:00:00 2001
+From 39c0beda75486753e3885188d493b49f5c584f61 Mon Sep 17 00:00:00 2001
 From: Hiroshi Hatake <hatake@clear-code.com>
 Date: Wed, 9 Jan 2019 11:20:44 +0900
 Subject: [PATCH] Inject configurable reftest-wait class script in marionette
 
 ---
- testing/marionette/listener.js | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ testing/marionette/listener.js | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
 diff --git a/testing/marionette/listener.js b/testing/marionette/listener.js
-index d55fd31..60df06e 100644
+index d55fd314b..00c5610f6 100644
 --- a/testing/marionette/listener.js
 +++ b/testing/marionette/listener.js
 @@ -13,6 +13,7 @@ const winUtil = content.QueryInterface(Ci.nsIInterfaceRequestor)
@@ -27,22 +27,29 @@ index d55fd31..60df06e 100644
  
  Object.defineProperty(this, "capabilities", {
    get() {
-@@ -1615,6 +1617,14 @@ function flushRendering() {
+@@ -1615,6 +1617,21 @@ function flushRendering() {
    return windowUtils.isMozAfterPaintPending;
  }
  
 +function injectWaitScript(document, waitSeconds) {
++  let parent = document.getElementsByTagName("head");
++  if (parent.length > 0) {
++    parent = parent[0];
++  } else {
++    return;
++  }
++
 +  document.documentElement.classList.add("reftest-wait");
 +  let testWaitScript = document.createElement("script");
 +  testWaitScript.setAttribute("type", "text/javascript");
 +  testWaitScript.textContent = `setTimeout(() => document.documentElement.classList.remove(\"reftest-wait\"), ${waitSeconds});`;
-+  document.getElementsByTagName("head")[0].appendChild(testWaitScript);
++  parent.appendChild(testWaitScript);
 +}
 +
  async function reftestWait(url, remote) {
    let win = curContainer.frame;
    let document = curContainer.frame.document;
-@@ -1624,6 +1634,7 @@ async function reftestWait(url, remote) {
+@@ -1624,6 +1641,7 @@ async function reftestWait(url, remote) {
  
  
    let reftestWait = false;
@@ -50,7 +57,7 @@ index d55fd31..60df06e 100644
  
    if (document.location.href !== url || document.readyState != "complete") {
      logger.debug(truncate`Waiting for page load of ${url}`);
-@@ -1633,6 +1644,7 @@ async function reftestWait(url, remote) {
+@@ -1633,6 +1651,7 @@ async function reftestWait(url, remote) {
              event.target.location.href === url) {
            win = curContainer.frame;
            document = curContainer.frame.document;
