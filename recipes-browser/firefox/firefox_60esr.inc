@@ -60,6 +60,7 @@ PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
+PACKAGECONFIG[kiosk] = ",,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
@@ -125,6 +126,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'kiosk', \
            ' \
             file://wayland/kiosk/0001-Make-the-window-fullscreen-by-default.patch \
+            file://wayland/kiosk/frameless.patch \
            ', \
            '', d)}"
 

@@ -1,0 +1,27 @@
+From 6fcc86fd9bec4546b826d6592bf5218f3866ec5f Mon Sep 17 00:00:00 2001
+From: Hiroshi Hatake <hatake@clear-code.com>
+Date: Thu, 24 Jan 2019 17:48:10 +0900
+Subject: [PATCH] Don't show the window frames
+
+The current EGL Surface for R-Car doesn't work well when the
+window frame exist. Until the issue is resolved, don't show
+the frame and make the window fullscreen by default.
+---
+ widget/gtk/nsWindow.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
+index 5048d514a..8644dce19 100644
+--- a/widget/gtk/nsWindow.cpp
++++ b/widget/gtk/nsWindow.cpp
+@@ -3875,6 +3875,7 @@ nsWindow::Create(nsIWidget* aParent,
+ 
+         // make sure this is the focus widget in the container
+         gtk_widget_show(container);
++        gtk_window_set_decorated(GTK_WINDOW(mShell), FALSE);
+         gtk_widget_grab_focus(container);
+ 
+         // the drawing window
+-- 
+2.11.0
+
