@@ -31,7 +31,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}
            file://fixes/Bug-1444834-MIPS-Stubout-MacroAssembler-speculationB.patch \
            file://fixes/Bug-1144632-fix-big-endian-Skia-builds.-r-rhunt.patch \
            file://fixes/Bug-1505608-Try-to-ensure-the-bss-section-of-the-elf.patch \
-           file://fixes/Bug-1500850-Wayland-Add-missing-dbus-header-dbus-gli.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://gn-configs/x64_False_arm64_linux.json \
            file://gn-configs/x64_False_arm_linux.json \
