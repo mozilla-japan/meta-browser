@@ -66,8 +66,8 @@ SRC_URI_append_libc-musl = "\
            file://musl/musl-tools-fix.patch \
 "
 
-SRC_URI[archive.md5sum] = "7b8e233ef47f0d341eb1a903552ed9a3"
-SRC_URI[archive.sha256sum] = "205258548c3f245d42377b338f0db1272df39489d61305c39b83e52750ebff85"
+SRC_URI[archive.md5sum] = "515b83c9c21958068467d48eaca8b6d1"
+SRC_URI[archive.sha256sum] = "1a1f69ee87092637f75aef7f3fa588b0eef0b2c8bcc160094a036450c49c4025"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
