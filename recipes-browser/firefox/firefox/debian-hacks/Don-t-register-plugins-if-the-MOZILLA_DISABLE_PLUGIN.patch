@@ -8,10 +8,10 @@ Subject: Don't register plugins if the MOZILLA_DISABLE_PLUGINS environment
  1 file changed, 4 insertions(+)
 
 diff --git a/dom/plugins/base/nsPluginHost.cpp b/dom/plugins/base/nsPluginHost.cpp
-index 8748a18a7e1a..f523db6d13bc 100644
+index 582abcb6263d..47eff70fc1ac 100644
 --- a/dom/plugins/base/nsPluginHost.cpp
 +++ b/dom/plugins/base/nsPluginHost.cpp
-@@ -262,6 +262,10 @@ nsPluginHost::nsPluginHost()
+@@ -255,6 +255,10 @@ nsPluginHost::nsPluginHost()
  
    Preferences::AddStrongObserver(this, "plugin.disable");
  
@@ -20,5 +20,5 @@ index 8748a18a7e1a..f523db6d13bc 100644
 +    mPluginsDisabled = PR_TRUE;
 +
    nsCOMPtr<nsIObserverService> obsService =
-     mozilla::services::GetObserverService();
+       mozilla::services::GetObserverService();
    if (obsService) {

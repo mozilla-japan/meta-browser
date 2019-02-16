@@ -8,18 +8,18 @@ bug 1238661 anymore on Debian armel.
 OTOH, as mentioned in bug 1238661 comment 4, we actually don't need this
 workaround anymore, so let's just kill it.
 ---
- mfbt/LinuxSignal.h                            | 45 -------------------
+ mfbt/LinuxSignal.h                            | 38 -------------------
  mfbt/moz.build                                |  4 --
  .../profiler/core/platform-linux-android.cpp  |  3 +-
- 3 files changed, 1 insertion(+), 51 deletions(-)
+ 3 files changed, 1 insertion(+), 44 deletions(-)
  delete mode 100644 mfbt/LinuxSignal.h
 
 diff --git a/mfbt/LinuxSignal.h b/mfbt/LinuxSignal.h
 deleted file mode 100644
-index 83c2bf81f6db..000000000000
+index 112b6a1b7e0d..000000000000
 --- a/mfbt/LinuxSignal.h
 +++ /dev/null
-@@ -1,45 +0,0 @@
+@@ -1,38 +0,0 @@
 -/* This Source Code Form is subject to the terms of the Mozilla Public
 - * License, v. 2.0. If a copy of the MPL was not distributed with this
 - * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -40,31 +40,24 @@ index 83c2bf81f6db..000000000000
 -// will be skipped over.
 -
 -template <void (*H)(int, siginfo_t*, void*)>
--__attribute__((naked)) void
--SignalTrampoline(int aSignal, siginfo_t* aInfo, void* aContext)
--{
--  asm volatile (
--    "nop; nop; nop; nop"
--    : : : "memory");
+-__attribute__((naked)) void SignalTrampoline(int aSignal, siginfo_t* aInfo,
+-                                             void* aContext) {
+-  asm volatile("nop; nop; nop; nop" : : : "memory");
 -
--  asm volatile (
--    "b %0"
--    :
--    : "X"(H)
--    : "memory");
+-  asm volatile("b %0" : : "X"(H) : "memory");
 -}
 -
--# define MOZ_SIGNAL_TRAMPOLINE(h) (mozilla::SignalTrampoline<h>)
+-#define MOZ_SIGNAL_TRAMPOLINE(h) (mozilla::SignalTrampoline<h>)
 -
--#else // __arm__
+-#else  // __arm__
 -
--# define MOZ_SIGNAL_TRAMPOLINE(h) (h)
+-#define MOZ_SIGNAL_TRAMPOLINE(h) (h)
 -
--#endif // __arm__
+-#endif  // __arm__
 -
--} // namespace mozilla
+-}  // namespace mozilla
 -
--#endif // mozilla_LinuxSignal_h
+-#endif  // mozilla_LinuxSignal_h
 diff --git a/mfbt/moz.build b/mfbt/moz.build
 index 87c7d3f0e90a..587dbc58a6de 100644
 --- a/mfbt/moz.build
@@ -81,7 +74,7 @@ index 87c7d3f0e90a..587dbc58a6de 100644
  UNIFIED_SOURCES += [
      'Assertions.cpp',
 diff --git a/tools/profiler/core/platform-linux-android.cpp b/tools/profiler/core/platform-linux-android.cpp
-index 2bbf11419f3a..85768748865a 100644
+index 09eb9437e568..79f006748599 100644
 --- a/tools/profiler/core/platform-linux-android.cpp
 +++ b/tools/profiler/core/platform-linux-android.cpp
 @@ -60,7 +60,6 @@
@@ -92,7 +85,7 @@ index 2bbf11419f3a..85768748865a 100644
  #include "mozilla/PodOperations.h"
  #include "mozilla/DebugOnly.h"
  
-@@ -277,7 +276,7 @@ Sampler::Sampler(PSLockRef aLock)
+@@ -253,7 +252,7 @@ Sampler::Sampler(PSLockRef aLock)
  
    // Request profiling signals.
    struct sigaction sa;
