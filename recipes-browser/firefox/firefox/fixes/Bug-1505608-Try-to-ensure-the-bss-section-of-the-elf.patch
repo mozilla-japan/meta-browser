@@ -10,24 +10,24 @@ unused. So we try to ensure it stays there.
 
 Differential Revision: https://phabricator.services.mozilla.com/D11257
 ---
- build/unix/elfhack/test.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ build/unix/elfhack/test.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/build/unix/elfhack/test.c b/build/unix/elfhack/test.c
-index 8c66c19631d1..e543b48fff46 100644
+index ab994a45d2d2..6e824a1bb9d6 100644
 --- a/build/unix/elfhack/test.c
 +++ b/build/unix/elfhack/test.c
-@@ -136,8 +136,12 @@ size_t dummy;
+@@ -134,7 +134,12 @@ size_t dummy;
  void end_test() {
-     static size_t count = 0;
-     /* Only exit when both constructors have been called */
--    if (++count == 2)
-+    if (++count == 2) {
-         ret = 0;
-+        // Avoid the dummy variable being stripped out at link time because
-+        // it's unused.
-+        dummy = 1;
-+    }
+   static size_t count = 0;
+   /* Only exit when both constructors have been called */
+-  if (++count == 2) ret = 0;
++  if (++count == 2) {
++    ret = 0;
++    // Avoid the dummy variable being stripped out at link time because
++    // it's unused.
++    dummy = 1;
++  }
  }
  
  void test() {
