@@ -1,9 +1,15 @@
-From 6db0ec9781d8b75dca55175c4aaec8b6f8ea639c Mon Sep 17 00:00:00 2001
+From 57b2c4fe7caabc5519d19bcd715709673870bf3e Mon Sep 17 00:00:00 2001
 From: Takuro Ashie <ashie@clear-code.com>
 Date: Tue, 13 Jun 2017 17:15:45 +0900
-Subject: [PATCH] Add a preference to force enable touch events without APZ
+Subject: [PATCH 1/2] Add a preference to force enable touch events without APZ
 
-It may be useful for touch devices.
+Firefox enables W3C touch events only when e10s is enabled since it's
+requied by APZ (Asynchronous Pan & Zoom), but they are still meaningful
+on touch devices even if e10s is disabled.
+
+This patch adds a preference to enable them wihout e10s.
+
+Upstream-Status: Inappropriate [embedded specific]
 
 Signed-off-by: Takuro Ashie <ashie@clear-code.com>
 ---
