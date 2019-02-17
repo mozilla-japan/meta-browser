@@ -151,7 +151,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'disable-e10s', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'forbit-multiple-compositors', \
            ' \
             file://prefs/single-compositor.js \
-            file://fixes/suppress-multiple-compositors.patch \
+            file://fixes/0001-Enable-to-suppress-multiple-compositors.patch \
 	   ', '', d)}"
 
 python do_check_variables() {
