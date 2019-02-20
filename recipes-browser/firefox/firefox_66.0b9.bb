@@ -9,54 +9,16 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2"
-LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
+LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=35d7fa1c4b86c115051c925fd624a5be"
 
 SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}.source.tar.xz;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
-           file://fixes/avoid-running-autoconf2.13.patch \
-           file://fixes/link-with-libpangoft.patch \
-           file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/rustc_cross_flags.patch \
-           file://fixes/0001-Add-clang-s-include-path-on-cross-compiling.patch \
-           file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
-           file://fixes/fix-get-cpu-feature-definition-conflict.patch \
-           file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
-           file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
-           file://fixes/Bug-1463035-Remove-MOZ_SIGNAL_TRAMPOLINE.-r-darchons.patch \
-           file://fixes/Bug-1470701-Use-run-time-page-size-when-changing-map.patch \
-           file://fixes/Bug-1444834-MIPS-Stubout-MacroAssembler-speculationB.patch \
-           file://fixes/Bug-1144632-fix-big-endian-Skia-builds.-r-rhunt.patch \
-           file://fixes/Bug-1505608-Try-to-ensure-the-bss-section-of-the-elf.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
-           file://gn-configs/x64_False_arm64_linux.json \
-           file://gn-configs/x64_False_arm_linux.json \
-           file://porting/Add-xptcall-support-for-SH4-processors.patch \
-           file://porting/NSS-Fix-FTBFS-on-Hurd-because-of-MAXPATHLEN.patch \
-           file://porting/Make-powerpc-not-use-static-page-sizes-in-mozjemallo.patch \
-           file://porting/Disable-libyuv-assembly-on-mips64.patch \
-           file://porting/Fix-CPU_ARCH-test-for-libjpeg-on-mips.patch \
-           file://porting/Work-around-Debian-bug-844357.patch \
-           file://porting/Bug-1444303-MIPS-Fix-build-failures-after-Bug-142558.patch \
-           file://prefs/Set-javascript.options.showInConsole.patch \
-           file://prefs/Set-DPI-to-system-settings.patch \
-           file://prefs/Don-t-auto-disable-extensions-in-system-directories.patch \
-           file://debian-hacks/Avoid-wrong-sessionstore-data-to-keep-windows-out-of.patch \
-           file://debian-hacks/Add-another-preferences-directory-for-applications-p.patch \
-           file://debian-hacks/Don-t-register-plugins-if-the-MOZILLA_DISABLE_PLUGIN.patch \
-           file://debian-hacks/Don-t-error-out-when-run-time-libsqlite-is-older-tha.patch \
-           file://debian-hacks/Add-a-2-minutes-timeout-on-xpcshell-tests.patch \
-           file://debian-hacks/Don-t-build-image-gtests.patch \
-           file://debian-hacks/Allow-to-override-ICU_DATA_FILE-from-the-environment.patch \
-           file://debian-hacks/Set-program-name-from-the-remoting-name.patch \
-           file://debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch \
-           file://debian-hacks/Use-the-Mozilla-Location-Service-key-when-the-Google.patch \
-           file://debian-hacks/Attempt-to-fix-building-webrtc-on-non-x86.patch \
-           file://debian-hacks/Only-build-webrtc-neon-on-aarch64.patch \
-           file://debian-hacks/Avoid-using-vmrs-vmsr-on-armel.patch \
            "
 SRC_URI_append_libc-musl = "\
            file://musl/musl-mutex.patch \
@@ -66,10 +28,10 @@ SRC_URI_append_libc-musl = "\
            file://musl/musl-cmsghdr.patch \
 "
 
-SRC_URI[archive.md5sum] = "515b83c9c21958068467d48eaca8b6d1"
-SRC_URI[archive.sha256sum] = "1a1f69ee87092637f75aef7f3fa588b0eef0b2c8bcc160094a036450c49c4025"
-
-MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
+SRC_URI[archive.md5sum] = "940a56e395584523438d3387d84a010b"
+SRC_URI[archive.sha256sum] = "e693966b1028f0ba23d16aecc7d8c7e9a2de46aea5ffbbc9d4cc93fb0cd25b5f"
+#MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
+MOZ_APP_BASE_VERSION = "66.0"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 inherit mozilla rust-common
@@ -89,7 +51,6 @@ PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
-PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
 PACKAGECONFIG[disable-e10s] = ",,,"
 PACKAGECONFIG[forbit-multiple-compositors] = ",,,"
@@ -97,26 +58,13 @@ PACKAGECONFIG[forbit-multiple-compositors] = ",,,"
 # Additional upstream patches to improve wayland patches
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
-            file://wayland/bug1468670-enable-alt-modifier-on-wayland.patch \
-            file://wayland/bug1438131-Implement-Drop-on-Wayland.patch \
-            file://wayland/bug1460810-fix-segfault-while-pasting-text.patch \
-            file://wayland/bug1438136-clipboard-text-null-terminate.patch \
-            file://wayland/bug1461306-fix-size-of-mime-type-array.patch \
-            file://wayland/bug1462622-Dont-use-GLXVsyncSource-on-non-X11-displays.patch \
-            file://wayland/bug1462640-Allow-content-processes-to-mincore.patch \
-            file://wayland/bug1464808-Set-move-as-default-Drag-Drop-action.patch \
             file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
            ', '', d)}"
 
 # Additional patches to support EGL on wayland
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
-            file://wayland/egl/bug1460603-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland/egl/bug1460605-Provide-NS_NATIVE_EGL_WINDOW-to-get-a-native-EGL-window-on-wa.patch \
-            file://wayland/egl/bug1460605-Use-NS_NATIVE_EGL_WINDOW-instead-of-NS_NATIVE_WINDOW-on-GTK.patch \
             file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
-            file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
@@ -131,9 +79,6 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 # Additional upstream patches to support OpenMAX IL
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
-            file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
-            file://openmax/0002-OmxDataDecoder-Fix-a-stall-issue-on-shutting-down.patch \
-            file://openmax/0003-Plug-memory-leak-of-PureOmxPlatformLayer.patch \
             file://openmax/0004-Don-t-test-OMX_UseEGLImage.patch \
             file://prefs/openmax.js \
            ', \
