@@ -36,6 +36,19 @@ export HOST_RANLIB = "${BUILD_RANLIB}"
 export HOST_AR = "${BUILD_AR}"
 
 mozilla_do_configure() {
+	install -D -m 0644 ${WORKDIR}/mozconfig ${MOZCONFIG}
+	if [ ! -z "${EXTRA_OECONF}" ] ; then
+		for f in ${EXTRA_OECONF}
+		do
+			echo ac_add_options $f >> ${MOZCONFIG}
+		done
+	fi
+	if [ ! -z "${PACKAGECONFIG_CONFARGS}" ] ; then
+		for f in ${PACKAGECONFIG_CONFARGS}
+		do
+			echo ac_add_options $f >> ${MOZCONFIG}
+		done
+	fi
 	# Put PARALLEL_MAKE into mozconfig
 	if [ ! -z "${PARALLEL_MAKE}" ] ; then
 		echo mk_add_options MOZ_MAKE_FLAGS=\"${PARALLEL_MAKE}\" \
