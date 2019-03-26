@@ -8,7 +8,8 @@ inherit pkgconfig
 EXTRA_OEMAKE += "SHELL=/bin/sh"
 EXTRA_OECONF = "--target=${TARGET_SYS} --host=${BUILD_SYS} \
                 --with-toolchain-prefix=${TARGET_SYS}- \
-                --prefix=${prefix}"
+                --prefix=${prefix} \
+                --libdir=${libdir}"
 EXTRA_OECONF_arm_append = " --disable-elf-hack"
 EXTRA_OECONF_x86_append = " --disable-elf-hack"
 EXTRA_OECONF_x86-64_append = " --disable-elf-hack"
@@ -35,6 +36,19 @@ export HOST_RANLIB = "${BUILD_RANLIB}"
 export HOST_AR = "${BUILD_AR}"
 
 mozilla_do_configure() {
+	install -D -m 0644 ${WORKDIR}/mozconfig ${MOZCONFIG}
+	if [ ! -z "${EXTRA_OECONF}" ] ; then
+		for f in ${EXTRA_OECONF}
+		do
+			echo ac_add_options $f >> ${MOZCONFIG}
+		done
+	fi
+	if [ ! -z "${PACKAGECONFIG_CONFARGS}" ] ; then
+		for f in ${PACKAGECONFIG_CONFARGS}
+		do
+			echo ac_add_options $f >> ${MOZCONFIG}
+		done
+	fi
 	# Put PARALLEL_MAKE into mozconfig
 	if [ ! -z "${PARALLEL_MAKE}" ] ; then
 		echo mk_add_options MOZ_MAKE_FLAGS=\"${PARALLEL_MAKE}\" \
