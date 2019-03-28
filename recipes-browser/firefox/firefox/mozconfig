@@ -32,3 +32,5 @@ ac_add_options --disable-crashreporter
 ac_add_options --disable-updater
 ac_add_options --disable-debug-symbols
 ac_add_options --disable-av1
+ac_add_options --disable-binast
+ac_add_options --disable-cranelift
