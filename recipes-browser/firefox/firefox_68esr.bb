@@ -11,7 +11,10 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=35d7fa1c4b86c115051c925fd624a5be"
 
-SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}.source.tar.xz;name=archive \
+#SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/${PN}-${PV}.source.tar.xz;name=archive \
+#
+
+SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
@@ -28,11 +31,14 @@ SRC_URI_append_libc-musl = "\
            file://musl/musl-cmsghdr.patch \
 "
 
-SRC_URI[archive.md5sum] = "940a56e395584523438d3387d84a010b"
-SRC_URI[archive.sha256sum] = "e693966b1028f0ba23d16aecc7d8c7e9a2de46aea5ffbbc9d4cc93fb0cd25b5f"
+#SRC_URI[archive.md5sum] = "54ca4e5e5a1c90679e90860ab2e4fcb9"
+#SRC_URI[archive.sha256sum] = "9570c663b5d50fa87e8d942f5a2921f0da7528877e4a6007c25e45be64077d3f"
 #MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
-MOZ_APP_BASE_VERSION = "66.0"
-S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
+#S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
+
+SRCREV = "${AUTOREV}"
+MOZ_APP_BASE_VERSION = "68.0"
+S = "${WORKDIR}/git"
 
 inherit mozilla rust-common
 
