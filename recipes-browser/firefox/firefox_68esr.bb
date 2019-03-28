@@ -22,6 +22,8 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/rustc_cross_flags.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
+           file://gn-configs/x64_False_arm64_linux.json \
+           file://gn-configs/x64_False_arm_linux.json \
            "
 SRC_URI_append_libc-musl = "\
            file://musl/musl-mutex.patch \
