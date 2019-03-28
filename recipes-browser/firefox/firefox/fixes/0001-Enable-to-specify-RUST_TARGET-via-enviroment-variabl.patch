@@ -9,13 +9,13 @@ Signed-off-by: Takuro Ashie <ashie@clear-code.com>
  1 file changed, 61 insertions(+), 45 deletions(-)
 
 diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.configure
-index 51bd1c59c59b..abd63cc59da4 100644
+index 390333f2c937..30fcc4683c1c 100644
 --- a/build/moz.configure/rust.configure
 +++ b/build/moz.configure/rust.configure
-@@ -151,12 +151,6 @@ def rust_triple_alias(host_or_target):
- 
+@@ -160,12 +160,6 @@ def rust_triple_alias(host_or_target):
      @depends(rustc, host_or_target, c_compiler, rust_supported_targets,
-              when=rust_compiler)
+              arm_target, when=rust_compiler)
+     @checking('for rust %s triplet' % host_or_target_str)
 -    @imports('os')
 -    @imports('subprocess')
 -    @imports(_from='mozbuild.configure.util', _import='LineIO')
@@ -23,9 +23,9 @@ index 51bd1c59c59b..abd63cc59da4 100644
 -    @imports(_from='tempfile', _import='mkstemp')
 -    @imports(_from='textwrap', _import='dedent')
      def rust_target(rustc, host_or_target, compiler_info,
-                     rust_supported_targets):
+                     rust_supported_targets, arm_target):
          # Rust's --target options are similar to, but not exactly the same
-@@ -190,45 +184,6 @@ def rust_triple_alias(host_or_target):
+@@ -209,45 +203,6 @@ def rust_triple_alias(host_or_target):
              die("Don't know how to translate {} for rustc".format(
                  host_or_target.alias))
  
@@ -71,9 +71,9 @@ index 51bd1c59c59b..abd63cc59da4 100644
          return rustc_target.alias
  
      return rust_target
-@@ -237,6 +192,67 @@ def rust_triple_alias(host_or_target):
- rust_target_triple = rust_triple_alias(target)
- rust_host_triple = rust_triple_alias(host)
+@@ -268,6 +223,67 @@ def validate_rust_host_triple(host, rust_host, rustc_host):
+             .format(rustc_host, configure_host))
+ 
  
 +option(env='RUST_TARGET',
 +       nargs=1,
@@ -139,6 +139,3 @@ index 51bd1c59c59b..abd63cc59da4 100644
  set_config('RUST_TARGET', rust_target_triple)
  set_config('RUST_HOST_TARGET', rust_host_triple)
  
--- 
-2.17.1
-
