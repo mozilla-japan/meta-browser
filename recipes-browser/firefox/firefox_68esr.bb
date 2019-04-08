@@ -74,9 +74,8 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # Additional patches to support EGL on wayland
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
-            file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
+            file://wayland/egl/0001-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
-            file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            ', '', d)}"
 
