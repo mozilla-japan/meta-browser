@@ -24,6 +24,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/rustc_cross_flags.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/disable-validating-rust-host.patch \
+           file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://gn-configs/x64_False_arm64_linux.json \
            file://gn-configs/x64_False_arm_linux.json \
            "

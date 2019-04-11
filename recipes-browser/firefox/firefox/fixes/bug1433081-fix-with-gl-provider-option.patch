@@ -38,10 +38,10 @@ diff -r 38b3c1d03a59 -r 9bec0ddc0208 gfx/gl/GLContextProvider.h
  #endif
  
 -#ifdef MOZ_GL_PROVIDER
--#define GL_CONTEXT_PROVIDER_NAME MOZ_GL_PROVIDER
--#include "GLContextProviderImpl.h"
--#undef GL_CONTEXT_PROVIDER_NAME
--#define GL_CONTEXT_PROVIDER_DEFAULT MOZ_GL_PROVIDER
+-#  define GL_CONTEXT_PROVIDER_NAME MOZ_GL_PROVIDER
+-#  include "GLContextProviderImpl.h"
+-#  undef GL_CONTEXT_PROVIDER_NAME
+-#  define GL_CONTEXT_PROVIDER_DEFAULT MOZ_GL_PROVIDER
 -#endif
 +#endif // MOZ_GL_PROVIDER
  
