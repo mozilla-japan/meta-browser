@@ -171,6 +171,7 @@ FILES_${PN}-dbg += "${libdir}/${PN}/.debug \
                     ${libdir}/${PN}-devel-*/*/.debug \
                     ${libdir}/${PN}-devel-*/*/*/.debug \
                     ${libdir}/${PN}-devel-*/*/*/*/.debug \
+                    ${libdir}/${PN}/fix_linux_stack.py \
                     ${bindir}/.debug"
 
 # We don't build XUL as system shared lib, so we can mark all libs as private
