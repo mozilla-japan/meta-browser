@@ -25,8 +25,6 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/disable-validating-rust-host.patch \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
-           file://gn-configs/x64_False_arm64_linux.json \
-           file://gn-configs/x64_False_arm_linux.json \
            "
 SRC_URI_append_libc-musl = "\
            file://musl/musl-mutex.patch \
@@ -119,11 +117,6 @@ python do_check_variables() {
             bb.warn("%s: Canvas acceleration won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
 }
 addtask check_variables before do_configure
-
-do_configure_append() {
-    cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
-    ./mach build-backend -b GnMozbuildWriter
-}
 
 do_install_append() {
     install -d ${D}${datadir}/applications
