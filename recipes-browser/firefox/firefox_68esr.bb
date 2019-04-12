@@ -25,6 +25,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/disable-validating-rust-host.patch \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
+           file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            "
 SRC_URI_append_libc-musl = "\
            file://musl/musl-mutex.patch \
