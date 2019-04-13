@@ -24,7 +24,6 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/rustc_cross_flags.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/disable-validating-rust-host.patch \
-           file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
            file://wayland/egl/0001-Disable-query-EGL_EXTENSIONS.patch \
@@ -59,9 +58,8 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d
                    ${@bb.utils.contains_any("TARGET_ARCH", "x86_64 arm aarch64", "webrtc", "", d)} \
 "
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
-PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
-PACKAGECONFIG[glx] = ",,,"
-PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,--enable-default-toolkit=cairo-gtk3,virtual/egl,"
+PACKAGECONFIG[gpu] = ",,,"
 PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
@@ -69,17 +67,12 @@ PACKAGECONFIG[disable-e10s] = ",,,"
 PACKAGECONFIG[forbit-multiple-compositors] = ",,,"
 
 # Add a config file to enable GPU acceleration by default.
-SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
-           '\
-            file://prefs/gpu.js \
-	   ', '', d)}"
+SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'gpu', \
+           'file://prefs/gpu.js', '', d)}"
 
 # Additional upstream patches to support OpenMAX IL
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
-           ' \
-            file://prefs/openmax.js \
-           ', \
-           '', d)}"
+           'file://prefs/openmax.js', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'webgl', \
            'file://prefs/webgl.js', '', d)}"
@@ -88,19 +81,9 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'disable-e10s', \
            'file://prefs/disable-e10s.js', '', d)}"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'forbit-multiple-compositors', \
-           ' \
-            file://prefs/single-compositor.js \
+           'file://prefs/single-compositor.js \
             file://fixes/0001-Enable-to-suppress-multiple-compositors.patch \
 	   ', '', d)}"
-
-python do_check_variables() {
-    if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
-        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
-    if bb.utils.contains_any('PACKAGECONFIG', 'glx egl', False, True, d):
-        if bb.utils.contains('PACKAGECONFIG', 'webgl', True, False, d):
-            bb.warn("%s: WebGL won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
-}
-addtask check_variables before do_configure
 
 do_install_append() {
     install -d ${D}${datadir}/applications
@@ -109,7 +92,7 @@ do_install_append() {
     install -m 0644 ${WORKDIR}/mozilla-firefox.desktop ${D}${datadir}/applications/
     install -m 0644 ${WORKDIR}/mozilla-firefox.png ${D}${datadir}/pixmaps/
     install -m 0644 ${WORKDIR}/prefs/vendor.js ${D}${libdir}/${PN}/defaults/pref/
-    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', '1', '', d)}" ]; then
+    if [ -n "${@bb.utils.contains_any('PACKAGECONFIG', 'gpu', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'openmax', '1', '', d)}" ]; then
