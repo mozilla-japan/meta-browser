@@ -26,6 +26,10 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://fixes/disable-validating-rust-host.patch \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
+           file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
+           file://wayland/egl/0001-Disable-query-EGL_EXTENSIONS.patch \
+           file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
+           file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            "
 SRC_URI_append_libc-musl = "\
            file://musl/musl-mutex.patch \
@@ -64,20 +68,6 @@ PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
 PACKAGECONFIG[disable-e10s] = ",,,"
 PACKAGECONFIG[forbit-multiple-compositors] = ",,,"
-
-# Additional upstream patches to improve wayland patches
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
-           ' \
-            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
-           ', '', d)}"
-
-# Additional patches to support EGL on wayland
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
-           ' \
-            file://wayland/egl/0001-Disable-query-EGL_EXTENSIONS.patch \
-            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
-            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
-           ', '', d)}"
 
 # Add a config file to enable GPU acceleration by default.
 SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
