@@ -64,7 +64,6 @@ PACKAGECONFIG[glx] = ",,,"
 PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
-PACKAGECONFIG[canvas-gpu] = ",,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
 PACKAGECONFIG[disable-e10s] = ",,,"
 PACKAGECONFIG[forbit-multiple-compositors] = ",,,"
@@ -85,9 +84,6 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'webgl', \
            'file://prefs/webgl.js', '', d)}"
 
-SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', \
-           'file://prefs/canvas-gpu.js', '', d)}"
-
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'disable-e10s', \
            'file://prefs/disable-e10s.js', '', d)}"
 
@@ -103,8 +99,6 @@ python do_check_variables() {
     if bb.utils.contains_any('PACKAGECONFIG', 'glx egl', False, True, d):
         if bb.utils.contains('PACKAGECONFIG', 'webgl', True, False, d):
             bb.warn("%s: WebGL won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
-        if bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', True, False, d):
-            bb.warn("%s: Canvas acceleration won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
 }
 addtask check_variables before do_configure
 
@@ -123,9 +117,6 @@ do_install_append() {
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'webgl', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/webgl.js ${D}${libdir}/${PN}/defaults/pref/
-    fi
-    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', '1', '', d)}" ]; then
-        install -m 0644 ${WORKDIR}/prefs/canvas-gpu.js ${D}${libdir}/${PN}/defaults/pref/
     fi
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'disable-e10s', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/disable-e10s.js ${D}${libdir}/${PN}/defaults/pref/
