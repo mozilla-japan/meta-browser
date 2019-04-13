@@ -78,7 +78,6 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 # Additional upstream patches to support OpenMAX IL
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
-            file://openmax/0004-Don-t-test-OMX_UseEGLImage.patch \
             file://prefs/openmax.js \
            ', \
            '', d)}"
