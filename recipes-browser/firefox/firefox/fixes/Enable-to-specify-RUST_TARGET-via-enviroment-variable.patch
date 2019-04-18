@@ -40,7 +40,7 @@ diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.confi
      @checking('for rust %s triplet' % host_or_target_str)
      @imports('os')
      @imports('subprocess')
-@@ -212,8 +233,15 @@ def rust_triple_alias(host_or_target):
+@@ -212,8 +233,14 @@ def rust_triple_alias(host_or_target):
      @imports(_from='mozbuild.shellutil', _import='quote')
      @imports(_from='tempfile', _import='mkstemp')
      @imports(_from='textwrap', _import='dedent')
@@ -49,11 +49,10 @@ diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.confi
 +    def rust_target(rustc, host_or_target, rust_host_env, rust_target_env,
 +                    compiler_info, rust_supported_targets, arm_target):
 +
-+        if (host_or_target_str == 'host' and rust_host_env):
-+            return rust_host_env
-+
-+        if (host_or_target_str == 'target' and rust_target_env):
-+            return rust_target_env
++        specified_targets = {"host": rust_host_env, "target": rust_target_env}
++        specified_target = specified_targets[host_or_target_str]
++        if (specified_target):
++            return specified_target
 +
          # Rust's --target options are similar to, but not exactly the same
          # as, the autoconf-derived targets we use.  An example would be that
