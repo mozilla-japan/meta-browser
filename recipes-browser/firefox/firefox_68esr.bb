@@ -20,7 +20,7 @@ SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
-           file://fixes/Enable-to-specify-RUST_TARGET-via-enviroment-variable.patch \
+           file://fixes/enable-to-specify-rust-target.patch \
            file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \

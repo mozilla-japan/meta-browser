@@ -7,7 +7,7 @@ diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.confi
  
 +option(env='RUST_HOST',
 +       nargs=1,
-+       help='Rust host')
++       help='Define the system type for Rust performing the build')
 +
 +@depends('RUST_HOST')
 +@checking('rust host', lambda host: host)
@@ -17,7 +17,7 @@ diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.confi
 +
 +option(env='RUST_TARGET',
 +       nargs=1,
-+       help='Rust target')
++       help='Define the system type for Rust where the resulting executables will be used')
 +
 +@depends('RUST_TARGET')
 +@checking('rust target', lambda target: target)
