@@ -1,0 +1,60 @@
+diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.configure
+--- a/build/moz.configure/rust.configure
++++ b/build/moz.configure/rust.configure
+@@ -193,6 +193,26 @@ def rust_supported_targets(rustc):
+     return namespace(per_os=per_os, per_raw_os=per_raw_os)
+ 
+ 
++option(env='RUST_HOST',
++       nargs=1,
++       help='Rust host')
++
++@depends('RUST_HOST')
++@checking('rust host', lambda host: host)
++def rust_host_env(value):
++    return value[0]
++
++
++option(env='RUST_TARGET',
++       nargs=1,
++       help='Rust target')
++
++@depends('RUST_TARGET')
++@checking('rust target', lambda target: target)
++def rust_target_env(value):
++    return value[0]
++
++
+ @template
+ def rust_triple_alias(host_or_target):
+     """Template defining the alias used for rustc's --target flag.
+@@ -203,8 +223,9 @@ def rust_triple_alias(host_or_target):
+ 
+     host_or_target_str = {host: 'host', target: 'target'}[host_or_target]
+ 
+-    @depends(rustc, host_or_target, c_compiler, rust_supported_targets,
+-             arm_target, when=rust_compiler)
++    @depends(rustc, host_or_target, rust_host_env, rust_target_env,
++             c_compiler, rust_supported_targets, arm_target,
++             when=rust_compiler)
+     @checking('for rust %s triplet' % host_or_target_str)
+     @imports('os')
+     @imports('subprocess')
+@@ -212,8 +233,15 @@ def rust_triple_alias(host_or_target):
+     @imports(_from='mozbuild.shellutil', _import='quote')
+     @imports(_from='tempfile', _import='mkstemp')
+     @imports(_from='textwrap', _import='dedent')
+-    def rust_target(rustc, host_or_target, compiler_info,
+-                    rust_supported_targets, arm_target):
++    def rust_target(rustc, host_or_target, rust_host_env, rust_target_env,
++                    compiler_info, rust_supported_targets, arm_target):
++
++        if (host_or_target_str == 'host' and rust_host_env):
++            return rust_host_env
++
++        if (host_or_target_str == 'target' and rust_target_env):
++            return rust_target_env
++
+         # Rust's --target options are similar to, but not exactly the same
+         # as, the autoconf-derived targets we use.  An example would be that
+         # Rust uses distinct target triples for targetting the GNU C++ ABI
