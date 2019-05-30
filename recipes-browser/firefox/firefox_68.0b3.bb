@@ -3,7 +3,7 @@
 
 DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "curl startup-notification libevent cairo libnotify \
-            virtual/libgl pulseaudio icu nodejs-native \
+            virtual/libgl pulseaudio icu nodejs-native cbindgen-native \
             yasm-native nasm-native unzip-native \
             virtual/${TARGET_PREFIX}rust cargo-native ${RUSTLIB_DEP} \
            "
