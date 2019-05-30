@@ -12,6 +12,9 @@ RDEPENDS_${PN}-dev = "dbus"
 LICENSE = "MPLv2"
 LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=35d7fa1c4b86c115051c925fd624a5be"
 
+#SRC_URI = "git://github.com/mozilla/gecko-dev.git;branch=master \
+#
+
 SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${PV}.source.tar.xz;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
@@ -37,9 +40,14 @@ SRC_URI_append_libc-musl = "\
 
 SRC_URI[archive.md5sum] = "b4639328a1a0122efaf578eb3fefd9b4"
 SRC_URI[archive.sha256sum] = "fb191fe512108fc016aba339163014fb4f32d65ea398f1c79126546f903983ae"
+S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
+
+#SRCREV = "${AUTOREV}"
+#SRCREV = "18214ad3bf0816e79da0830b67ceeec641efbebe"
+#S = "${WORKDIR}/git"
+
 #MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 MOZ_APP_BASE_VERSION = "68.0"
-S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 inherit mozilla rust-common
 
