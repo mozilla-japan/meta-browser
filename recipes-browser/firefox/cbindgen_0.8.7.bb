@@ -67,7 +67,6 @@ crate://crates.io/winapi/0.3.6 \
 
 
 
-# FIXME: update generateme with the real MD5 of the license file
 LIC_FILES_CHKSUM=" \
 file://MPL-2.0;md5=9741c346eef56131163e13b9db1241b3 \
 "
