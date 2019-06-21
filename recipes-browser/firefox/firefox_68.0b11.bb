@@ -21,7 +21,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
            file://fixes/enable-to-specify-rust-target.patch \
-           file://fixes/0001-libloading-Use-lazy_static-instead-of-weak-static.patch \
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
