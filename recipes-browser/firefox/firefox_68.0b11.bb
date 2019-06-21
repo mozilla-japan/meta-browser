@@ -20,7 +20,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
-           file://fixes/enable-to-specify-rust-target.patch \
+           file://fixes/bug1545437-enable-to-specify-rust-target.patch \
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
