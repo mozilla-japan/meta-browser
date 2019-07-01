@@ -36,8 +36,8 @@ SRC_URI_append_libc-musl = "\
            file://musl/musl-cmsghdr.patch \
 "
 
-SRC_URI[archive.md5sum] = "b8dd9b519880b7ed3fe0fe20f8190edd"
-SRC_URI[archive.sha256sum] = "ccd9d515dbf782a3fe17d9b9be9156ce6d215365f5eb9ea7377b9e2ce01b23a4"                                              
+SRC_URI[archive.md5sum] = "316ea889cdd83f8c01ac86634045cca2"
+SRC_URI[archive.sha256sum] = "09ab0f015e81a7af010b95173bfd31b7b4d70eaab286c646c260cfa6e4cc44ff"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 #SRCREV = "${AUTOREV}"
