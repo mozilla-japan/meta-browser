@@ -68,7 +68,7 @@ crate://crates.io/winapi/0.3.6 \
 
 
 LIC_FILES_CHKSUM=" \
-file://MPL-2.0;md5=9741c346eef56131163e13b9db1241b3 \
+file://LICENSE;md5=9741c346eef56131163e13b9db1241b3 \
 "
 
 SUMMARY = "A tool for generating C bindings to Rust code."
