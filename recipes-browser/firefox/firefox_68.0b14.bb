@@ -5,7 +5,7 @@ DESCRIPTION ?= "Browser made by mozilla"
 DEPENDS += "curl startup-notification libevent cairo libnotify \
             virtual/libgl pulseaudio icu dbus-glib \
             nodejs-native cbindgen-native \
-            yasm-native nasm-native unzip-native \
+            yasm-native nasm-native unzip-native autoconf2.13-native \
             virtual/${TARGET_PREFIX}rust cargo-native ${RUSTLIB_DEP} \
            "
 RDEPENDS_${PN}-dev = "dbus"
