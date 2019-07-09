@@ -37,16 +37,15 @@ SRC_URI_append_libc-musl = "\
            file://musl/musl-cmsghdr.patch \
 "
 
-SRC_URI[archive.md5sum] = "316ea889cdd83f8c01ac86634045cca2"
-SRC_URI[archive.sha256sum] = "09ab0f015e81a7af010b95173bfd31b7b4d70eaab286c646c260cfa6e4cc44ff"
+SRC_URI[archive.md5sum] = "63190d5f5d197fd1a3d375a54d833e13"
+SRC_URI[archive.sha256sum] = "dbb494521b3e246b367e453cc8d438b82b9fd2e05da273f5901391f0c52008b5"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 #SRCREV = "${AUTOREV}"
 #SRCREV = "18214ad3bf0816e79da0830b67ceeec641efbebe"
 #S = "${WORKDIR}/git"
 
-#MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
-MOZ_APP_BASE_VERSION = "68.0"
+MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
 
 inherit mozilla rust-common
 
