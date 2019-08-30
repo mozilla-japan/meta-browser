@@ -112,7 +112,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
             file://openmax/0002-OmxDataDecoder-Fix-a-stall-issue-on-shutting-down.patch \
             file://openmax/0003-Plug-memory-leak-of-PureOmxPlatformLayer.patch \
             file://openmax/0004-Dont-test-OMX_UseEGLImage.patch \
-            file://openmax/0005-Fix-size-of-OMX_U32-and-OMX_S32-on-aarch64.patch \
+            file://openmax/0005-openmax-Import-latest-OpenMAX-IL-1.1.2-headers.patch \
             file://prefs/openmax.js \
            ', \
            '', d)}"
