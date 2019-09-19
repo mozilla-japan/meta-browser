@@ -25,7 +25,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
-           file://wayland/egl/0001-Disable-query-EGL_EXTENSIONS.patch \
+           file://wayland/egl/bug1571603-Disable-eglQueryString-nullptr-EGL_EXTENSIONS.patch \
            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            "
