@@ -1,0 +1,26 @@
+From e42630b05d7b4a3eb3995388eeb3337a02a87ebd Mon Sep 17 00:00:00 2001
+From: INAJIMA Daisuke <inajima@soum.co.jp>
+Date: Fri, 4 Oct 2019 17:25:43 +0900
+Subject: [PATCH] Increase the DTV_SURPLUS value to load many libraries with
+ dlopen()
+
+---
+ sysdeps/generic/ldsodefs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sysdeps/generic/ldsodefs.h b/sysdeps/generic/ldsodefs.h
+index d738988375..c08daab3c7 100644
+--- a/sysdeps/generic/ldsodefs.h
++++ b/sysdeps/generic/ldsodefs.h
+@@ -389,7 +389,7 @@ struct rtld_global
+ #define TLS_SLOTINFO_SURPLUS (62)
+ 
+ /* Number of additional slots in the dtv allocated.  */
+-#define DTV_SURPLUS	(14)
++#define DTV_SURPLUS	(32)
+ 
+   /* Initial dtv of the main thread, not allocated with normal malloc.  */
+   EXTERN void *_dl_initial_dtv;
+-- 
+2.23.0
+
