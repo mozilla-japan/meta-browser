@@ -1,0 +1,1287 @@
+diff --git a/browser/base/content/browser-sidebar.js b/browser/base/content/browser-sidebar.js
+--- a/browser/base/content/browser-sidebar.js
++++ b/browser/base/content/browser-sidebar.js
+@@ -393,7 +393,6 @@ var SidebarUI = {
+       }
+ 
+       this._fireFocusedEvent();
+-      BrowserUITelemetry.countSidebarEvent(commandID, "show");
+     });
+   },
+ 
+@@ -424,10 +423,6 @@ var SidebarUI = {
+         return;
+       }
+ 
+-      if (this.isOpen && commandID != this.currentID) {
+-        BrowserUITelemetry.countSidebarEvent(this.currentID, "hide");
+-      }
+-
+       let broadcasters = document.querySelectorAll("broadcaster[group=sidebar]");
+       for (let broadcaster of broadcasters) {
+         if (broadcaster != sidebarBroadcaster) {
+@@ -535,7 +530,6 @@ var SidebarUI = {
+     if (triggerNode) {
+       updateToggleControlLabel(triggerNode);
+     }
+-    BrowserUITelemetry.countSidebarEvent(commandID, "hide");
+   },
+ };
+ 
+diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
+--- a/browser/base/content/browser.js
++++ b/browser/base/content/browser.js
+@@ -15,9 +15,6 @@ const {WebExtensionPolicy} = Cu.getGloba
+ // lazy module getters
+ 
+ XPCOMUtils.defineLazyModuleGetters(this, {
+-  AboutHome: "resource:///modules/AboutHome.jsm",
+-  BrowserUITelemetry: "resource:///modules/BrowserUITelemetry.jsm",
+-  BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.jsm",
+   BrowserUtils: "resource://gre/modules/BrowserUtils.jsm",
+   CharsetMenu: "resource://gre/modules/CharsetMenu.jsm",
+   Color: "resource://gre/modules/Color.jsm",
+@@ -61,9 +58,7 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   UITour: "resource:///modules/UITour.jsm",
+   UpdateUtils: "resource://gre/modules/UpdateUtils.jsm",
+   Utils: "resource://gre/modules/sessionstore/Utils.jsm",
+-  Weave: "resource://services-sync/main.js",
+   WebNavigationFrames: "resource://gre/modules/WebNavigationFrames.jsm",
+-  fxAccounts: "resource://gre/modules/FxAccounts.jsm",
+   webrtcUI: "resource:///modules/webrtcUI.jsm",
+   ZoomUI: "resource:///modules/ZoomUI.jsm",
+ });
+@@ -97,8 +92,6 @@ XPCOMUtils.defineLazyScriptGetter(this, 
+                                   "chrome://browser/content/browser-gestureSupport.js");
+ XPCOMUtils.defineLazyScriptGetter(this, "gSafeBrowsing",
+                                   "chrome://browser/content/browser-safebrowsing.js");
+-XPCOMUtils.defineLazyScriptGetter(this, "gSync",
+-                                  "chrome://browser/content/browser-sync.js");
+ XPCOMUtils.defineLazyScriptGetter(this, "gBrowserThumbnails",
+                                   "chrome://browser/content/browser-thumbnails.js");
+ XPCOMUtils.defineLazyScriptGetter(this, ["setContextMenuContentData",
+@@ -1302,7 +1295,6 @@ var gBrowserInit = {
+     mm.loadFrameScript("chrome://browser/content/tab-content.js", true);
+     mm.loadFrameScript("chrome://browser/content/content.js", true);
+     mm.loadFrameScript("chrome://browser/content/content-UITour.js", true);
+-    mm.loadFrameScript("chrome://global/content/content-HybridContentTelemetry.js", true);
+     mm.loadFrameScript("chrome://global/content/manifestMessages.js", true);
+ 
+     window.messageManager.addMessageListener("Browser:LoadURI", RedirectLoad);
+@@ -1740,11 +1732,6 @@ var gBrowserInit = {
+     }
+ 
+     scheduleIdleTask(() => {
+-      // Initialize the Sync UI
+-      gSync.init();
+-    });
+-
+-    scheduleIdleTask(() => {
+       CombinedStopReload.startAnimationPrefMonitoring();
+     });
+ 
+@@ -1847,8 +1834,6 @@ var gBrowserInit = {
+ 
+     FullScreen.uninit();
+ 
+-    gSync.uninit();
+-
+     gExtensionsNotifications.uninit();
+ 
+     Services.obs.removeObserver(gPluginHandler.NPAPIPluginCrashed, "plugin-crashed");
+@@ -4032,10 +4017,6 @@ const BrowserSearch = {
+    * BrowserSearch.loadSearch for the preferred API.
+    */
+   loadSearchFromContext(terms) {
+-    let engine = BrowserSearch._loadSearch(terms, true, "contextmenu");
+-    if (engine) {
+-      BrowserSearch.recordSearchInTelemetry(engine, "contextmenu");
+-    }
+   },
+ 
+   pasteAndSearch(event) {
+@@ -4090,12 +4071,6 @@ const BrowserSearch = {
+    *        selected it: {selection: {index: The selected index, kind: "key" or "mouse"}}
+    */
+   recordSearchInTelemetry(engine, source, details = {}) {
+-    BrowserUITelemetry.countSearchEvent(source, null, details.selection);
+-    try {
+-      BrowserUsageTelemetry.recordSearch(engine, source, details);
+-    } catch (ex) {
+-      Cu.reportError(ex);
+-    }
+   },
+ 
+   /**
+@@ -4114,14 +4089,6 @@ const BrowserSearch = {
+    *        (string) Where was the search link opened (e.g. new tab, current tab, ..).
+    */
+   recordOneoffSearchInTelemetry(engine, source, type, where) {
+-    let id = this._getSearchEngineId(engine) + "." + source;
+-    BrowserUITelemetry.countOneoffSearchEvent(id, type, where);
+-    try {
+-      const details = {type, isOneOff: true};
+-      BrowserUsageTelemetry.recordSearch(engine, source, details);
+-    } catch (ex) {
+-      Cu.reportError(ex);
+-    }
+   }
+ };
+ 
+@@ -7358,7 +7325,6 @@ function checkEmptyPageOrigin(browser = 
+ }
+ 
+ function BrowserOpenSyncTabs() {
+-  gSync.openSyncedTabsPanel();
+ }
+ 
+ function ReportFalseDeceptiveSite() {
+@@ -8988,8 +8954,6 @@ var TabContextMenu = {
+ 
+     this.contextTab.addEventListener("TabAttrModified", this);
+     aPopupMenu.addEventListener("popuphiding", this);
+-
+-    gSync.updateTabContextMenu(aPopupMenu, this.contextTab);
+   },
+   handleEvent(aEvent) {
+     switch (aEvent.type) {
+diff --git a/browser/base/content/nsContextMenu.js b/browser/base/content/nsContextMenu.js
+--- a/browser/base/content/nsContextMenu.js
++++ b/browser/base/content/nsContextMenu.js
+@@ -312,7 +312,6 @@ nsContextMenu.prototype = {
+     this.initLeaveDOMFullScreenItems();
+     this.initClickToPlayItems();
+     this.initPasswordManagerItems();
+-    this.initSyncItems();
+   },
+ 
+   initPageMenuSeparator: function CM_initPageMenuSeparator() {
+@@ -742,10 +741,6 @@ nsContextMenu.prototype = {
+     popup.insertBefore(fragment, insertBeforeElement);
+   },
+ 
+-  initSyncItems() {
+-    gSync.updateContentContextMenu(this);
+-  },
+-
+   openPasswordManager() {
+     LoginHelper.openPasswordManager(window, gContextMenuContentData.documentURIObject.host);
+   },
+@@ -1524,7 +1519,6 @@ nsContextMenu.prototype = {
+           this._telemetryHadCustomItems ? "withcustom" : "withoutcustom"
+       ];
+       let target = this._telemetryClickID || "close-without-interaction";
+-      BrowserUITelemetry.registerContextMenuInteraction(eventKey, target);
+     };
+     let activationHandler = (e) => {
+       // Deal with command events being routed to command elements; figure out
+diff --git a/browser/base/content/tabbrowser.xml b/browser/base/content/tabbrowser.xml
+--- a/browser/base/content/tabbrowser.xml
++++ b/browser/base/content/tabbrowser.xml
+@@ -1926,12 +1926,10 @@
+             if (browser.audioMuted) {
+               browser.unmute();
+               this.removeAttribute("muted");
+-              BrowserUITelemetry.countTabMutingEvent("unmute", aMuteReason);
+               hist.add(1 /* unmute */);
+             } else {
+               browser.mute();
+               this.setAttribute("muted", "true");
+-              BrowserUITelemetry.countTabMutingEvent("mute", aMuteReason);
+               hist.add(0 /* mute */);
+             }
+             this.muteReason = aMuteReason || null;
+diff --git a/browser/base/content/urlbarBindings.xml b/browser/base/content/urlbarBindings.xml
+--- a/browser/base/content/urlbarBindings.xml
++++ b/browser/base/content/urlbarBindings.xml
+@@ -672,9 +672,6 @@ file, You can obtain one at http://mozil
+             return;
+           }
+ 
+-          BrowserUsageTelemetry.recordUrlbarSelectedResultMethod(
+-            event, this.userSelectionBehavior);
+-
+           // Determine whether to use the selected one-off search button.  In
+           // one-off search buttons parlance, "selected" means that the button
+           // has been navigated to via the keyboard.  So we want to use it if
+@@ -922,7 +919,6 @@ file, You can obtain one at http://mozil
+           details.isOneOff = isOneOff;
+           details.type = eventType;
+ 
+-          BrowserSearch.recordSearchInTelemetry(engine, "urlbar", details);
+           let submission = engine.getSubmission(query, null, "keyword");
+           return [submission.uri.spec, submission.postData];
+         ]]></body>
+diff --git a/browser/base/jar.mn b/browser/base/jar.mn
+--- a/browser/base/jar.mn
++++ b/browser/base/jar.mn
+@@ -11,29 +11,6 @@ browser.jar:
+         content/browser/aboutRobots.xhtml             (content/aboutRobots.xhtml)
+         content/browser/aboutRobots.js                (content/aboutRobots.js)
+         content/browser/aboutRobots.css               (content/aboutRobots.css)
+-*       content/browser/abouthome/aboutHome.xhtml     (content/abouthome/aboutHome.xhtml)
+-        content/browser/abouthome/aboutHome.js        (content/abouthome/aboutHome.js)
+-*       content/browser/abouthome/aboutHome.css       (content/abouthome/aboutHome.css)
+-        content/browser/abouthome/snippet1.png        (content/abouthome/snippet1.png)
+-        content/browser/abouthome/snippet2.png        (content/abouthome/snippet2.png)
+-        content/browser/abouthome/downloads.png       (content/abouthome/downloads.png)
+-        content/browser/abouthome/bookmarks.png       (content/abouthome/bookmarks.png)
+-        content/browser/abouthome/history.png         (content/abouthome/history.png)
+-        content/browser/abouthome/addons.png          (content/abouthome/addons.png)
+-        content/browser/abouthome/sync.png            (content/abouthome/sync.png)
+-        content/browser/abouthome/settings.png        (content/abouthome/settings.png)
+-        content/browser/abouthome/restore.png         (content/abouthome/restore.png)
+-        content/browser/abouthome/restore-large.png   (content/abouthome/restore-large.png)
+-        content/browser/abouthome/snippet1@2x.png      (content/abouthome/snippet1@2x.png)
+-        content/browser/abouthome/snippet2@2x.png      (content/abouthome/snippet2@2x.png)
+-        content/browser/abouthome/downloads@2x.png     (content/abouthome/downloads@2x.png)
+-        content/browser/abouthome/bookmarks@2x.png     (content/abouthome/bookmarks@2x.png)
+-        content/browser/abouthome/history@2x.png       (content/abouthome/history@2x.png)
+-        content/browser/abouthome/addons@2x.png        (content/abouthome/addons@2x.png)
+-        content/browser/abouthome/sync@2x.png          (content/abouthome/sync@2x.png)
+-        content/browser/abouthome/settings@2x.png      (content/abouthome/settings@2x.png)
+-        content/browser/abouthome/restore@2x.png       (content/abouthome/restore@2x.png)
+-        content/browser/abouthome/restore-large@2x.png (content/abouthome/restore-large@2x.png)
+ 
+         content/browser/illustrations/error-connection-failure.svg (content/illustrations/error-connection-failure.svg)
+         content/browser/illustrations/error-server-not-found.svg (content/illustrations/error-server-not-found.svg)
+@@ -66,7 +43,6 @@ browser.jar:
+         content/browser/browser-plugins.js            (content/browser-plugins.js)
+         content/browser/browser-safebrowsing.js       (content/browser-safebrowsing.js)
+         content/browser/browser-sidebar.js            (content/browser-sidebar.js)
+-        content/browser/browser-sync.js               (content/browser-sync.js)
+ *       content/browser/browser-tabPreviews.xml       (content/browser-tabPreviews.xml)
+ #ifdef CAN_DRAW_IN_TITLEBAR
+         content/browser/browser-tabsintitlebar.js       (content/browser-tabsintitlebar.js)
+diff --git a/browser/components/about/AboutRedirector.cpp b/browser/components/about/AboutRedirector.cpp
+--- a/browser/components/about/AboutRedirector.cpp
++++ b/browser/components/about/AboutRedirector.cpp
+@@ -146,16 +146,6 @@ AboutRedirector::NewChannel(nsIURI* aURI
+     if (!strcmp(path.get(), redir.id)) {
+       nsAutoCString url;
+ 
+-      // Let the aboutNewTabService decide where to redirect for about:home and
+-      // enabled about:newtab. Disabled about:newtab page uses fallback.
+-      if (path.EqualsLiteral("home") ||
+-          (sNewTabPageEnabled && path.EqualsLiteral("newtab"))) {
+-        nsCOMPtr<nsIAboutNewTabService> aboutNewTabService =
+-          do_GetService("@mozilla.org/browser/aboutnewtab-service;1", &rv);
+-        NS_ENSURE_SUCCESS(rv, rv);
+-        rv = aboutNewTabService->GetDefaultURL(url);
+-        NS_ENSURE_SUCCESS(rv, rv);
+-      }
+       // fall back to the specified url in the map
+       if (url.IsEmpty()) {
+         url.AssignASCII(redir.url);
+diff --git a/browser/components/customizableui/CustomizableWidgets.jsm b/browser/components/customizableui/CustomizableWidgets.jsm
+--- a/browser/components/customizableui/CustomizableWidgets.jsm
++++ b/browser/components/customizableui/CustomizableWidgets.jsm
+@@ -12,7 +12,6 @@ ChromeUtils.import("resource://gre/modul
+ ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+ 
+ XPCOMUtils.defineLazyModuleGetters(this, {
+-  BrowserUITelemetry: "resource:///modules/BrowserUITelemetry.jsm",
+   PanelView: "resource:///modules/PanelMultiView.jsm",
+   PlacesUtils: "resource://gre/modules/PlacesUtils.jsm",
+   PlacesUIUtils: "resource:///modules/PlacesUIUtils.jsm",
+@@ -770,7 +769,6 @@ if (Services.prefs.getBoolPref("identity
+         } else {
+           CustomizableUI.hidePanelForNode(item);
+         }
+-        BrowserUITelemetry.countSyncedTabEvent("open", "toolbarbutton-subview");
+       });
+       return item;
+     },
+@@ -827,7 +825,6 @@ if (Services.prefs.getBoolPref("privacy.
+     forgetButtonCalled(aEvent) {
+       let doc = aEvent.target.ownerDocument;
+       let group = doc.getElementById("PanelUI-panic-timeSpan");
+-      BrowserUITelemetry.countPanicEvent(group.selectedItem.id);
+       let itemsToClear = [
+         "cookies", "history", "openWindows", "formdata", "sessions", "cache", "downloads"
+       ];
+diff --git a/browser/components/customizableui/CustomizeMode.jsm b/browser/components/customizableui/CustomizeMode.jsm
+--- a/browser/components/customizableui/CustomizeMode.jsm
++++ b/browser/components/customizableui/CustomizeMode.jsm
+@@ -31,8 +31,6 @@ Cu.importGlobalProperties(["CSS"]);
+ 
+ ChromeUtils.defineModuleGetter(this, "DragPositionManager",
+                                "resource:///modules/DragPositionManager.jsm");
+-ChromeUtils.defineModuleGetter(this, "BrowserUITelemetry",
+-                               "resource:///modules/BrowserUITelemetry.jsm");
+ ChromeUtils.defineModuleGetter(this, "BrowserUtils",
+                                "resource://gre/modules/BrowserUtils.jsm");
+ ChromeUtils.defineModuleGetter(this, "LightweightThemeManager",
+@@ -1081,7 +1079,6 @@ CustomizeMode.prototype = {
+     this.resetting = true;
+     // Disable the reset button temporarily while resetting:
+     let btn = this.document.getElementById("customization-reset-button");
+-    BrowserUITelemetry.countCustomizationEvent("reset");
+     btn.disabled = true;
+     return (async () => {
+       await this.depopulatePalette();
+@@ -1908,7 +1905,6 @@ CustomizeMode.prototype = {
+         }
+ 
+         CustomizableUI.removeWidgetFromArea(aDraggedItemId);
+-        BrowserUITelemetry.countCustomizationEvent("remove");
+         // Special widgets are removed outright, we can return here:
+         if (CustomizableUI.isSpecialWidget(aDraggedItemId)) {
+           return;
+@@ -1950,7 +1946,6 @@ CustomizeMode.prototype = {
+         this.wrapToolbarItem(aTargetNode, place);
+       }
+       this.wrapToolbarItem(draggedItem, place);
+-      BrowserUITelemetry.countCustomizationEvent("move");
+       return;
+     }
+ 
+@@ -1958,12 +1953,6 @@ CustomizeMode.prototype = {
+     // widget to the end of the area.
+     if (aTargetNode == aTargetArea.customizationTarget) {
+       CustomizableUI.addWidgetToArea(aDraggedItemId, aTargetArea.id);
+-      // For the purposes of BrowserUITelemetry, we consider both moving a widget
+-      // within the same area, and adding a widget from one area to another area
+-      // as a "move". An "add" is only when we move an item from the palette into
+-      // an area.
+-      let custEventType = aOriginArea.id == kPaletteId ? "add" : "move";
+-      BrowserUITelemetry.countCustomizationEvent(custEventType);
+       this._onDragEnd(aEvent);
+       return;
+     }
+@@ -2008,11 +1997,6 @@ CustomizeMode.prototype = {
+ 
+     this._onDragEnd(aEvent);
+ 
+-    // For BrowserUITelemetry, an "add" is only when we move an item from the palette
+-    // into an area. Otherwise, it's a move.
+-    let custEventType = aOriginArea.id == kPaletteId ? "add" : "move";
+-    BrowserUITelemetry.countCustomizationEvent(custEventType);
+-
+     // If we dropped onto a skipintoolbarset item, manually correct the drop location:
+     if (aTargetNode != itemForPlacement) {
+       let draggedWrapper = draggedItem.parentNode;
+diff --git a/browser/components/newtab/aboutNewTabService.js b/browser/components/newtab/aboutNewTabService.js
+--- a/browser/components/newtab/aboutNewTabService.js
++++ b/browser/components/newtab/aboutNewTabService.js
+@@ -10,9 +10,6 @@ ChromeUtils.import("resource://gre/modul
+ ChromeUtils.import("resource://gre/modules/Services.jsm");
+ ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+ 
+-ChromeUtils.defineModuleGetter(this, "AboutNewTab",
+-                               "resource:///modules/AboutNewTab.jsm");
+-
+ // Dummy references to the files that this service no longer allows loading.
+ // Bug 1409054 to remove "chrome://browser/content/abouthome/aboutHome.xhtml"
+ 
+@@ -44,10 +41,6 @@ function AboutNewTabService() {
+   // More initialization happens here
+   this.toggleActivityStream(true);
+   this.initialized = true;
+-
+-  if (IS_MAIN_PROCESS) {
+-    AboutNewTab.init();
+-  }
+ }
+ 
+ /*
+@@ -114,9 +107,6 @@ AboutNewTabService.prototype = {
+         break;
+       case TOPIC_APP_QUIT:
+         this.uninit();
+-        if (IS_MAIN_PROCESS) {
+-          AboutNewTab.uninit();
+-        }
+         break;
+       case TOPIC_LOCALES_CHANGE:
+         this.updatePrerenderedPath();
+diff --git a/browser/components/nsBrowserContentHandler.js b/browser/components/nsBrowserContentHandler.js
+--- a/browser/components/nsBrowserContentHandler.js
++++ b/browser/components/nsBrowserContentHandler.js
+@@ -18,8 +18,6 @@ ChromeUtils.defineModuleGetter(this, "Sh
+                                "resource:///modules/ShellService.jsm");
+ XPCOMUtils.defineLazyServiceGetter(this, "WindowsUIUtils",
+                                    "@mozilla.org/windows-ui-utils;1", "nsIWindowsUIUtils");
+-ChromeUtils.defineModuleGetter(this, "UpdatePing",
+-                               "resource://gre/modules/UpdatePing.jsm");
+ 
+ const nsISupports            = Ci.nsISupports;
+ 
+@@ -541,18 +539,10 @@ nsBrowserContentHandler.prototype = {
+             overridePage = Services.urlFormatter.formatURLPref("startup.homepage_override_url");
+             if (prefb.prefHasUserValue("app.update.postupdate")) {
+               overridePage = getPostUpdateOverridePage(overridePage);
+-              // Send the update ping to signal that the update was successful.
+-              UpdatePing.handleUpdateSuccess(old_mstone, old_buildId);
+             }
+ 
+             overridePage = overridePage.replace("%OLD_VERSION%", old_mstone);
+             break;
+-          case OVERRIDE_NEW_BUILD_ID:
+-            if (prefb.prefHasUserValue("app.update.postupdate")) {
+-              // Send the update ping to signal that the update was successful.
+-              UpdatePing.handleUpdateSuccess(old_mstone, old_buildId);
+-            }
+-            break;
+         }
+       }
+     } catch (ex) {}
+diff --git a/browser/components/nsBrowserGlue.js b/browser/components/nsBrowserGlue.js
+--- a/browser/components/nsBrowserGlue.js
++++ b/browser/components/nsBrowserGlue.js
+@@ -88,9 +88,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   AutoCompletePopup: "resource://gre/modules/AutoCompletePopup.jsm",
+   BookmarkHTMLUtils: "resource://gre/modules/BookmarkHTMLUtils.jsm",
+   BookmarkJSONUtils: "resource://gre/modules/BookmarkJSONUtils.jsm",
+-  BrowserErrorReporter: "resource:///modules/BrowserErrorReporter.jsm",
+-  BrowserUITelemetry: "resource:///modules/BrowserUITelemetry.jsm",
+-  BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.jsm",
+   ContentClick: "resource:///modules/ContentClick.jsm",
+   ContextualIdentityService: "resource://gre/modules/ContextualIdentityService.jsm",
+   CustomizableUI: "resource:///modules/CustomizableUI.jsm",
+@@ -101,7 +98,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   FileSource: "resource://gre/modules/L10nRegistry.jsm",
+   FormValidationHandler: "resource:///modules/FormValidationHandler.jsm",
+   FxAccounts: "resource://gre/modules/FxAccounts.jsm",
+-  HybridContentTelemetry: "resource://gre/modules/HybridContentTelemetry.jsm",
+   Integration: "resource://gre/modules/Integration.jsm",
+   L10nRegistry: "resource://gre/modules/L10nRegistry.jsm",
+   LanguagePrompt: "resource://gre/modules/LanguagePrompt.jsm",
+@@ -110,14 +106,12 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   LoginManagerParent: "resource://gre/modules/LoginManagerParent.jsm",
+   NetUtil: "resource://gre/modules/NetUtil.jsm",
+   NewTabUtils: "resource://gre/modules/NewTabUtils.jsm",
+-  Normandy: "resource://normandy/Normandy.jsm",
+   ObjectUtils: "resource://gre/modules/ObjectUtils.jsm",
+   OS: "resource://gre/modules/osfile.jsm",
+   PageActions: "resource:///modules/PageActions.jsm",
+   PageThumbs: "resource://gre/modules/PageThumbs.jsm",
+   PdfJs: "resource://pdf.js/PdfJs.jsm",
+   PermissionUI: "resource:///modules/PermissionUI.jsm",
+-  PingCentre: "resource:///modules/PingCentre.jsm",
+   PlacesBackups: "resource://gre/modules/PlacesBackups.jsm",
+   PlacesUtils: "resource://gre/modules/PlacesUtils.jsm",
+   PluralForm: "resource://gre/modules/PluralForm.jsm",
+@@ -149,7 +143,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+ let initializedModules = {};
+ 
+ [
+-  ["AboutHome", "resource:///modules/AboutHome.jsm", "init"],
+   ["ContentPrefServiceParent", "resource://gre/modules/ContentPrefServiceParent.jsm", "alwaysInit"],
+   ["ContentSearch", "resource:///modules/ContentSearch.jsm", "init"],
+   ["UpdateListener", "resource://gre/modules/UpdateListener.jsm", "init"],
+@@ -207,8 +200,6 @@ const listeners = {
+   },
+ 
+   mm: {
+-    "AboutHome:MaybeShowMigrateMessage": ["AboutHome"],
+-    "AboutHome:RequestUpdate": ["AboutHome"],
+     "Content:Click": ["ContentClick"],
+     "ContentSearch": ["ContentSearch"],
+     "FormValidation:ShowPopup": ["FormValidationHandler"],
+@@ -348,37 +339,6 @@ BrowserGlue.prototype = {
+     Weave.Service.scheduler.delayedAutoConnect(delay);
+   },
+ 
+-  /**
+-   * Lazily initialize PingCentre
+-   */
+-  get pingCentre() {
+-    const MAIN_TOPIC_ID = "main";
+-    Object.defineProperty(this, "pingCentre", {
+-      value: new PingCentre({ topic: MAIN_TOPIC_ID })
+-    });
+-    return this.pingCentre;
+-  },
+-
+-  /**
+-   * Lazily initialize BrowserErrorReporter
+-   */
+-  get browserErrorReporter() {
+-    Object.defineProperty(this, "browserErrorReporter", {
+-      value: new BrowserErrorReporter(),
+-    });
+-    return this.browserErrorReporter;
+-  },
+-
+-  _sendMainPingCentrePing() {
+-    const ACTIVITY_STREAM_ID = "activity-stream";
+-    const payload = {
+-      event: "AS_ENABLED",
+-      value: true
+-    };
+-    const options = {filter: ACTIVITY_STREAM_ID};
+-    this.pingCentre.sendPing(payload, options);
+-  },
+-
+   // nsIObserver implementation
+   observe: function BG_observe(subject, topic, data) {
+     switch (topic) {
+@@ -533,7 +493,6 @@ BrowserGlue.prototype = {
+           Cu.reportError(ex);
+         }
+         let win = RecentWindow.getMostRecentBrowserWindow();
+-        win.BrowserSearch.recordSearchInTelemetry(engine, "urlbar");
+         break;
+       case "browser-search-engine-modified":
+         // Ensure we cleanup the hiddenOneOffs pref when removing
+@@ -573,10 +532,6 @@ BrowserGlue.prototype = {
+         // shim for privileged api access.
+         PdfJs.init(true);
+         break;
+-      case "shield-init-complete":
+-        this._shieldInitComplete = true;
+-        this._sendMainPingCentrePing();
+-        break;
+     }
+   },
+ 
+@@ -613,7 +568,6 @@ BrowserGlue.prototype = {
+     os.addObserver(this, "xpi-signature-changed");
+     os.addObserver(this, "sync-ui-state:update");
+     os.addObserver(this, "handlersvc-store-initialized");
+-    os.addObserver(this, "shield-init-complete");
+ 
+     this._flashHangCount = 0;
+     this._firstWindowReady = new Promise(resolve => this._firstWindowLoaded = resolve);
+@@ -666,7 +620,6 @@ BrowserGlue.prototype = {
+     os.removeObserver(this, "flash-plugin-hang");
+     os.removeObserver(this, "xpi-signature-changed");
+     os.removeObserver(this, "sync-ui-state:update");
+-    os.removeObserver(this, "shield-init-complete");
+   },
+ 
+   _onAppDefaults: function BG__onAppDefaults() {
+@@ -716,8 +669,6 @@ BrowserGlue.prototype = {
+       author: vendorShortName,
+     });
+ 
+-    Normandy.init();
+-
+     // Initialize the default l10n resource sources for L10nRegistry.
+     let locales = Services.locale.getPackagedLocales();
+     const appSource = new FileSource("app", locales, "resource://app/localization/{locale}/");
+@@ -1048,23 +999,10 @@ BrowserGlue.prototype = {
+       }
+     }
+ 
+-    BrowserUsageTelemetry.uninit();
+-    // Only uninit PingCentre if the getter has initialized it
+-    if (Object.prototype.hasOwnProperty.call(this, "pingCentre")) {
+-      this.pingCentre.uninit();
+-    }
+-
+     PageThumbs.uninit();
+     NewTabUtils.uninit();
+     AutoCompletePopup.uninit();
+     DateTimePickerHelper.uninit();
+-
+-    // Browser errors are only collected on Nightly
+-    if (AppConstants.NIGHTLY_BUILD && AppConstants.MOZ_DATA_REPORTING) {
+-      this.browserErrorReporter.uninit();
+-    }
+-
+-    Normandy.uninit();
+   },
+ 
+   // All initial windows have opened.
+@@ -1074,14 +1012,6 @@ BrowserGlue.prototype = {
+     }
+     this._windowsWereRestored = true;
+ 
+-    // Browser errors are only collected on Nightly
+-    if (AppConstants.NIGHTLY_BUILD && AppConstants.MOZ_DATA_REPORTING) {
+-      this.browserErrorReporter.init();
+-    }
+-
+-    BrowserUsageTelemetry.init();
+-    BrowserUITelemetry.init();
+-
+     // Show update notification, if needed.
+     if (Services.prefs.prefHasUserValue("app.update.postupdate"))
+       this._showUpdateNotification();
+@@ -2466,19 +2396,6 @@ BrowserGlue.prototype = {
+     // Firefox 60, the hardcoded default was to show history/bookmarks first.
+     // After 60, it's to show search suggestions first.
+ 
+-    // Wait for Shield init to complete.
+-    await new Promise(resolve => {
+-      if (this._shieldInitComplete) {
+-        resolve();
+-        return;
+-      }
+-      let topic = "shield-init-complete";
+-      Services.obs.addObserver(function obs() {
+-        Services.obs.removeObserver(obs, topic);
+-        resolve();
+-      }, topic);
+-    });
+-
+     // Now get the pref's value.  If the study is active, the value will have
+     // just been set (on the default branch) as part of Shield's init.  The pref
+     // should not exist otherwise (normally).
+@@ -3283,10 +3200,3 @@ var globalMM = Cc["@mozilla.org/globalme
+ globalMM.addMessageListener("UITour:onPageEvent", function(aMessage) {
+   UITour.onPageEvent(aMessage, aMessage.data);
+ });
+-
+-// Listen for HybridContentTelemetry messages.
+-// Do it here instead of HybridContentTelemetry.init() so that
+-// the module can be lazily loaded on the first message.
+-globalMM.addMessageListener("HybridContentTelemetry:onTelemetryMessage", aMessage => {
+-  HybridContentTelemetry.onTelemetryMessage(aMessage, aMessage.data);
+-});
+diff --git a/browser/components/preferences/in-content/jar.mn b/browser/components/preferences/in-content/jar.mn
+--- a/browser/components/preferences/in-content/jar.mn
++++ b/browser/components/preferences/in-content/jar.mn
+@@ -12,5 +12,4 @@ browser.jar:
+    content/browser/preferences/in-content/search.js
+    content/browser/preferences/in-content/privacy.js
+    content/browser/preferences/in-content/containers.js
+-   content/browser/preferences/in-content/sync.js
+    content/browser/preferences/in-content/findInPage.js
+diff --git a/browser/components/preferences/in-content/preferences.xul b/browser/components/preferences/in-content/preferences.xul
+--- a/browser/components/preferences/in-content/preferences.xul
++++ b/browser/components/preferences/in-content/preferences.xul
+@@ -220,7 +220,6 @@
+ #include search.xul
+ #include privacy.xul
+ #include containers.xul
+-#include sync.xul
+         </vbox>
+       </vbox>
+     </vbox>
+diff --git a/browser/components/search/content/search.xml b/browser/components/search/content/search.xml
+--- a/browser/components/search/content/search.xml
++++ b/browser/components/search/content/search.xml
+@@ -390,11 +390,6 @@
+           let selection = this.telemetrySearchDetails;
+           let oneOffRecorded = false;
+ 
+-          BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
+-            aEvent,
+-            selection ? selection.index : -1
+-          );
+-
+           if (!selection || (selection.index == -1)) {
+             oneOffRecorded = this.textbox.popup.oneOffButtons
+                                  .maybeRecordTelemetry(aEvent, aWhere, aParams);
+@@ -418,8 +413,6 @@
+               if (!aEngine) {
+                 aEngine = this.currentEngine;
+               }
+-              BrowserSearch.recordOneoffSearchInTelemetry(aEngine, source, type,
+-                                                          aWhere);
+             }
+           }
+ 
+@@ -464,7 +457,6 @@
+             isSuggestion: (!aOneOff && telemetrySearchDetails),
+             selection: telemetrySearchDetails
+           };
+-          BrowserSearch.recordSearchInTelemetry(engine, "searchbar", details);
+           // null parameter below specifies HTML response for search
+           let params = {
+             postData: submission.postData,
+@@ -977,11 +969,6 @@
+ 
+           // Check for middle-click or modified clicks on the search bar
+           if (popupForSearchBar) {
+-            BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
+-              aEvent,
+-              this.selectedIndex
+-            );
+-
+             // Handle search bar popup clicks
+             var search = this.input.controller.getValueAt(this.selectedIndex);
+ 
+@@ -1440,8 +1427,6 @@
+ 
+       <method name="showSettings">
+         <body><![CDATA[
+-          BrowserUITelemetry.countSearchSettingsEvent(this.telemetryOrigin);
+-
+           openPreferences("paneSearch", {origin: "contentSearch"});
+ 
+           // If the preference tab was already selected, the panel doesn't
+@@ -2208,8 +2193,6 @@
+                               aOpenUILinkParams &&
+                               aOpenUILinkParams.inBackground;
+           let where = tabBackground ? "tab-background" : aOpenUILinkWhere;
+-          BrowserSearch.recordOneoffSearchInTelemetry(engine, source, type,
+-                                                      where);
+           return true;
+         ]]></body>
+       </method>
+diff --git a/browser/components/syncedtabs/TabListComponent.js b/browser/components/syncedtabs/TabListComponent.js
+--- a/browser/components/syncedtabs/TabListComponent.js
++++ b/browser/components/syncedtabs/TabListComponent.js
+@@ -11,7 +11,6 @@ let log = ChromeUtils.import("resource:/
+             .Log.repository.getLogger("Sync.RemoteTabs");
+ 
+ XPCOMUtils.defineLazyModuleGetters(this, {
+-  BrowserUITelemetry: "resource:///modules/BrowserUITelemetry.jsm",
+   OpenInTabsUtils: "resource:///modules/OpenInTabsUtils.jsm",
+ });
+ 
+@@ -114,7 +113,6 @@ TabListComponent.prototype = {
+ 
+   onOpenTab(url, where, params) {
+     this._window.openUILinkIn(url, where, params);
+-    BrowserUITelemetry.countSyncedTabEvent("open", "sidebar");
+   },
+ 
+   onOpenTabs(urls, where) {
+@@ -132,7 +130,6 @@ TabListComponent.prototype = {
+         triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+       });
+     }
+-    BrowserUITelemetry.countSyncedTabEvent("openmultiple", "sidebar");
+   },
+ 
+   onCopyTabLocation(url) {
+diff --git a/browser/components/uitour/UITour.jsm b/browser/components/uitour/UITour.jsm
+--- a/browser/components/uitour/UITour.jsm
++++ b/browser/components/uitour/UITour.jsm
+@@ -14,8 +14,6 @@ ChromeUtils.import("resource://gre/modul
+ 
+ Cu.importGlobalProperties(["URL"]);
+ 
+-ChromeUtils.defineModuleGetter(this, "BrowserUITelemetry",
+-  "resource:///modules/BrowserUITelemetry.jsm");
+ ChromeUtils.defineModuleGetter(this, "CustomizableUI",
+   "resource:///modules/CustomizableUI.jsm");
+ ChromeUtils.defineModuleGetter(this, "FxAccounts",
+@@ -391,13 +389,6 @@ var UITour = {
+           break;
+         }
+ 
+-        // We don't want to allow BrowserUITelemetry.BUCKET_SEPARATOR in the
+-        // pageID, as it could make parsing the telemetry bucket name difficult.
+-        if (data.pageID.includes(BrowserUITelemetry.BUCKET_SEPARATOR)) {
+-          log.warn("registerPageID: Invalid page ID specified");
+-          break;
+-        }
+-
+         this.addSeenPageID(data.pageID);
+         this.pageIDSourceBrowsers.set(browser, data.pageID);
+         this.setTelemetryBucket(data.pageID);
+@@ -818,16 +809,9 @@ var UITour = {
+   },
+ 
+   setTelemetryBucket(aPageID) {
+-    let bucket = BUCKET_NAME + BrowserUITelemetry.BUCKET_SEPARATOR + aPageID;
+-    BrowserUITelemetry.setBucket(bucket);
+   },
+ 
+   setExpiringTelemetryBucket(aPageID, aType) {
+-    let bucket = BUCKET_NAME + BrowserUITelemetry.BUCKET_SEPARATOR + aPageID +
+-                 BrowserUITelemetry.BUCKET_SEPARATOR + aType;
+-
+-    BrowserUITelemetry.setExpiringBucket(bucket,
+-                                         BUCKET_TIMESTEPS);
+   },
+ 
+   // This is registered with UITelemetry by BrowserUITelemetry, so that UITour
+diff --git a/browser/extensions/moz.build b/browser/extensions/moz.build
+--- a/browser/extensions/moz.build
++++ b/browser/extensions/moz.build
+@@ -5,15 +5,8 @@
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ DIRS += [
+-    'activity-stream',
+-    'aushelper',
+-    'followonsearch',
+     'formautofill',
+-    'onboarding',
+     'pdfjs',
+-    'pocket',
+-    'screenshots',
+-    'webcompat',
+ ]
+ 
+ # Only include the following system add-ons if building Aurora or Nightly
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -290,7 +290,6 @@
+ @RESPATH@/components/saxparser.xpt
+ @RESPATH@/browser/components/sessionstore.xpt
+ @RESPATH@/components/services-crypto-component.xpt
+-@RESPATH@/components/captivedetect.xpt
+ @RESPATH@/browser/components/shellservice.xpt
+ @RESPATH@/components/shistory.xpt
+ @RESPATH@/components/spellchecker.xpt
+@@ -482,16 +481,8 @@
+ @RESPATH@/components/nsINIProcessor.js
+ @RESPATH@/components/nsPrompter.manifest
+ @RESPATH@/components/nsPrompter.js
+-@RESPATH@/components/SyncComponents.manifest
+-@RESPATH@/components/Weave.js
+-@RESPATH@/components/FxAccountsComponents.manifest
+-@RESPATH@/components/FxAccountsPush.js
+-@RESPATH@/components/CaptivePortalDetectComponents.manifest
+-@RESPATH@/components/captivedetect.js
+ @RESPATH@/components/servicesComponents.manifest
+ @RESPATH@/components/cryptoComponents.manifest
+-@RESPATH@/components/TelemetryStartup.js
+-@RESPATH@/components/TelemetryStartup.manifest
+ @RESPATH@/components/XULStore.js
+ @RESPATH@/components/XULStore.manifest
+ @RESPATH@/components/recording-cmdline.js
+@@ -655,9 +646,6 @@
+ ; defined in ../../testing/marionette/prefs/marionette.js
+ @RESPATH@/defaults/pref/marionette.js
+ 
+-; Services (gre) prefs
+-@RESPATH@/defaults/pref/services-sync.js
+-
+ ; [Layout Engine Resources]
+ ; Style Sheets, Graphics and other Resources used by the layout engine.
+ @RESPATH@/res/EditorOverride.css
+@@ -782,14 +770,8 @@ bin/libfreebl_32int64_3.so
+ 
+ ; [ Ping Sender ]
+ ;
+-@BINPATH@/pingsender@BIN_SUFFIX@
+-
+ @RESPATH@/components/dom_audiochannel.xpt
+ 
+-; Shutdown Terminator
+-@RESPATH@/components/nsTerminatorTelemetry.js
+-@RESPATH@/components/terminator.manifest
+-
+ #ifdef LLVM_SYMBOLIZER
+ @BINPATH@/@LLVM_SYMBOLIZER@
+ #endif
+@@ -824,13 +806,6 @@ bin/libfreebl_32int64_3.so
+ ; Background Hang Monitor
+ @RESPATH@/components/backgroundhangmonitor.xpt
+ 
+-; NOTE: This must match the config checks in
+-; /toolkit/components/backgroundhangmonitor/moz.build.
+-#if defined(NIGHTLY_BUILD) && !defined(MOZ_DEBUG) && !defined(MOZ_TSAN)
+-@RESPATH@/components/BHRTelemetryService.js
+-@RESPATH@/components/BHRTelemetryService.manifest
+-#endif
+-
+ #ifdef PKG_LOCALE_MANIFEST
+ #include @PKG_LOCALE_MANIFEST@
+ #endif
+diff --git a/browser/locales/Makefile.in b/browser/locales/Makefile.in
+--- a/browser/locales/Makefile.in
++++ b/browser/locales/Makefile.in
+@@ -72,13 +72,10 @@ libs-%:
+ 	$(if $(filter en-US,$(AB_CD)),, @$(MAKE) merge-$*)
+ 	$(NSINSTALL) -D $(DIST)/install
+ 	@$(MAKE) -C ../../toolkit/locales libs-$* XPI_ROOT_APPID='$(XPI_ROOT_APPID)'
+-	@$(MAKE) -C ../../services/sync/locales AB_CD=$* XPI_NAME=locale-$*
+ 	@$(MAKE) -C ../../extensions/spellcheck/locales AB_CD=$* XPI_NAME=locale-$*
+ ifneq (,$(wildcard ../extensions/formautofill/locales))
+ 	@$(MAKE) -C ../extensions/formautofill/locales AB_CD=$* XPI_NAME=locale-$*
+ endif
+-	@$(MAKE) -C ../extensions/onboarding/locales AB_CD=$* XPI_NAME=locale-$*
+-	@$(MAKE) -C ../extensions/pocket/locale AB_CD=$* XPI_NAME=locale-$*
+ ifndef RELEASE_OR_BETA
+ 	@$(MAKE) -C ../extensions/presentation/locale AB_CD=$* XPI_NAME=locale-$*
+ endif
+@@ -97,7 +94,6 @@ chrome-%: IS_LANGUAGE_REPACK=1
+ chrome-%:
+ 	$(if $(filter en-US,$(AB_CD)),, @$(MAKE) merge-$*)
+ 	@$(MAKE) -C ../../toolkit/locales chrome-$*
+-	@$(MAKE) -C ../../services/sync/locales chrome AB_CD=$*
+ 	@$(MAKE) -C ../../extensions/spellcheck/locales chrome AB_CD=$*
+ ifneq (,$(wildcard ../extensions/formautofill/locales))
+ 	@$(MAKE) -C ../extensions/formautofill/locales chrome AB_CD=$*
+diff --git a/browser/modules/ContentSearch.jsm b/browser/modules/ContentSearch.jsm
+--- a/browser/modules/ContentSearch.jsm
++++ b/browser/modules/ContentSearch.jsm
+@@ -249,8 +249,6 @@ var ContentSearch = {
+       };
+       win.openUILinkIn(submission.uri.spec, where, params);
+     }
+-    win.BrowserSearch.recordSearchInTelemetry(engine, data.healthReportKey,
+-                                              { selection: data.selection });
+   },
+ 
+   async getSuggestions(engineName, searchString, browser) {
+diff --git a/browser/modules/moz.build b/browser/modules/moz.build
+--- a/browser/modules/moz.build
++++ b/browser/modules/moz.build
+@@ -40,15 +40,9 @@ with Files("test/unit/test_LaterRun.js")
+ with Files("test/unit/test_SitePermissions.js"):
+     BUG_COMPONENT = ("Firefox", "Site Identity and Permission Panels")
+ 
+-with Files("AboutNewTab.jsm"):
+-    BUG_COMPONENT = ("Firefox", "New Tab Page")
+-
+ with Files('AsyncTabSwitcher.jsm'):
+     BUG_COMPONENT = ('Firefox', 'Tabbed Browser')
+ 
+-with Files("AttributionCode.jsm"):
+-    BUG_COMPONENT = ("Toolkit", "Telemetry")
+-
+ with Files("*Telemetry.jsm"):
+     BUG_COMPONENT = ("Toolkit", "Telemetry")
+ 
+@@ -123,13 +117,7 @@ BROWSER_CHROME_MANIFESTS += [
+ XPCSHELL_TESTS_MANIFESTS += ['test/unit/xpcshell.ini']
+ 
+ EXTRA_JS_MODULES += [
+-    'AboutHome.jsm',
+-    'AboutNewTab.jsm',
+     'AsyncTabSwitcher.jsm',
+-    'AttributionCode.jsm',
+-    'BrowserErrorReporter.jsm',
+-    'BrowserUITelemetry.jsm',
+-    'BrowserUsageTelemetry.jsm',
+     'ContentClick.jsm',
+     'ContentCrashHandlers.jsm',
+     'ContentLinkHandler.jsm',
+@@ -147,7 +135,6 @@ EXTRA_JS_MODULES += [
+     'OpenInTabsUtils.jsm',
+     'PageActions.jsm',
+     'PermissionUI.jsm',
+-    'PingCentre.jsm',
+     'PluginContent.jsm',
+     'ProcessHangMonitor.jsm',
+     'ReaderParent.jsm',
+diff --git a/docshell/base/nsAboutRedirector.cpp b/docshell/base/nsAboutRedirector.cpp
+--- a/docshell/base/nsAboutRedirector.cpp
++++ b/docshell/base/nsAboutRedirector.cpp
+@@ -122,10 +122,6 @@ static const RedirEntry kRedirMap[] = {
+     nsIAboutModule::ALLOW_SCRIPT
+   },
+   {
+-    "telemetry", "chrome://global/content/aboutTelemetry.xhtml",
+-    nsIAboutModule::ALLOW_SCRIPT
+-  },
+-  {
+     "url-classifier", "chrome://global/content/aboutUrlClassifier.xhtml",
+     nsIAboutModule::ALLOW_SCRIPT
+   },
+diff --git a/netwerk/base/CaptivePortalService.cpp b/netwerk/base/CaptivePortalService.cpp
+--- a/netwerk/base/CaptivePortalService.cpp
++++ b/netwerk/base/CaptivePortalService.cpp
+@@ -26,7 +26,7 @@ static LazyLogModule gCaptivePortalLog("
+ 
+ NS_IMPL_ISUPPORTS(CaptivePortalService, nsICaptivePortalService, nsIObserver,
+                   nsISupportsWeakReference, nsITimerCallback,
+-                  nsICaptivePortalCallback, nsINamed)
++                  nsINamed)
+ 
+ CaptivePortalService::CaptivePortalService()
+   : mState(UNKNOWN)
+@@ -59,20 +59,7 @@ CaptivePortalService::PerformCheck()
+     return NS_OK;
+   }
+   MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+-  nsresult rv;
+-  if (!mCaptivePortalDetector) {
+-    mCaptivePortalDetector =
+-      do_GetService("@mozilla.org/toolkit/captive-detector;1", &rv);
+-    if (NS_FAILED(rv)) {
+-        LOG(("Unable to get a captive portal detector\n"));
+-        return rv;
+-    }
+-  }
+-
+-  LOG(("CaptivePortalService::PerformCheck - Calling CheckCaptivePortal\n"));
+-  mRequestInProgress = true;
+-  mCaptivePortalDetector->CheckCaptivePortal(kInterfaceName, this);
+-  return NS_OK;
++  return NS_ERROR_FACTORY_NOT_REGISTERED;
+ }
+ 
+ nsresult
+@@ -187,10 +174,6 @@ CaptivePortalService::Stop()
+   mTimer = nullptr;
+   mRequestInProgress = false;
+   mStarted = false;
+-  if (mCaptivePortalDetector) {
+-    mCaptivePortalDetector->Abort(kInterfaceName);
+-  }
+-  mCaptivePortalDetector = nullptr;
+ 
+   // Clear the state in case anyone queries the state while detection is off.
+   mState = UNKNOWN;
+@@ -346,45 +329,5 @@ CaptivePortalService::NotifyConnectivity
+   }
+ }
+ 
+-//-----------------------------------------------------------------------------
+-// CaptivePortalService::nsICaptivePortalCallback
+-//-----------------------------------------------------------------------------
+-NS_IMETHODIMP
+-CaptivePortalService::Prepare()
+-{
+-  LOG(("CaptivePortalService::Prepare\n"));
+-  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+-  // XXX: Finish preparation shouldn't be called until dns and routing is available.
+-  if (mCaptivePortalDetector) {
+-    mCaptivePortalDetector->FinishPreparation(kInterfaceName);
+-  }
+-  return NS_OK;
+-}
+-
+-NS_IMETHODIMP
+-CaptivePortalService::Complete(bool success)
+-{
+-  LOG(("CaptivePortalService::Complete(success=%d) mState=%d\n", success, mState));
+-  MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
+-  mLastChecked = TimeStamp::Now();
+-
+-  // Note: this callback gets called when:
+-  // 1. the request is completed, and content is valid (success == true)
+-  // 2. when the request is aborted or times out (success == false)
+-
+-  if (success) {
+-    if (mEverBeenCaptive) {
+-      mState = UNLOCKED_PORTAL;
+-      NotifyConnectivityAvailable(true);
+-    } else {
+-      mState = NOT_CAPTIVE;
+-      NotifyConnectivityAvailable(false);
+-    }
+-  }
+-
+-  mRequestInProgress = false;
+-  return NS_OK;
+-}
+-
+ } // namespace net
+ } // namespace mozilla
+diff --git a/netwerk/base/CaptivePortalService.h b/netwerk/base/CaptivePortalService.h
+--- a/netwerk/base/CaptivePortalService.h
++++ b/netwerk/base/CaptivePortalService.h
+@@ -6,7 +6,6 @@
+ #define CaptivePortalService_h_
+ 
+ #include "nsICaptivePortalService.h"
+-#include "nsICaptivePortalDetector.h"
+ #include "nsINamed.h"
+ #include "nsIObserver.h"
+ #include "nsWeakReference.h"
+@@ -22,7 +21,6 @@ class CaptivePortalService
+   , public nsIObserver
+   , public nsSupportsWeakReference
+   , public nsITimerCallback
+-  , public nsICaptivePortalCallback
+   , public nsINamed
+ {
+ public:
+@@ -30,7 +28,6 @@ public:
+   NS_DECL_NSICAPTIVEPORTALSERVICE
+   NS_DECL_NSIOBSERVER
+   NS_DECL_NSITIMERCALLBACK
+-  NS_DECL_NSICAPTIVEPORTALCALLBACK
+   NS_DECL_NSINAMED
+ 
+   CaptivePortalService();
+@@ -47,7 +44,6 @@ private:
+   nsresult RearmTimer();
+   void NotifyConnectivityAvailable(bool aCaptive);
+ 
+-  nsCOMPtr<nsICaptivePortalDetector>    mCaptivePortalDetector;
+   int32_t                               mState;
+ 
+   nsCOMPtr<nsITimer>                    mTimer;
+diff --git a/services/moz.build b/services/moz.build
+--- a/services/moz.build
++++ b/services/moz.build
+@@ -14,9 +14,5 @@ DIRS += [
+ 
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] != 'android':
+     DIRS += [
+-        'fxaccounts',
+         'blocklists',
+     ]
+-
+-if CONFIG['MOZ_SERVICES_SYNC']:
+-    DIRS += ['sync']
+diff --git a/toolkit/components/backgroundhangmonitor/moz.build b/toolkit/components/backgroundhangmonitor/moz.build
+--- a/toolkit/components/backgroundhangmonitor/moz.build
++++ b/toolkit/components/backgroundhangmonitor/moz.build
+@@ -16,11 +16,6 @@ if CONFIG['NIGHTLY_BUILD'] and \
+    not CONFIG['MOZ_TSAN']:
+     DEFINES['MOZ_ENABLE_BACKGROUND_HANG_MONITOR'] = 1
+ 
+-    EXTRA_COMPONENTS += [
+-        'BHRTelemetryService.js',
+-        'BHRTelemetryService.manifest',
+-    ]
+-
+     XPCSHELL_TESTS_MANIFESTS += ['tests/xpcshell.ini']
+ 
+ XPIDL_SOURCES += [
+diff --git a/toolkit/components/moz.build b/toolkit/components/moz.build
+--- a/toolkit/components/moz.build
++++ b/toolkit/components/moz.build
+@@ -93,8 +93,6 @@ if CONFIG['MOZ_XUL']:
+ if CONFIG['MOZ_TOOLKIT_SEARCH']:
+     DIRS += ['search']
+ 
+-DIRS += ['captivedetect']
+-
+ if CONFIG['OS_TARGET'] != 'Android':
+     DIRS += ['terminator']
+ 
+@@ -111,6 +109,3 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] != 'andr
+ 
+ if CONFIG['NIGHTLY_BUILD'] and CONFIG['MOZ_BUILD_APP'] == 'browser':
+     DIRS += ['payments']
+-
+-if CONFIG['MOZ_BUILD_APP'] == 'browser':
+-    DIRS += ['normandy']
+diff --git a/toolkit/components/telemetry/TelemetryEnvironment.jsm b/toolkit/components/telemetry/TelemetryEnvironment.jsm
+--- a/toolkit/components/telemetry/TelemetryEnvironment.jsm
++++ b/toolkit/components/telemetry/TelemetryEnvironment.jsm
+@@ -22,8 +22,6 @@ const Utils = TelemetryUtils;
+ 
+ const { AddonManager } = ChromeUtils.import("resource://gre/modules/AddonManager.jsm", {});
+ 
+-ChromeUtils.defineModuleGetter(this, "AttributionCode",
+-                               "resource:///modules/AttributionCode.jsm");
+ ChromeUtils.defineModuleGetter(this, "ctypes",
+                                "resource://gre/modules/ctypes.jsm");
+ ChromeUtils.defineModuleGetter(this, "LightweightThemeManager",
+@@ -1492,38 +1490,12 @@ EnvironmentCache.prototype = {
+    * @returns Promise<> resolved when the I/O is complete.
+    */
+   async _loadAttributionAsync() {
+-    try {
+-      await AttributionCode.getAttrDataAsync();
+-    } catch (e) {
+-      // The AttributionCode.jsm module might not be always available
+-      // (e.g. tests). Gracefully handle this.
+-      return;
+-    }
+-    this._updateAttribution();
+   },
+ 
+   /**
+    * Update the environment with the cached attribution data.
+    */
+   _updateAttribution() {
+-    let data = null;
+-    try {
+-      data = AttributionCode.getCachedAttributionData();
+-    } catch (e) {
+-      // The AttributionCode.jsm module might not be always available
+-      // (e.g. tests). Gracefully handle this.
+-    }
+-
+-    if (!data || !Object.keys(data).length) {
+-      return;
+-    }
+-
+-    let attributionData = {};
+-    for (let key in data) {
+-      attributionData[key] =
+-        limitStringToLength(data[key], MAX_ATTRIBUTION_STRING_LENGTH);
+-    }
+-    this._currentEnvironment.settings.attribution = attributionData;
+   },
+ 
+   /**
+diff --git a/toolkit/components/telemetry/moz.build b/toolkit/components/telemetry/moz.build
+--- a/toolkit/components/telemetry/moz.build
++++ b/toolkit/components/telemetry/moz.build
+@@ -10,11 +10,6 @@ include('/ipc/chromium/chromium-config.m
+ 
+ FINAL_LIBRARY = 'xul'
+ 
+-DIRS = [
+-    'hybrid-content',
+-    'pingsender',
+-]
+-
+ DEFINES['MOZ_APP_VERSION'] = '"%s"' % CONFIG['MOZ_APP_VERSION']
+ 
+ LOCAL_INCLUDES += [
+@@ -77,11 +72,6 @@ if CONFIG['MOZ_GECKO_PROFILER']:
+       'KeyedStackCapturer.cpp'
+     ]
+ 
+-EXTRA_COMPONENTS += [
+-    'TelemetryStartup.js',
+-    'TelemetryStartup.manifest'
+-]
+-
+ EXTRA_JS_MODULES += [
+     'GCTelemetry.jsm',
+     'TelemetryArchive.jsm',
+@@ -98,7 +88,6 @@ EXTRA_JS_MODULES += [
+     'TelemetryTimestamps.jsm',
+     'TelemetryUtils.jsm',
+     'UITelemetry.jsm',
+-    'UpdatePing.jsm',
+ ]
+ 
+ TESTING_JS_MODULES += [
+diff --git a/toolkit/components/terminator/moz.build b/toolkit/components/terminator/moz.build
+--- a/toolkit/components/terminator/moz.build
++++ b/toolkit/components/terminator/moz.build
+@@ -17,9 +17,4 @@ EXPORTS += [
+     'nsTerminator.h',
+ ]
+ 
+-EXTRA_COMPONENTS += [
+-    'nsTerminatorTelemetry.js',
+-    'terminator.manifest',
+-]
+-
+ FINAL_LIBRARY = 'xul'
+diff --git a/toolkit/content/jar.mn b/toolkit/content/jar.mn
+--- a/toolkit/content/jar.mn
++++ b/toolkit/content/jar.mn
+@@ -28,9 +28,6 @@ toolkit.jar:
+    content/global/aboutwebrtc/aboutWebrtc.html (aboutwebrtc/aboutWebrtc.html)
+    content/global/aboutSupport.js
+ *  content/global/aboutSupport.xhtml
+-   content/global/aboutTelemetry.js
+-   content/global/aboutTelemetry.xhtml
+-   content/global/aboutTelemetry.css
+    content/global/aboutUrlClassifier.js
+    content/global/aboutUrlClassifier.xhtml
+    content/global/aboutUrlClassifier.css
+diff --git a/toolkit/content/moz.build b/toolkit/content/moz.build
+--- a/toolkit/content/moz.build
++++ b/toolkit/content/moz.build
+@@ -34,9 +34,6 @@ DEFINES['TOPOBJDIR'] = TOPOBJDIR
+ with Files('**'):
+     BUG_COMPONENT = ('Toolkit', 'General')
+ 
+-with Files('aboutTelemetry.*'):
+-    BUG_COMPONENT = ('Toolkit', 'Telemetry')
+-
+ with Files('aboutwebrtc/*'):
+     BUG_COMPONENT = ('Core', 'WebRTC')
+ 
+@@ -231,9 +228,6 @@ with Files('aboutService*'):
+ with Files('aboutSupport*'):
+     BUG_COMPONENT = ('Toolkit', 'General')
+ 
+-with Files('aboutTelemetry*'):
+-    BUG_COMPONENT = ('Toolkit', 'Telemetry')
+-
+ with Files('autocomplete.css'):
+     BUG_COMPONENT = ('Firefox', 'Search')
+ 
+diff --git a/toolkit/mozapps/extensions/extensions.manifest b/toolkit/mozapps/extensions/extensions.manifest
+--- a/toolkit/mozapps/extensions/extensions.manifest
++++ b/toolkit/mozapps/extensions/extensions.manifest
+@@ -4,12 +4,8 @@ contract @mozilla.org/extensions/blockli
+ category profile-after-change nsBlocklistService @mozilla.org/extensions/blocklist;1 process=main
+ #endif
+ 
+-category update-timer nsBlocklistService @mozilla.org/extensions/blocklist;1,getService,blocklist-background-update-timer,extensions.blocklist.interval,86400
+ component {4399533d-08d1-458c-a87a-235f74451cfa} addonManager.js
+ contract @mozilla.org/addons/integration;1 {4399533d-08d1-458c-a87a-235f74451cfa}
+-#ifndef MOZ_WIDGET_ANDROID
+-category update-timer addonManager @mozilla.org/addons/integration;1,getService,addon-background-update-timer,extensions.update.interval,86400
+-#endif
+ component {7beb3ba8-6ec3-41b4-b67c-da89b8518922} amContentHandler.js
+ contract @mozilla.org/uriloader/content-handler;1?type=application/x-xpinstall {7beb3ba8-6ec3-41b4-b67c-da89b8518922}
+ component {9df8ef2b-94da-45c9-ab9f-132eb55fddf1} amInstallTrigger.js

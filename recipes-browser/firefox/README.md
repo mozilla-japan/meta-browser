@@ -1,7 +1,14 @@
-Firefox recipe
+Firefox & WebViewer recipe
 ===============
 
-This recipe provides a package for the Firefox web browser.
+These recipes provides a package for the Firefox web browser and WebViewer with Gecko engine.
+
+- firefox_60.1.0esr.bb
+  - Build Firefox web browser with official branding.
+- nightly_60.1.0esr.bb
+  - Build Firefox web browser with unofficial branding.
+- webviewer_60.1.0esr.bb
+  - Build [minimal WebViewer](https://github.com/webdino/amethyst) for embedded devices.   
 
 Build requirements
 ------------------
