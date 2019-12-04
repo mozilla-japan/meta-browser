@@ -42,6 +42,9 @@ S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 inherit mozilla rust-common
 
+TOOLCHAIN_pn-firefox = "clang"
+AS_pn-firefox = "${CC}"
+
 DISABLE_STATIC=""
 
 ARM_INSTRUCTION_SET_armv5 = "arm"
@@ -132,19 +135,19 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'kiosk', \
 
 python do_check_variables() {
     if bb.utils.contains('PACKAGECONFIG', 'glx egl', True, False, d):
-        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % bb.data.getVar('PN', d, 1))
+        bb.warn("%s: GLX support will be disabled when EGL is enabled!" % d.getVar('PN', d, 1))
     if bb.utils.contains_any('PACKAGECONFIG', 'glx egl', False, True, d):
         if bb.utils.contains('PACKAGECONFIG', 'webgl', True, False, d):
-            bb.warn("%s: WebGL won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
+            bb.warn("%s: WebGL won't be enabled when both glx and egl aren't enabled!" % d.getVar('PN', d, 1))
         if bb.utils.contains('PACKAGECONFIG', 'canvas-gpu', True, False, d):
-            bb.warn("%s: Canvas acceleration won't be enabled when both glx and egl aren't enabled!" % bb.data.getVar('PN', d, 1))
+            bb.warn("%s: Canvas acceleration won't be enabled when both glx and egl aren't enabled!" % d.getVar('PN', d, 1))
 }
 addtask check_variables before do_configure
 
 do_configure() {
     export SHELL=/bin/bash
     export RUSTSTDLIB="${STAGING_LIBDIR}/rust"
-    export RUSTFLAGS="${RUSTFLAGS} -Cpanic=unwind"
+    export RUSTFLAGS="${RUSTFLAGS} -Cpanic=unwind -A warnings --cap-lints warn"
     export RUST_TARGET="${TARGET_SYS}"
     export RUST_TARGET_PATH=${STAGING_LIBDIR_NATIVE}/rustlib
     export BINDGEN_MFLOAT="${@bb.utils.contains('TUNE_CCARGS_MFLOAT', 'hard', '-mfloat-abi=hard', '', d)}"
@@ -153,7 +156,7 @@ do_configure() {
     # We still need to support Yocto 2.1.
     # After migrating Yocto 2.4, it can be removed.
     export FALLBACK_CONFIGURE_ARGS="${CONFIGURE_ARGS}"
-    ./mach configure ${PACKAGECONFIG_CONFARGS} ${FALLBACK_CONFIGURE_ARGS}
+    ./mach configure ${PACKAGECONFIG_CONFARGS} ${FALLBACK_CONFIGURE_ARGS} --with-system-icu
     cp ${WORKDIR}/gn-configs/*.json ${S}/media/webrtc/gn-configs/
     ./mach build-backend -b GnMozbuildWriter
 }
