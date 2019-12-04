@@ -1,23 +1,5 @@
-From c47a19b69e6dbe82a62dd048d5c5fcf5ba603e9d Mon Sep 17 00:00:00 2001
-From: Takuro Ashie <ashie@clear-code.com>
-Date: Tue, 20 Nov 2018 09:35:37 +0900
-Subject: [PATCH] Add clang's include path on cross compiling
-
-It seems that clang doesn't include the path of its headers on
-cross compiling at least on Ubuntu-16.04. This patch ensure to
-add it.
-
-Signed-off-by: Takuro Ashie <ashie@clear-code.com>
----
- build/moz.configure/llvm-config.configure | 56 ++++++++++++++++++++++
- build/moz.configure/toolchain.configure   | 16 +++++--
- toolkit/moz.configure                     | 57 -----------------------
- 3 files changed, 69 insertions(+), 60 deletions(-)
- create mode 100644 build/moz.configure/llvm-config.configure
-
 diff --git a/build/moz.configure/llvm-config.configure b/build/moz.configure/llvm-config.configure
 new file mode 100644
-index 000000000000..fb80d420f2d5
 --- /dev/null
 +++ b/build/moz.configure/llvm-config.configure
 @@ -0,0 +1,56 @@
@@ -78,10 +60,9 @@ index 000000000000..fb80d420f2d5
 +    lines = check_cmd_output(llvm_config, *options).splitlines()
 +    return lines[0]
 diff --git a/build/moz.configure/toolchain.configure b/build/moz.configure/toolchain.configure
-index 67007c8dcf7c..4b2fd146893a 100755
 --- a/build/moz.configure/toolchain.configure
 +++ b/build/moz.configure/toolchain.configure
-@@ -1086,11 +1086,21 @@ option(env='BINDGEN_CFLAGS',
+@@ -1070,11 +1070,21 @@ option(env='BINDGEN_CFLAGS',
         help='Options bindgen should pass to the C/C++ parser')
  
  
@@ -107,12 +88,11 @@ index 67007c8dcf7c..4b2fd146893a 100755
  
  add_old_configure_assignment('_BINDGEN_CFLAGS', bindgen_cflags)
 diff --git a/toolkit/moz.configure b/toolkit/moz.configure
-index 4134ba2d042a..d09a00705a79 100644
 --- a/toolkit/moz.configure
 +++ b/toolkit/moz.configure
-@@ -598,57 +598,6 @@ def building_stylo_bindgen(stylo_config, bindgen_enabled, compile_environment):
-         return False
-     return stylo_config.build
+@@ -585,70 +585,12 @@ id_and_secret_keyfile('Leanplum SDK')
+ 
+ simple_keyfile('Pocket API')
  
 -# We support setting up the appropriate options for Stylo's build-time
 -# bindings generation via setting LLVM_CONFIG or by providing explicit
@@ -163,12 +143,12 @@ index 4134ba2d042a..d09a00705a79 100644
 -    return llvm_config_progs
 -
 -llvm_config = check_prog('LLVM_CONFIG', llvm_config_paths,
--                         when=building_stylo_bindgen,
+-                         when='--enable-compile-environment',
 -                         what='llvm-config', allow_missing=True)
- 
- with only_when(building_stylo_bindgen):
+-
+ with only_when('--enable-compile-environment'):
      option('--with-libclang-path', nargs=1,
-@@ -656,12 +605,6 @@ with only_when(building_stylo_bindgen):
+            help='Absolute path to a directory containing Clang/LLVM libraries for Stylo (version 3.9.x or above)')
      option('--with-clang-path', nargs=1,
             help='Absolute path to a Clang binary for Stylo bindgen (version 3.9.x or above)')
  
@@ -181,6 +161,3 @@ index 4134ba2d042a..d09a00705a79 100644
      @imports(_from='textwrap', _import='dedent')
      def check_minimum_llvm_config_version(llvm_config):
          version = Version(invoke_llvm_config(llvm_config, '--version'))
--- 
-2.17.1
-

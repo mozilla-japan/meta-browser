@@ -11,7 +11,7 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2"
-LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=f51d0fbc370c551d7371775b4f6544ca"
+LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=08b6c232986214633c7268fca3ba4e15"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/firefox:"
 
@@ -32,9 +32,14 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/fix-get-cpu-feature-definition-conflict.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/0001-Inject-configurable-reftest-wait-class-script-in-mar.patch \
+           file://fixes/force-cargo-library-build.patch \
+           file://fixes/Bug-1474265.patch \
            file://gn-configs/x64_False_arm64_linux.json \
            file://gn-configs/x64_False_arm_linux.json \
            "
+
+SRC_URI[archive.md5sum] = "f8ad78a0dfa6fa5dc67563785d62a25b"
+SRC_URI[archive.sha256sum] = "0bdecbbb2a955c9f4c5cd0b33acd1e47afcb6cd57ac89cf11257668e3cef202c"
 
 PR = "r0"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
@@ -60,7 +65,6 @@ PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
-PACKAGECONFIG[stylo] = "--enable-stylo,--disable-stylo,,"
 PACKAGECONFIG[webrtc] = "--enable-webrtc,--disable-webrtc,,"
 PACKAGECONFIG[kiosk] = ",,,"
 
@@ -111,8 +115,6 @@ SRC_URI += "${@bb.utils.contains_any('PACKAGECONFIG', 'glx egl', \
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'openmax', \
            ' \
-            file://openmax/0001-Add-initial-implementation-of-PureOmxPlatformLayer.patch \
-            file://openmax/0002-OmxDataDecoder-Fix-a-stall-issue-on-shutting-down.patch \
             file://openmax/0003-Plug-memory-leak-of-PureOmxPlatformLayer.patch \
             file://openmax/0004-Dont-test-OMX_UseEGLImage.patch \
             file://openmax/0005-openmax-Import-latest-OpenMAX-IL-1.1.2-headers.patch \

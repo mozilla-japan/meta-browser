@@ -1,0 +1,13 @@
+diff --git a/config/rules.mk b/config/rules.mk
+--- a/config/rules.mk
++++ b/config/rules.mk
+@@ -928,7 +928,8 @@ ifndef MOZ_TSAN
+ target_cargo_env_vars := \
+ 	MOZ_CARGO_WRAP_LDFLAGS="$(filter-out -framework Cocoa -lobjc AudioToolbox ExceptionHandling,$(LDFLAGS))" \
+ 	MOZ_CARGO_WRAP_LD="$(CC)" \
+-	$(cargo_linker_env_var)=$(topsrcdir)/build/cargo-linker
++	$(cargo_linker_env_var)=$(topsrcdir)/build/cargo-linker \
++	HOST_CFLAGS="$(COMPUTED_HOST_CFLAGS)"
+ endif # MOZ_TSAN
+ endif # MOZ_ASAN
+ 

@@ -47,7 +47,7 @@ diff -r aabfe960ab59 -r 1d3bce4fa4d4 gfx/gl/GLLibraryEGL.cpp
 +            nativeDisplay = sGdkWaylandDisplayGetWlDisplay(gdkDisplay);
 +            if (!nativeDisplay) {
 +              NS_WARNING("Failed to get wl_display.");
-+              return false;
++              return nullptr;
 +            }
 +        }
 +#endif

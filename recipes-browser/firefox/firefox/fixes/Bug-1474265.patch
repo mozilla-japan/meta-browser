@@ -1,0 +1,12 @@
+diff --git a/widget/xremoteclient/DBusRemoteClient.cpp b/widget/xremoteclient/DBusRemoteClient.cpp
+--- a/widget/xremoteclient/DBusRemoteClient.cpp
++++ b/widget/xremoteclient/DBusRemoteClient.cpp
+@@ -142,7 +142,7 @@ DBusRemoteClient::GetRemoteDestinationNa
+       (bool (*)(const char *, DBusError *))
+       dlsym(RTLD_DEFAULT, "dbus_validate_bus_name");
+     if (!sDBusValidateBusName) {
+-      return false
++      return false;
+     }
+ 
+     if (!sDBusValidateBusName(aDestinationName.get(), nullptr)) {
