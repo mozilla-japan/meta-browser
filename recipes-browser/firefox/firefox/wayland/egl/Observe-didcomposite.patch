@@ -1,34 +1,16 @@
-From ef357cc034c8f17ef344a2d42c44831fb53334ca Mon Sep 17 00:00:00 2001
-From: Hiroshi Hatake <hatake@clear-code.com>
-Date: Fri, 2 Nov 2018 09:34:33 +0000
-Subject: [PATCH] Observe didcomposite
-
-Because previous implementation causes EGL related operation conflicts and deadlock.
-Composite and Resize are exclusive operation on R-Car Gen3 series' PVR driver.
-So, we should avoid this deadlock with DidCompositeOserver.
-Because this patch makes more determinisitic EGL operation than previous.
----
- widget/gtk/mozcontainer.cpp | 42 ++++++++++++++++++++++++++++++++++--------
- widget/gtk/mozcontainer.h   |  4 ++++
- widget/gtk/nsWindow.cpp     | 30 ++++++++++++++++++++++++++++++
- widget/gtk/nsWindow.h       |  2 ++
- 4 files changed, 70 insertions(+), 8 deletions(-)
-
 diff --git a/widget/gtk/mozcontainer.cpp b/widget/gtk/mozcontainer.cpp
-index 82fbfc6..b750c3a 100644
 --- a/widget/gtk/mozcontainer.cpp
 +++ b/widget/gtk/mozcontainer.cpp
-@@ -213,6 +213,9 @@ moz_container_init (MozContainer *container)
+@@ -213,6 +213,8 @@ moz_container_init (MozContainer *contai
        container->subsurface = nullptr;
        container->eglwindow = nullptr;
-       container->committed = FALSE;
+       container->committed = false;
 +      container->egl_window_width = -1;
 +      container->egl_window_height = -1;
-+
  
        GdkDisplay *gdk_display = gtk_widget_get_display(GTK_WIDGET(container));
        if (GDK_IS_WAYLAND_DISPLAY (gdk_display)) {
-@@ -459,11 +462,6 @@ moz_container_size_allocate (GtkWidget     *widget,
+@@ -459,11 +461,6 @@ moz_container_size_allocate (GtkWidget  
          gdk_window_get_position(gtk_widget_get_window(widget), &x, &y);
          wl_subsurface_set_position(container->subsurface, x, y);
      }
@@ -40,7 +22,7 @@ index 82fbfc6..b750c3a 100644
  #endif
  }
  
-@@ -599,10 +597,13 @@ moz_container_get_wl_egl_window(MozContainer *container)
+@@ -599,10 +596,13 @@ moz_container_get_wl_egl_window(MozConta
              return nullptr;
  
        GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(container));
@@ -57,9 +39,9 @@ index 82fbfc6..b750c3a 100644
      }
      return container->eglwindow;
  }
-@@ -618,4 +619,29 @@ moz_container_is_committed(MozContainer *container)
+@@ -612,4 +612,29 @@ moz_container_has_wl_egl_window(MozConta
  {
-     return container->committed;
+     return container->eglwindow ? true : false;
  }
 +
 +void
@@ -88,32 +70,30 @@ index 82fbfc6..b750c3a 100644
 +}
  #endif
 diff --git a/widget/gtk/mozcontainer.h b/widget/gtk/mozcontainer.h
-index a78f089..b10244b 100644
 --- a/widget/gtk/mozcontainer.h
 +++ b/widget/gtk/mozcontainer.h
 @@ -74,6 +74,9 @@ struct _MozContainer
      struct wl_subsurface    *subsurface;
      struct wl_egl_window    *eglwindow;
-     gboolean committed;
+     gboolean                 committed;
 +    gint egl_window_width;
 +    gint egl_window_height;
 +
  #endif
  };
  
-@@ -100,6 +103,7 @@ struct wl_surface* moz_container_get_wl_surface(MozContainer *container);
+@@ -99,6 +102,7 @@ void       moz_container_move          (
+ struct wl_surface* moz_container_get_wl_surface(MozContainer *container);
  struct wl_egl_window* moz_container_get_wl_egl_window(MozContainer *container);
  gboolean moz_container_has_wl_egl_window(MozContainer *container);
- gboolean moz_container_is_committed(MozContainer *container);
 +void     moz_container_adjust_wl_egl_window_size(MozContainer *container);
  #endif
  
  #endif /* __MOZ_CONTAINER_H__ */
 diff --git a/widget/gtk/nsWindow.cpp b/widget/gtk/nsWindow.cpp
-index a6a0b8c..5048d51 100644
 --- a/widget/gtk/nsWindow.cpp
 +++ b/widget/gtk/nsWindow.cpp
-@@ -345,6 +345,25 @@ private:
+@@ -342,6 +342,25 @@ private:
      TimeStamp  mAsyncUpdateStart;
  };
  
@@ -139,7 +119,7 @@ index a6a0b8c..5048d51 100644
  } // namespace mozilla
  
  static NS_DEFINE_IID(kCDragServiceCID,  NS_DRAGSERVICE_CID);
-@@ -488,6 +507,9 @@ nsWindow::nsWindow()
+@@ -482,6 +501,9 @@ nsWindow::nsWindow()
      mPendingConfigures = 0;
      mCSDSupportLevel = CSD_SUPPORT_NONE;
      mDrawInTitlebar = false;
@@ -165,7 +145,6 @@ index a6a0b8c..5048d51 100644
          GetLayerManager()->SendInvalidRegion(region.ToUnknownRegion());
      }
 diff --git a/widget/gtk/nsWindow.h b/widget/gtk/nsWindow.h
-index 5a96079..7ef7804 100644
 --- a/widget/gtk/nsWindow.h
 +++ b/widget/gtk/nsWindow.h
 @@ -86,6 +86,7 @@ class gfxPattern;
@@ -176,7 +155,7 @@ index 5a96079..7ef7804 100644
  }
  
  class nsWindow final : public nsBaseWidget
-@@ -614,6 +615,7 @@ private:
+@@ -650,6 +651,7 @@ private:
      RefPtr<mozilla::widget::IMContextWrapper> mIMContext;
  
      mozilla::UniquePtr<mozilla::CurrentX11TimeGetter> mCurrentTimeGetter;
@@ -184,6 +163,3 @@ index 5a96079..7ef7804 100644
      static CSDSupportLevel sCSDSupportLevel;
  };
  
--- 
-2.7.4
-

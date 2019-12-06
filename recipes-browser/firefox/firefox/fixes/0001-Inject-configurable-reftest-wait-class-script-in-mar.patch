@@ -1,25 +1,15 @@
-From de3063d36326506733ad4104abb6b004a1f01175 Mon Sep 17 00:00:00 2001
-From: Hiroshi Hatake <hatake@clear-code.com>
-Date: Wed, 9 Jan 2019 11:20:44 +0900
-Subject: [PATCH] Inject configurable reftest-wait class script in marionette
-
----
- testing/marionette/listener.js | 24 ++++++++++++++++++++----
- 1 file changed, 20 insertions(+), 4 deletions(-)
-
 diff --git a/testing/marionette/listener.js b/testing/marionette/listener.js
-index d55fd314b..05cd8b00e 100644
 --- a/testing/marionette/listener.js
 +++ b/testing/marionette/listener.js
-@@ -13,6 +13,7 @@ const winUtil = content.QueryInterface(Ci.nsIInterfaceRequestor)
+@@ -13,6 +13,7 @@ const winUtil = content.QueryInterface(C
  ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
- ChromeUtils.import("resource://gre/modules/Log.jsm");
  ChromeUtils.import("resource://gre/modules/Services.jsm");
+ ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 +ChromeUtils.import("resource://gre/modules/Preferences.jsm");
  
  ChromeUtils.import("chrome://marionette/content/accessibility.js");
  ChromeUtils.import("chrome://marionette/content/action.js");
-@@ -64,6 +65,7 @@ const SUPPORTED_STRATEGIES = new Set([
+@@ -66,6 +67,7 @@ const SUPPORTED_STRATEGIES = new Set([
    element.Strategy.TagName,
    element.Strategy.XPath,
  ]);
@@ -27,7 +17,7 @@ index d55fd314b..05cd8b00e 100644
  
  Object.defineProperty(this, "capabilities", {
    get() {
-@@ -1615,6 +1617,14 @@ function flushRendering() {
+@@ -1606,6 +1608,14 @@ function flushRendering() {
    return windowUtils.isMozAfterPaintPending;
  }
  
@@ -42,15 +32,15 @@ index d55fd314b..05cd8b00e 100644
  async function reftestWait(url, remote) {
    let win = curContainer.frame;
    let document = curContainer.frame.document;
-@@ -1624,6 +1634,7 @@ async function reftestWait(url, remote) {
- 
+@@ -1614,6 +1624,7 @@ async function reftestWait(url, remote) 
+       .getInterface(Ci.nsIDOMWindowUtils);
  
    let reftestWait = false;
 +  let reftestWaitSeconds = Preferences.get(PREF_REFTEST_WAIT) || 1000;
  
    if (document.location.href !== url || document.readyState != "complete") {
      logger.debug(truncate`Waiting for page load of ${url}`);
-@@ -1633,7 +1644,10 @@ async function reftestWait(url, remote) {
+@@ -1623,7 +1634,10 @@ async function reftestWait(url, remote) 
              event.target.location.href === url) {
            win = curContainer.frame;
            document = curContainer.frame.document;
@@ -62,7 +52,7 @@ index d55fd314b..05cd8b00e 100644
            removeEventListener("load", maybeResolve, {once: true});
            win.setTimeout(resolve, 0);
          }
-@@ -1643,18 +1657,20 @@ async function reftestWait(url, remote) {
+@@ -1633,18 +1647,20 @@ async function reftestWait(url, remote) 
    } else {
      // Ensure that the event loop has spun at least once since load,
      // so that setTimeout(fn, 0) in the load event has run
@@ -86,6 +76,3 @@ index d55fd314b..05cd8b00e 100644
              observer.disconnect();
              logger.debug("reftest-wait removed");
              win.setTimeout(resolve, 0);
--- 
-2.11.0
-

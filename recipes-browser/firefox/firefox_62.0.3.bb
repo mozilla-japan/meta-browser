@@ -24,7 +24,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://prefs/autoconfig.cfg \
            file://fixes/bug1433081-fix-with-gl-provider-option.patch \
            file://fixes/bug1434526-Fix-a-build-error-of-Gecko-Profiler.patch \
-           file://fixes/bug1479540-Accept-triplet-strings-with-only-two.patch \
            file://fixes/0001-Enable-to-specify-RUST_TARGET-via-enviroment-variabl.patch \
            file://fixes/rustc_cross_flags.patch \
            file://fixes/0001-Add-clang-s-include-path-on-cross-compiling.patch \
@@ -33,13 +32,12 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/0001-Inject-configurable-reftest-wait-class-script-in-mar.patch \
            file://fixes/force-cargo-library-build.patch \
-           file://fixes/Bug-1474265.patch \
            file://gn-configs/x64_False_arm64_linux.json \
            file://gn-configs/x64_False_arm_linux.json \
            "
 
-SRC_URI[archive.md5sum] = "f8ad78a0dfa6fa5dc67563785d62a25b"
-SRC_URI[archive.sha256sum] = "0bdecbbb2a955c9f4c5cd0b33acd1e47afcb6cd57ac89cf11257668e3cef202c"
+SRC_URI[archive.md5sum] = "01378ce8811bb595a06d0127608feacb"
+SRC_URI[archive.sha256sum] = "c1d506eb7b1225e52398b2e4587085e77ff5f1fbf07728ba0fee60bbeae94636"
 
 PR = "r0"
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
@@ -61,7 +59,7 @@ PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "alsa", "alsa", "", d
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[wayland] = "--enable-default-toolkit=cairo-gtk3-wayland,"
 PACKAGECONFIG[glx] = ",,,"
-PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
+#PACKAGECONFIG[egl] = "--with-gl-provider=EGL,,virtual/egl,"
 PACKAGECONFIG[openmax] = "--enable-openmax,,,"
 PACKAGECONFIG[webgl] = ",,,"
 PACKAGECONFIG[canvas-gpu] = ",,,"
@@ -70,14 +68,6 @@ PACKAGECONFIG[kiosk] = ",,,"
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
            ' \
-            file://wayland/bug1468670-enable-alt-modifier-on-wayland.patch \
-            file://wayland/bug1438131-Implement-Drop-on-Wayland.patch \
-            file://wayland/bug1460810-fix-segfault-while-pasting-text.patch \
-            file://wayland/bug1438136-clipboard-text-null-terminate.patch \
-            file://wayland/bug1461306-fix-size-of-mime-type-array.patch \
-            file://wayland/bug1462622-Dont-use-GLXVsyncSource-on-non-X11-displays.patch \
-            file://wayland/bug1462640-Allow-content-processes-to-mincore.patch \
-            file://wayland/bug1464808-Set-move-as-default-Drag-Drop-action.patch \
             file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
             file://wayland/0001-Permit-to-use-gtk-wayland-3.0-3.18.patch \
             file://wayland/0001-Add-workarround-to-reduce-unexpected-window-resize-o.patch \
@@ -90,12 +80,7 @@ SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland', \
 # Thus, e10s should be disabled when EGL is enabled.
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'wayland egl', \
            ' \
-            file://wayland/egl/bug1460603-GLLibraryEGL-Use-wl_display-to-get-EGLDisplay-on-Way.patch \
-            file://wayland/egl/bug1460605-Provide-NS_NATIVE_EGL_WINDOW-to-get-a-native-EGL-window-on-wa.patch \
-            file://wayland/egl/bug1460605-Use-NS_NATIVE_EGL_WINDOW-instead-of-NS_NATIVE_WINDOW-on-GTK.patch \
             file://wayland/egl/bug1374136-Enable-sharing-SharedSurface_EGLImage.patch \
-            file://wayland/egl/bug1462642-Use-dummy-wl_egl_window-instead-of-PBuffer.patch \
-            file://wayland/egl/bug1464823-avoid-freeze-on-starting-compositor.patch \
             file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
             file://wayland/egl/0002-Disable-query-EGL_EXTENSIONS.patch \
             file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
