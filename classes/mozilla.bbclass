@@ -38,6 +38,10 @@ mozilla_run_mach() {
 	export INSTALL_SDK=0
 	export DESTDIR="${D}"
 
+        # FIXME: How to configure the correct way with meta-clang layer?
+        if [ ! -d "${RECIPE_SYSROOT}/usr/lib" ]; then
+                ln -s ${RECIPE_SYSROOT}/usr/lib64 ${RECIPE_SYSROOT}/usr/lib
+        fi
 	./mach "$@"
 }
 
