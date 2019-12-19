@@ -23,22 +23,16 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
            file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
            file://fixes/Bug-1556197-amend-Bug-1544631-for-fixing-mips32.patch \
-           file://fixes/Bug-1560340-Only-add-confvars.sh-as-a-dependency-to-.patch \
            file://fixes/bug1545437-enable-to-specify-rust-target.patch \
-           file://fixes/avoid-running-autoconf2.13.patch \
-           file://fixes/pre-generated-old-configure.patch \
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
-           file://fixes/0001-Bug-1554949-Fix-WebRTC-build-failure-with-newer-linu.patch \
            file://porting/Add-xptcall-support-for-SH4-processors.patch \
            file://porting/NSS-Fix-FTBFS-on-Hurd-because-of-MAXPATHLEN.patch \
            file://porting/Work-around-Debian-bug-844357.patch \
            file://porting/Use-NEON_FLAGS-instead-of-VPX_ASFLAGS-for-libaom-neo.patch \
-           file://porting/Work-around-GCC-ICE-on-mips-i386-and-s390x.patch \
            file://prefs/Set-javascript.options.showInConsole.patch \
            file://prefs/Set-DPI-to-system-settings.patch \
            file://prefs/Don-t-auto-disable-extensions-in-system-directories.patch \
-           file://debian-hacks/Avoid-wrong-sessionstore-data-to-keep-windows-out-of.patch \
            file://debian-hacks/Add-another-preferences-directory-for-applications-p.patch \
            file://debian-hacks/Don-t-register-plugins-if-the-MOZILLA_DISABLE_PLUGIN.patch \
            file://debian-hacks/Don-t-error-out-when-run-time-libsqlite-is-older-tha.patch \
@@ -49,7 +43,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://debian-hacks/Use-the-Mozilla-Location-Service-key-when-the-Google.patch \
            file://debian-hacks/Avoid-using-vmrs-vmsr-on-armel.patch \
            file://debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch \
-           file://debian-hacks/Attempt-to-work-around-make-issue-happening-on-arch-.patch \
            file://debian-hacks/Use-build-id-as-langpack-version-for-reproducibility.patch \
            file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
            file://wayland/egl/bug1571603-Disable-eglQueryString-nullptr-EGL_EXTENSIONS.patch \
@@ -57,8 +50,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            "
 
-SRC_URI[archive.md5sum] = "63190d5f5d197fd1a3d375a54d833e13"
-SRC_URI[archive.sha256sum] = "dbb494521b3e246b367e453cc8d438b82b9fd2e05da273f5901391f0c52008b5"
+SRC_URI[archive.md5sum] = "22e8ec79442d04cfc63c5822b321cd9c"
+SRC_URI[archive.sha256sum] = "413c3febdfeb69eade818824eecbdb11eaeda71de229573810afd641ba741ec5"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
