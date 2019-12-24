@@ -1,31 +1,23 @@
 diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/BrowserContentHandler.jsm
 --- a/browser/components/BrowserContentHandler.jsm
 +++ b/browser/components/BrowserContentHandler.jsm
-@@ -110,49 +110,6 @@ const OVERRIDE_ALTERNATE_PROFILE = 4;
+@@ -93,40 +93,6 @@ const OVERRIDE_ALTERNATE_PROFILE = 4;
   *  OVERRIDE_NONE otherwise.
   */
  function needHomepageOverride(prefb) {
--  let pService = Cc["@mozilla.org/toolkit/profile-service;1"].getService(
--    Ci.nsIToolkitProfileService
--  );
+-  let pService = Cc["@mozilla.org/toolkit/profile-service;1"].
+-                 getService(Ci.nsIToolkitProfileService);
 -  if (pService.createdAlternateProfile) {
 -    return OVERRIDE_ALTERNATE_PROFILE;
 -  }
--  var savedmstone = prefb.getCharPref(
--    "browser.startup.homepage_override.mstone",
--    ""
--  );
+-  var savedmstone = prefb.getCharPref("browser.startup.homepage_override.mstone", "");
 -
--  if (savedmstone == "ignore") {
+-  if (savedmstone == "ignore")
 -    return OVERRIDE_NONE;
--  }
 -
 -  var mstone = Services.appinfo.platformVersion;
 -
--  var savedBuildID = prefb.getCharPref(
--    "browser.startup.homepage_override.buildID",
--    ""
--  );
+-  var savedBuildID = prefb.getCharPref("browser.startup.homepage_override.buildID", "");
 -
 -  var buildID = Services.appinfo.platformBuildID;
 -
@@ -34,13 +26,12 @@ diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/B
 -    // agreement if the platform's installer had already shown one. Now with
 -    // about:rights we've removed the EULA stuff and default pref, but we need
 -    // a way to make existing profiles retain the default that we removed.
--    if (savedmstone) {
+-    if (savedmstone)
 -      prefb.setBoolPref("browser.rights.3.shown", true);
--    }
 -
 -    prefb.setCharPref("browser.startup.homepage_override.mstone", mstone);
 -    prefb.setCharPref("browser.startup.homepage_override.buildID", buildID);
--    return savedmstone ? OVERRIDE_NEW_MSTONE : OVERRIDE_NEW_PROFILE;
+-    return (savedmstone ? OVERRIDE_NEW_MSTONE : OVERRIDE_NEW_PROFILE);
 -  }
 -
 -  if (buildID != savedBuildID) {
@@ -51,19 +42,16 @@ diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/B
    return OVERRIDE_NONE;
  }
  
-@@ -713,17 +670,7 @@ nsBrowserContentHandler.prototype = {
+@@ -602,14 +568,7 @@ nsBrowserContentHandler.prototype = {
+     if (startPage == "about:blank")
        startPage = "";
-     }
  
--    let skipStartPage =
--      (override == OVERRIDE_NEW_PROFILE ||
--        override == OVERRIDE_ALTERNATE_PROFILE) &&
+-    let skipStartPage = ((override == OVERRIDE_NEW_PROFILE) || (override == OVERRIDE_ALTERNATE_PROFILE)) &&
 -      prefb.getBoolPref("browser.startup.firstrunSkipsHomepage");
 -    // Only show the startPage if we're not restoring an update session and are
 -    // not set to skip the start page on this profile
--    if (overridePage && startPage && !willRestoreSession && !skipStartPage) {
+-    if (overridePage && startPage && !willRestoreSession && !skipStartPage)
 -      return overridePage + "|" + startPage;
--    }
 -
 -    return overridePage || startPage || "about:blank";
 +    return startPage || "about:blank";
@@ -73,15 +61,14 @@ diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/B
 diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue.jsm
 --- a/browser/components/BrowserGlue.jsm
 +++ b/browser/components/BrowserGlue.jsm
-@@ -2277,128 +2277,6 @@ BrowserGlue.prototype = {
+@@ -1929,97 +1929,6 @@ BrowserGlue.prototype = {
    },
  
    _showUpdateNotification: function BG__showUpdateNotification() {
 -    Services.prefs.clearUserPref("app.update.postupdate");
 -
--    var um = Cc["@mozilla.org/updates/update-manager;1"].getService(
--      Ci.nsIUpdateManager
--    );
+-    var um = Cc["@mozilla.org/updates/update-manager;1"].
+-             getService(Ci.nsIUpdateManager);
 -    try {
 -      // If the updates.xml file is deleted then getUpdateAt will throw.
 -      var update = um.getUpdateAt(0).QueryInterface(Ci.nsIWritablePropertyBag);
@@ -92,95 +79,71 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    }
 -
 -    var actions = update.getProperty("actions");
--    if (!actions || actions.includes("silent")) {
+-    if (!actions || actions.includes("silent"))
 -      return;
--    }
 -
 -    var appName = gBrandBundle.GetStringFromName("brandShortName");
 -
 -    function getNotifyString(aPropData) {
 -      var propValue = update.getProperty(aPropData.propName);
 -      if (!propValue) {
--        if (aPropData.prefName) {
+-        if (aPropData.prefName)
 -          propValue = Services.urlFormatter.formatURLPref(aPropData.prefName);
--        } else if (aPropData.stringParams) {
--          propValue = gBrowserBundle.formatStringFromName(
--            aPropData.stringName,
--            aPropData.stringParams,
--            aPropData.stringParams.length
--          );
--        } else {
+-        else if (aPropData.stringParams)
+-          propValue = gBrowserBundle.formatStringFromName(aPropData.stringName,
+-                                                          aPropData.stringParams,
+-                                                          aPropData.stringParams.length);
+-        else
 -          propValue = gBrowserBundle.GetStringFromName(aPropData.stringName);
--        }
 -      }
 -      return propValue;
 -    }
 -
 -    if (actions.includes("showNotification")) {
--      let text = getNotifyString({
--        propName: "notificationText",
--        stringName: "puNotifyText",
--        stringParams: [appName],
--      });
--      let url = getNotifyString({
--        propName: "notificationURL",
--        prefName: "startup.homepage_override_url",
--      });
--      let label = getNotifyString({
--        propName: "notificationButtonLabel",
--        stringName: "pu.notifyButton.label",
--      });
--      let key = getNotifyString({
--        propName: "notificationButtonAccessKey",
--        stringName: "pu.notifyButton.accesskey",
--      });
+-      let text = getNotifyString({propName: "notificationText",
+-                                  stringName: "puNotifyText",
+-                                  stringParams: [appName]});
+-      let url = getNotifyString({propName: "notificationURL",
+-                                 prefName: "startup.homepage_override_url"});
+-      let label = getNotifyString({propName: "notificationButtonLabel",
+-                                   stringName: "pu.notifyButton.label"});
+-      let key = getNotifyString({propName: "notificationButtonAccessKey",
+-                                 stringName: "pu.notifyButton.accesskey"});
 -
 -      let win = BrowserWindowTracker.getTopWindow();
 -
 -      let buttons = [
--        {
--          label,
--          accessKey: key,
--          popup: null,
--          callback(aNotificationBar, aButton) {
--            win.openTrustedLinkIn(url, "tab");
--          },
--        },
--      ];
+-                      {
+-                        label,
+-                        accessKey: key,
+-                        popup:     null,
+-                        callback(aNotificationBar, aButton) {
+-                          win.openTrustedLinkIn(url, "tab");
+-                        },
+-                      },
+-                    ];
 -
--      win.gHighPriorityNotificationBox.appendNotification(
--        text,
--        "post-update-notification",
--        null,
--        win.gHighPriorityNotificationBox.PRIORITY_INFO_LOW,
--        buttons
--      );
+-      win.gHighPriorityNotificationBox.appendNotification(text,
+-        "post-update-notification", null,
+-        win.gHighPriorityNotificationBox.PRIORITY_INFO_LOW, buttons);
 -    }
 -
--    if (!actions.includes("showAlert")) {
+-    if (!actions.includes("showAlert"))
 -      return;
--    }
 -
--    let title = getNotifyString({
--      propName: "alertTitle",
--      stringName: "puAlertTitle",
--      stringParams: [appName],
--    });
--    let text = getNotifyString({
--      propName: "alertText",
--      stringName: "puAlertText",
--      stringParams: [appName],
--    });
--    let url = getNotifyString({
--      propName: "alertURL",
--      prefName: "startup.homepage_override_url",
--    });
+-    let title = getNotifyString({propName: "alertTitle",
+-                                 stringName: "puAlertTitle",
+-                                 stringParams: [appName]});
+-    let text = getNotifyString({propName: "alertText",
+-                                stringName: "puAlertText",
+-                                stringParams: [appName]});
+-    let url = getNotifyString({propName: "alertURL",
+-                               prefName: "startup.homepage_override_url"});
 -
 -    function clickCallback(subject, topic, data) {
 -      // This callback will be called twice but only once with this topic
--      if (topic != "alertclickcallback") {
+-      if (topic != "alertclickcallback")
 -        return;
--      }
 -      let win = BrowserWindowTracker.getTopWindow();
 -      win.openTrustedLinkIn(data, "tab");
 -    }
@@ -188,14 +151,8 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    try {
 -      // This will throw NS_ERROR_NOT_AVAILABLE if the notification cannot
 -      // be displayed per the idl.
--      this.AlertsService.showAlertNotification(
--        null,
--        title,
--        text,
--        true,
--        url,
--        clickCallback
--      );
+-      this.AlertsService.showAlertNotification(null, title, text,
+-                                          true, url, clickCallback);
 -    } catch (e) {
 -      Cu.reportError(e);
 -    }

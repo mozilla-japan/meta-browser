@@ -72,7 +72,7 @@ diff --git a/modules/libpref/StaticPrefs.h b/modules/libpref/StaticPrefs.h
 diff --git a/modules/libpref/init/StaticPrefList.h b/modules/libpref/init/StaticPrefList.h
 --- a/modules/libpref/init/StaticPrefList.h
 +++ b/modules/libpref/init/StaticPrefList.h
-@@ -2579,31 +2579,31 @@ VARCACHE_PREF(
+@@ -2568,31 +2568,31 @@ VARCACHE_PREF(
  )
  
  // Password protection
@@ -111,7 +111,7 @@ diff --git a/modules/libpref/init/StaticPrefList.h b/modules/libpref/init/Static
  )
  
  // Maximum size for an array to store the safebrowsing prefixset.
-@@ -2741,7 +2741,7 @@ VARCACHE_PREF(
+@@ -2730,7 +2730,7 @@ VARCACHE_PREF(
  // Plugins prefs
  //---------------------------------------------------------------------------
  
@@ -359,133 +359,111 @@ diff --git a/toolkit/components/reputationservice/ApplicationReputation.cpp b/to
 diff --git a/toolkit/components/url-classifier/SafeBrowsing.jsm b/toolkit/components/url-classifier/SafeBrowsing.jsm
 --- a/toolkit/components/url-classifier/SafeBrowsing.jsm
 +++ b/toolkit/components/url-classifier/SafeBrowsing.jsm
-@@ -37,9 +37,7 @@ const FEATURES = [
-     name: "phishing",
+@@ -36,7 +36,7 @@ const FEATURES = [
+   { name: "phishing",
      list: ["urlclassifier.phishTable"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "browser.safebrowsing.phishing.enabled"
--      );
+-      return Services.prefs.getBoolPref("browser.safebrowsing.phishing.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -52,7 +50,7 @@ const FEATURES = [
-     name: "malware",
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.phishing.update", this.enabled());
+@@ -45,7 +45,7 @@ const FEATURES = [
+   { name: "malware",
      list: ["urlclassifier.malwareTable"],
      enabled() {
 -      return Services.prefs.getBoolPref("browser.safebrowsing.malware.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -65,9 +63,7 @@ const FEATURES = [
-     name: "blockedURIs",
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.malware.update", this.enabled());
+@@ -54,7 +54,7 @@ const FEATURES = [
+   { name: "blockedURIs",
      list: ["urlclassifier.blockedTable"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "browser.safebrowsing.blockedURIs.enabled"
--      );
+-      return Services.prefs.getBoolPref("browser.safebrowsing.blockedURIs.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -80,9 +76,7 @@ const FEATURES = [
-     name: "passwords",
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.blockedURIs.update", this.enabled());
+@@ -63,7 +63,7 @@ const FEATURES = [
+   { name: "passwords",
      list: ["urlclassifier.passwordAllowTable"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "browser.safebrowsing.passwords.enabled"
--      );
+-      return Services.prefs.getBoolPref("browser.safebrowsing.passwords.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -98,10 +92,7 @@ const FEATURES = [
-       "urlclassifier.downloadAllowTable",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.passwords.update", this.enabled());
+@@ -73,8 +73,7 @@ const FEATURES = [
+     list: ["urlclassifier.downloadBlockTable",
+            "urlclassifier.downloadAllowTable"],
      enabled() {
--      return (
--        Services.prefs.getBoolPref("browser.safebrowsing.downloads.enabled") &&
--        Services.prefs.getBoolPref("browser.safebrowsing.malware.enabled")
--      );
+-      return Services.prefs.getBoolPref("browser.safebrowsing.downloads.enabled") &&
+-             Services.prefs.getBoolPref("browser.safebrowsing.malware.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -135,10 +126,7 @@ const FEATURES = [
-       "urlclassifier.trackingWhitelistTable",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.downloads.update", this.enabled());
+@@ -94,8 +93,7 @@ const FEATURES = [
+     list: ["urlclassifier.trackingTable",
+            "urlclassifier.trackingWhitelistTable"],
      enabled() {
--      return (
--        Services.prefs.getBoolPref("privacy.trackingprotection.enabled") ||
--        Services.prefs.getBoolPref("privacy.trackingprotection.pbmode.enabled")
--      );
+-      return Services.prefs.getBoolPref("privacy.trackingprotection.enabled") ||
+-             Services.prefs.getBoolPref("privacy.trackingprotection.pbmode.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -158,7 +146,7 @@ const FEATURES = [
-       "urlclassifier.flashSubDocExceptTable",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.trackingProtection.update", this.enabled());
+@@ -109,7 +107,7 @@ const FEATURES = [
+            "urlclassifier.flashSubDocTable",
+            "urlclassifier.flashSubDocExceptTable"],
      enabled() {
 -      return Services.prefs.getBoolPref("plugins.flashBlock.enabled");
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -174,10 +162,7 @@ const FEATURES = [
-       "urlclassifier.features.fingerprinting.annotate.whitelistTables",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.flashBlock.update", this.enabled());
+@@ -119,7 +117,7 @@ const FEATURES = [
+     list: ["urlclassifier.features.fingerprinting.annotate.blacklistTables",
+            "urlclassifier.features.fingerprinting.annotate.whitelistTables"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "privacy.trackingprotection.fingerprinting.annotate.enabled",
--        false
--      );
+-      return Services.prefs.getBoolPref("privacy.trackingprotection.fingerprinting.annotate.enabled", false);
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -193,10 +178,7 @@ const FEATURES = [
-       "urlclassifier.features.fingerprinting.whitelistTables",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.fingerprinting.annotate.update", this.enabled());
+@@ -129,7 +127,7 @@ const FEATURES = [
+     list: ["urlclassifier.features.fingerprinting.blacklistTables",
+            "urlclassifier.features.fingerprinting.whitelistTables"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "privacy.trackingprotection.fingerprinting.enabled",
--        false
--      );
+-      return Services.prefs.getBoolPref("privacy.trackingprotection.fingerprinting.enabled", false);
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -212,10 +194,7 @@ const FEATURES = [
-       "urlclassifier.features.cryptomining.annotate.whitelistTables",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.fingerprinting.update", this.enabled());
+@@ -139,7 +137,7 @@ const FEATURES = [
+     list: ["urlclassifier.features.cryptomining.annotate.blacklistTables",
+            "urlclassifier.features.cryptomining.annotate.whitelistTables"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "privacy.trackingprotection.annotate.cryptomining.enabled",
--        false
--      );
+-      return Services.prefs.getBoolPref("privacy.trackingprotection.annotate.cryptomining.enabled", false);
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
-@@ -231,10 +210,7 @@ const FEATURES = [
-       "urlclassifier.features.cryptomining.whitelistTables",
-     ],
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.cryptomining.annotate.update", this.enabled());
+@@ -149,7 +147,7 @@ const FEATURES = [
+     list: ["urlclassifier.features.cryptomining.blacklistTables",
+            "urlclassifier.features.cryptomining.whitelistTables"],
      enabled() {
--      return Services.prefs.getBoolPref(
--        "privacy.trackingprotection.cryptomining.enabled",
--        false
--      );
+-      return Services.prefs.getBoolPref("privacy.trackingprotection.cryptomining.enabled", false);
 +      return false;
      },
      update() {
-       return Services.prefs.getBoolPref(
+       return Services.prefs.getBoolPref("browser.safebrowsing.features.cryptomining.update", this.enabled());
 diff --git a/toolkit/components/url-classifier/nsUrlClassifierDBService.cpp b/toolkit/components/url-classifier/nsUrlClassifierDBService.cpp
 --- a/toolkit/components/url-classifier/nsUrlClassifierDBService.cpp
 +++ b/toolkit/components/url-classifier/nsUrlClassifierDBService.cpp
-@@ -1945,91 +1945,6 @@ nsUrlClassifierDBService::SendThreatHitR
+@@ -1940,91 +1940,6 @@ nsUrlClassifierDBService::SendThreatHitR
      return NS_ERROR_FAILURE;
    }
  

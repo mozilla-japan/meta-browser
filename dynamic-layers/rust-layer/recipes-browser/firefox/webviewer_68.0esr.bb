@@ -23,6 +23,8 @@ SRC_URI_append = "file://amethyst/disable-addon-autoupdate.patch \
          	  file://amethyst/webviewer.patch \
          	  file://amethyst/browser/amethyst/branding \
                  "
+TOOLCHAIN_pn-webviewer = "clang"
+AS_pn-webviewer = "${CC}"
 
 do_configure_prepend() {
 cp -r ../amethyst/browser/amethyst ./browser

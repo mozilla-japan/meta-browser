@@ -149,7 +149,7 @@ diff --git a/netwerk/base/nsIOService.h b/netwerk/base/nsIOService.h
 diff --git a/toolkit/components/captivedetect/CaptiveDetect.jsm b/toolkit/components/captivedetect/CaptiveDetect.jsm
 --- a/toolkit/components/captivedetect/CaptiveDetect.jsm
 +++ b/toolkit/components/captivedetect/CaptiveDetect.jsm
-@@ -24,46 +24,6 @@ const kCaptivePortalLoginSuccessEvent = 
+@@ -20,42 +20,6 @@ const kCaptivePortalLoginSuccessEvent = 
  const kCaptivePortalCheckComplete = "captive-portal-check-complete";
  
  function URLFetcher(url, timeout) {
@@ -173,12 +173,8 @@ diff --git a/toolkit/components/captivedetect/CaptiveDetect.jsm b/toolkit/compon
 -  xhr.setRequestHeader("Pragma", "no-cache");
 -
 -  xhr.timeout = timeout;
--  xhr.ontimeout = function() {
--    self.ontimeout();
--  };
--  xhr.onerror = function() {
--    self.onerror();
--  };
+-  xhr.ontimeout = function() { self.ontimeout(); };
+-  xhr.onerror = function() { self.onerror(); };
 -  xhr.onreadystatechange = function(oEvent) {
 -    if (xhr.readyState === 4) {
 -      if (self._isAborted) {
@@ -196,25 +192,15 @@ diff --git a/toolkit/components/captivedetect/CaptiveDetect.jsm b/toolkit/compon
  }
  
  URLFetcher.prototype = {
-@@ -334,44 +294,7 @@ CaptivePortalDetector.prototype = {
+@@ -286,34 +250,7 @@ CaptivePortalDetector.prototype = {
    },
  
    _startDetection: function _startDetection() {
--    debug(
--      "startDetection {site=" +
--        this._canonicalSiteURL +
--        ",content=" +
--        this._canonicalSiteExpectedContent +
--        ",time=" +
--        this._maxWaitingTime +
--        "}"
--    );
+-    debug("startDetection {site=" + this._canonicalSiteURL + ",content="
+-          + this._canonicalSiteExpectedContent + ",time=" + this._maxWaitingTime + "}");
 -    let self = this;
 -
--    let urlFetcher = new URLFetcher(
--      this._canonicalSiteURL,
--      this._maxWaitingTime
--    );
+-    let urlFetcher = new URLFetcher(this._canonicalSiteURL, this._maxWaitingTime);
 -
 -    let mayRetry = this._mayRetry.bind(this);
 -

@@ -1,15 +1,15 @@
 diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/extensions/AddonManager.jsm
 --- a/toolkit/mozapps/extensions/AddonManager.jsm
 +++ b/toolkit/mozapps/extensions/AddonManager.jsm
-@@ -35,7 +35,6 @@ const PREF_EM_LAST_PLATFORM_VERSION = "e
- const PREF_EM_AUTOUPDATE_DEFAULT = "extensions.update.autoUpdateDefault";
- const PREF_EM_STRICT_COMPATIBILITY = "extensions.strictCompatibility";
- const PREF_EM_CHECK_UPDATE_SECURITY = "extensions.checkUpdateSecurity";
--const PREF_SYS_ADDON_UPDATE_ENABLED = "extensions.systemAddon.update.enabled";
+@@ -28,7 +28,6 @@ const PREF_EM_LAST_PLATFORM_VERSION   = 
+ const PREF_EM_AUTOUPDATE_DEFAULT      = "extensions.update.autoUpdateDefault";
+ const PREF_EM_STRICT_COMPATIBILITY    = "extensions.strictCompatibility";
+ const PREF_EM_CHECK_UPDATE_SECURITY   = "extensions.checkUpdateSecurity";
+-const PREF_SYS_ADDON_UPDATE_ENABLED   = "extensions.systemAddon.update.enabled";
  
- const PREF_MIN_WEBEXT_PLATFORM_VERSION =
-   "extensions.webExtensionsMinPlatformVersion";
-@@ -1388,13 +1387,7 @@ var AddonManagerInternal = {
+ const PREF_MIN_WEBEXT_PLATFORM_VERSION = "extensions.webExtensionsMinPlatformVersion";
+ const PREF_WEBAPI_TESTING             = "extensions.webapi.testing";
+@@ -1152,13 +1151,7 @@ var AddonManagerInternal = {
  
    // Returns true if System Addons should be updated
    systemUpdateEnabled() {
@@ -23,7 +23,7 @@ diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/exten
    },
  
    /**
-@@ -3073,7 +3066,7 @@ var AddonManagerInternal = {
+@@ -2450,7 +2443,7 @@ var AddonManagerInternal = {
    },
  
    get autoUpdateDefault() {
@@ -32,7 +32,7 @@ diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/exten
    },
  
    set autoUpdateDefault(aValue) {
-@@ -3133,7 +3126,7 @@ var AddonManagerInternal = {
+@@ -2506,7 +2499,7 @@ var AddonManagerInternal = {
    },
  
    get updateEnabled() {
@@ -41,26 +41,20 @@ diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/exten
    },
  
    set updateEnabled(aValue) {
-@@ -4135,23 +4128,7 @@ var AddonManager = {
+@@ -3443,17 +3436,7 @@ var AddonManager = {
     * @return true if the addon should auto-update, false otherwise.
     */
    shouldAutoUpdate(aAddon) {
--    if (!aAddon || typeof aAddon != "object") {
--      throw Components.Exception(
--        "aAddon must be specified",
--        Cr.NS_ERROR_INVALID_ARG
--      );
--    }
+-    if (!aAddon || typeof aAddon != "object")
+-      throw Components.Exception("aAddon must be specified",
+-                                 Cr.NS_ERROR_INVALID_ARG);
 -
--    if (!("applyBackgroundUpdates" in aAddon)) {
+-    if (!("applyBackgroundUpdates" in aAddon))
        return false;
--    }
--    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_ENABLE) {
+-    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_ENABLE)
 -      return true;
--    }
--    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_DISABLE) {
+-    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_DISABLE)
 -      return false;
--    }
 -    return this.autoUpdateDefault;
    },
  
@@ -68,8 +62,8 @@ diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/exten
 diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensions/Blocklist.jsm
 --- a/toolkit/mozapps/extensions/Blocklist.jsm
 +++ b/toolkit/mozapps/extensions/Blocklist.jsm
-@@ -1284,7 +1284,7 @@ const EXTENSION_BLOCK_FILTERS = [
- ];
+@@ -1097,7 +1097,7 @@ this.ExtensionBlocklistRS = {
+ const EXTENSION_BLOCK_FILTERS = ["id", "name", "creator", "homepageURL", "updateURL"];
  
  var gLoggingEnabled = null;
 -var gBlocklistEnabled = true;
@@ -77,34 +71,23 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
  var gBlocklistLevel = DEFAULT_LEVEL;
  
  class BlocklistError extends Error {}
-@@ -1716,152 +1716,6 @@ var BlocklistXML = {
+@@ -1491,123 +1491,6 @@ var BlocklistXML = {
    },
  
    notify(aTimer) {
--    if (!gBlocklistEnabled) {
+-    if (!gBlocklistEnabled)
 -      return;
--    }
 -
 -    try {
 -      var dsURI = Services.prefs.getCharPref(PREF_BLOCKLIST_URL);
 -    } catch (e) {
--      LOG(
--        "Blocklist::notify: The " +
--          PREF_BLOCKLIST_URL +
--          " preference" +
--          " is missing!"
--      );
+-      LOG("Blocklist::notify: The " + PREF_BLOCKLIST_URL + " preference" +
+-          " is missing!");
 -      return;
 -    }
 -
--    var pingCountVersion = Services.prefs.getIntPref(
--      PREF_BLOCKLIST_PINGCOUNTVERSION,
--      0
--    );
--    var pingCountTotal = Services.prefs.getIntPref(
--      PREF_BLOCKLIST_PINGCOUNTTOTAL,
--      1
--    );
+-    var pingCountVersion = Services.prefs.getIntPref(PREF_BLOCKLIST_PINGCOUNTVERSION, 0);
+-    var pingCountTotal = Services.prefs.getIntPref(PREF_BLOCKLIST_PINGCOUNTTOTAL, 1);
 -    var daysSinceLastPing = 0;
 -    if (pingCountVersion == 0) {
 -      daysSinceLastPing = "new";
@@ -112,10 +95,7 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -      // Seconds in one day is used because nsIUpdateTimerManager stores the
 -      // last update time in seconds.
 -      let secondsInDay = 60 * 60 * 24;
--      let lastUpdateTime = Services.prefs.getIntPref(
--        PREF_BLOCKLIST_LASTUPDATETIME,
--        0
--      );
+-      let lastUpdateTime = Services.prefs.getIntPref(PREF_BLOCKLIST_LASTUPDATETIME, 0);
 -      if (lastUpdateTime == 0) {
 -        daysSinceLastPing = "invalid";
 -      } else {
@@ -128,12 +108,10 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -      }
 -    }
 -
--    if (pingCountVersion < 1) {
+-    if (pingCountVersion < 1)
 -      pingCountVersion = 1;
--    }
--    if (pingCountTotal < 1) {
+-    if (pingCountTotal < 1)
 -      pingCountTotal = 1;
--    }
 -
 -    let replacements = {
 -      APP_ID: gAppID,
@@ -145,9 +123,7 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -      CHANNEL: UpdateUtils.UpdateChannel,
 -      PLATFORM_VERSION: gApp.platformVersion,
 -      DISTRIBUTION: getDistributionPrefValue(PREF_APP_DISTRIBUTION),
--      DISTRIBUTION_VERSION: getDistributionPrefValue(
--        PREF_APP_DISTRIBUTION_VERSION
--      ),
+-      DISTRIBUTION_VERSION: getDistributionPrefValue(PREF_APP_DISTRIBUTION_VERSION),
 -      PING_COUNT: pingCountVersion,
 -      TOTAL_PING_COUNT: pingCountTotal,
 -      DAYS_SINCE_LAST_PING: daysSinceLastPing,
@@ -176,10 +152,7 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -        // integer preference. The -1 indicates that the counter has been reset.
 -        pingCountVersion = -1;
 -      }
--      Services.prefs.setIntPref(
--        PREF_BLOCKLIST_PINGCOUNTVERSION,
--        pingCountVersion
--      );
+-      Services.prefs.setIntPref(PREF_BLOCKLIST_PINGCOUNTVERSION, pingCountVersion);
 -    }
 -
 -    if (pingCountTotal != "invalid") {
@@ -196,28 +169,20 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -    try {
 -      var uri = Services.io.newURI(dsURI);
 -    } catch (e) {
--      LOG(
--        "Blocklist::notify: There was an error creating the blocklist URI\r\n" +
--          "for: " +
--          dsURI +
--          ", error: " +
--          e
--      );
+-      LOG("Blocklist::notify: There was an error creating the blocklist URI\r\n" +
+-          "for: " + dsURI + ", error: " + e);
 -      return;
 -    }
 -
 -    LOG("Blocklist::notify: Requesting " + uri.spec);
--    let request = new ServiceRequest({ mozAnon: true });
+-    let request = new ServiceRequest({mozAnon: true});
 -    request.open("GET", uri.spec, true);
 -    request.channel.notificationCallbacks = new CertUtils.BadCertHandler();
 -    request.overrideMimeType("text/xml");
 -
 -    // The server will return a `304 Not Modified` response if the blocklist was
 -    // not changed since last check.
--    const lastModified = Services.prefs.getCharPref(
--      PREF_BLOCKLIST_LAST_MODIFIED,
--      ""
--    );
+-    const lastModified = Services.prefs.getCharPref(PREF_BLOCKLIST_LAST_MODIFIED, "");
 -    if (lastModified) {
 -      request.setRequestHeader("If-Modified-Since", lastModified);
 -    } else {
@@ -230,26 +195,20 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
    },
  
    async onXMLLoad(aEvent) {
-@@ -3005,10 +2859,6 @@ let Blocklist = {
-       PREF_EM_LOGGING_ENABLED,
-       false
-     );
--    gBlocklistEnabled = Services.prefs.getBoolPref(
--      PREF_BLOCKLIST_ENABLED,
--      true
--    );
-     gBlocklistLevel = Math.min(
-       Services.prefs.getIntPref(PREF_BLOCKLIST_LEVEL, DEFAULT_LEVEL),
-       MAX_BLOCK_LEVEL
-@@ -3091,19 +2941,6 @@ let Blocklist = {
-               false
-             );
+@@ -2603,7 +2486,6 @@ let Blocklist = {
+   _init() {
+     Services.obs.addObserver(this, "xpcom-shutdown");
+     gLoggingEnabled = Services.prefs.getBoolPref(PREF_EM_LOGGING_ENABLED, false);
+-    gBlocklistEnabled = Services.prefs.getBoolPref(PREF_BLOCKLIST_ENABLED, true);
+     gBlocklistLevel = Math.min(Services.prefs.getIntPref(PREF_BLOCKLIST_LEVEL, DEFAULT_LEVEL),
+                                MAX_BLOCK_LEVEL);
+     Services.prefs.addObserver("extensions.blocklist.", this);
+@@ -2677,16 +2559,6 @@ let Blocklist = {
+           case PREF_EM_LOGGING_ENABLED:
+             gLoggingEnabled = Services.prefs.getBoolPref(PREF_EM_LOGGING_ENABLED, false);
              break;
 -          case PREF_BLOCKLIST_ENABLED:
--            gBlocklistEnabled = Services.prefs.getBoolPref(
--              PREF_BLOCKLIST_ENABLED,
--              true
--            );
+-            gBlocklistEnabled = Services.prefs.getBoolPref(PREF_BLOCKLIST_ENABLED, true);
 -            // Historically, this only does something if we're using the XML blocklist,
 -            // so check:
 -            if (this._impl == BlocklistXML) {
@@ -259,18 +218,17 @@ diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensio
 -            }
 -            break;
            case PREF_BLOCKLIST_LEVEL:
-             gBlocklistLevel = Math.min(
-               Services.prefs.getIntPref(PREF_BLOCKLIST_LEVEL, DEFAULT_LEVEL),
+             gBlocklistLevel = Math.min(Services.prefs.getIntPref(PREF_BLOCKLIST_LEVEL, DEFAULT_LEVEL),
+                                        MAX_BLOCK_LEVEL);
 diff --git a/toolkit/mozapps/extensions/content/aboutaddons.js b/toolkit/mozapps/extensions/content/aboutaddons.js
 --- a/toolkit/mozapps/extensions/content/aboutaddons.js
 +++ b/toolkit/mozapps/extensions/content/aboutaddons.js
-@@ -504,22 +504,7 @@ var DiscoveryAPI = {
+@@ -456,21 +456,7 @@ var DiscoveryAPI = {
    },
  
    async _fetchRecommendedAddons(useClientId) {
--    let discoveryApiUrl = new URL(
--      Services.urlFormatter.formatURLPref(PREF_DISCOVERY_API_URL)
--    );
+-    let discoveryApiUrl =
+-      new URL(Services.urlFormatter.formatURLPref(PREF_DISCOVERY_API_URL));
 -
 -    if (useClientId) {
 -      let clientId = await ClientID.getClientIdHash();
@@ -282,12 +240,12 @@ diff --git a/toolkit/mozapps/extensions/content/aboutaddons.js b/toolkit/mozapps
 -    if (!res.ok) {
        throw new Error(`Failed to fetch recommended add-ons, ${res.status}`);
 -    }
--    let { results } = await res.json();
+-    let {results} = await res.json();
 -    return results.map(details => new DiscoAddonWrapper(details));
    },
  };
  
-@@ -2552,10 +2537,6 @@ customElements.define("addon-list", Addo
+@@ -2403,10 +2389,6 @@ customElements.define("addon-list", Addo
  
  class RecommendedAddonList extends HTMLElement {
    connectedCallback() {
@@ -301,10 +259,10 @@ diff --git a/toolkit/mozapps/extensions/content/aboutaddons.js b/toolkit/mozapps
 diff --git a/toolkit/mozapps/extensions/content/extensions.js b/toolkit/mozapps/extensions/content/extensions.js
 --- a/toolkit/mozapps/extensions/content/extensions.js
 +++ b/toolkit/mozapps/extensions/content/extensions.js
-@@ -2389,27 +2389,8 @@ var gDiscoverView = {
+@@ -2099,23 +2099,8 @@ var gDiscoverView = {
      url = Services.urlFormatter.formatURL(url);
  
-     let setURL = async aURL => {
+     let setURL = async (aURL) => {
 -      try {
 -        this.homepageURL = Services.io.newURI(aURL);
 -      } catch (e) {
@@ -316,13 +274,9 @@ diff --git a/toolkit/mozapps/extensions/content/extensions.js b/toolkit/mozapps/
 -      this._browser.addProgressListener(this);
 -
 -      if (this.loaded) {
--        this._loadURL(
--          this.homepageURL.spec,
--          false,
--          notifyInitialized,
--          Services.scriptSecurityManager.getSystemPrincipal(),
--          await this.getClientHeader()
--        );
+-        this._loadURL(this.homepageURL.spec, false, notifyInitialized,
+-                      Services.scriptSecurityManager.getSystemPrincipal(),
+-                      await this.getClientHeader());
 -      } else {
 -        notifyInitialized();
 -      }
@@ -332,7 +286,7 @@ diff --git a/toolkit/mozapps/extensions/content/extensions.js b/toolkit/mozapps/
 diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/mozapps/extensions/internal/AddonRepository.jsm
 --- a/toolkit/mozapps/extensions/internal/AddonRepository.jsm
 +++ b/toolkit/mozapps/extensions/internal/AddonRepository.jsm
-@@ -339,7 +339,7 @@ var AddonRepository = {
+@@ -327,7 +327,7 @@ var AddonRepository = {
     * Whether caching is currently enabled
     */
    get cacheEnabled() {
@@ -341,10 +295,10 @@ diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/m
    },
  
    /**
-@@ -459,55 +459,7 @@ var AddonRepository = {
+@@ -443,53 +443,7 @@ var AddonRepository = {
     */
    _fetchPaged(ids, pref, handler) {
-     let startURL = this._formatURLPref(pref, { IDS: ids.join(",") });
+     let startURL = this._formatURLPref(pref, {IDS: ids.join(",")});
 -    let results = [];
 -    let idCheck = ids.map(id => {
 -      if (id.startsWith("rta:")) {
@@ -353,9 +307,9 @@ diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/m
 -      return id;
 -    });
 -
--    const fetchNextPage = url => {
+-    const fetchNextPage = (url) => {
 -      return new Promise((resolve, reject) => {
--        let request = new ServiceRequest({ mozAnon: true });
+-        let request = new ServiceRequest({mozAnon: true});
 -        request.mozBackgroundRequest = true;
 -        request.open("GET", url, true);
 -        request.responseType = "json";
@@ -374,9 +328,7 @@ diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/m
 -          }
 -
 -          try {
--            let newResults = handler(response.results).filter(e =>
--              idCheck.includes(e.id)
--            );
+-            let newResults = handler(response.results).filter(e => idCheck.includes(e.id));
 -            results.push(...newResults);
 -          } catch (err) {
 -            reject(err);
@@ -401,24 +353,19 @@ diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/m
 diff --git a/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm b/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
 --- a/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
 +++ b/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
-@@ -273,29 +273,17 @@ function UpdateParser(aId, aUrl, aObserv
+@@ -224,24 +224,17 @@ function UpdateParser(aId, aUrl, aObserv
    this.observer = aObserver;
    this.url = aUrl;
  
--  let requireBuiltIn = Services.prefs.getBoolPref(
--    PREF_UPDATE_REQUIREBUILTINCERTS,
--    true
--  );
+-  let requireBuiltIn = Services.prefs.getBoolPref(PREF_UPDATE_REQUIREBUILTINCERTS, true);
 +  this.request = null;
 +  this._doneAt = new Error("place holder");
  
 -  logger.debug("Requesting " + aUrl);
 -  try {
--    this.request = new ServiceRequest({ mozAnon: true });
+-    this.request = new ServiceRequest({mozAnon: true});
 -    this.request.open("GET", this.url, true);
--    this.request.channel.notificationCallbacks = new CertUtils.BadCertHandler(
--      !requireBuiltIn
--    );
+-    this.request.channel.notificationCallbacks = new CertUtils.BadCertHandler(!requireBuiltIn);
 -    this.request.channel.loadFlags |= Ci.nsIRequest.LOAD_BYPASS_CACHE;
 -    // Prevent the request from writing to cache.
 -    this.request.channel.loadFlags |= Ci.nsIRequest.INHIBIT_CACHING;

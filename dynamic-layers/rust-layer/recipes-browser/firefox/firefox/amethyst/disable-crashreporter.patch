@@ -39,7 +39,7 @@ diff --git a/toolkit/xre/CreateAppData.cpp b/toolkit/xre/CreateAppData.cpp
 diff --git a/toolkit/xre/nsAppRunner.cpp b/toolkit/xre/nsAppRunner.cpp
 --- a/toolkit/xre/nsAppRunner.cpp
 +++ b/toolkit/xre/nsAppRunner.cpp
-@@ -3181,10 +3181,6 @@ int XREMain::XRE_mainInit(bool* aExitFla
+@@ -3196,10 +3196,6 @@ int XREMain::XRE_mainInit(bool* aExitFla
    rv = mDirProvider.Initialize(mAppData->directory, mAppData->xreDirectory);
    if (NS_FAILED(rv)) return 1;
  

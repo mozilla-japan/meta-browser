@@ -1,7 +1,7 @@
 diff --git a/browser/components/attribution/AttributionCode.jsm b/browser/components/attribution/AttributionCode.jsm
 --- a/browser/components/attribution/AttributionCode.jsm
 +++ b/browser/components/attribution/AttributionCode.jsm
-@@ -86,42 +86,6 @@ var AttributionCode = {
+@@ -79,40 +79,6 @@ var AttributionCode = {
        }
  
        gCachedAttrData = {};
@@ -18,11 +18,9 @@ diff --git a/browser/components/attribution/AttributionCode.jsm b/browser/compon
 -        }
 -      } else if (AppConstants.platform == "macosx") {
 -        try {
--          let appPath = Services.dirsvc.get("GreD", Ci.nsIFile).parent.parent
--            .path;
--          let attributionSvc = Cc["@mozilla.org/mac-attribution;1"].getService(
--            Ci.nsIMacAttributionService
--          );
+-          let appPath = Services.dirsvc.get("GreD", Ci.nsIFile).parent.parent.path;
+-          let attributionSvc = Cc["@mozilla.org/mac-attribution;1"]
+-                                  .getService(Ci.nsIMacAttributionService);
 -          let referrer = attributionSvc.getReferrerUrl(appPath);
 -          let params = new URL(referrer).searchParams;
 -          for (let key of ATTR_CODE_KEYS) {

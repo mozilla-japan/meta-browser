@@ -1,21 +1,17 @@
 diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/search/SearchService.jsm
 --- a/toolkit/components/search/SearchService.jsm
 +++ b/toolkit/components/search/SearchService.jsm
-@@ -31,12 +31,7 @@ XPCOMUtils.defineLazyServiceGetters(this
+@@ -28,8 +28,7 @@ XPCOMUtils.defineLazyServiceGetters(this
    gEnvironment: ["@mozilla.org/process/environment;1", "nsIEnvironment"],
  });
  
--XPCOMUtils.defineLazyPreferenceGetter(
--  this,
--  "gGeoSpecificDefaultsEnabled",
--  SearchUtils.BROWSER_SEARCH_PREF + "geoSpecificDefaults",
--  false
--);
+-XPCOMUtils.defineLazyPreferenceGetter(this, "gGeoSpecificDefaultsEnabled",
+-  SearchUtils.BROWSER_SEARCH_PREF + "geoSpecificDefaults", false);
 +const gGeoSpecificDefaultsEnabled = false;
  
  // Can't use defineLazyPreferenceGetter because we want the value
  // from the default branch
-@@ -259,131 +254,6 @@ function storeRegion(region) {
+@@ -218,104 +217,7 @@ function storeRegion(region) {
  
  // Get the region we are in via a XHR geoip request.
  function fetchRegion(ss) {
@@ -29,13 +25,11 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -    // dns error, network error, ssl error, etc) with .ERROR remaining as the
 -    // generic catch-all that doesn't fit into other categories.
 -  };
--  let endpoint = Services.urlFormatter.formatURLPref(
--    "browser.search.geoip.url"
--  );
+-  let endpoint = Services.urlFormatter.formatURLPref("browser.search.geoip.url");
 -  SearchUtils.log("_fetchRegion starting with endpoint " + endpoint);
 -  // As an escape hatch, no endpoint means no geoip.
 -  if (!endpoint) {
--    return Promise.resolve();
+     return Promise.resolve();
 -  }
 -  let startTime = Date.now();
 -  return new Promise(resolve => {
@@ -52,11 +46,8 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -    let geoipTimeoutPossible = true;
 -    let timerId = setTimeout(() => {
 -      SearchUtils.log("_fetchRegion: timeout fetching region information");
--      if (geoipTimeoutPossible) {
--        Services.telemetry
--          .getHistogramById("SEARCH_SERVICE_COUNTRY_TIMEOUT")
--          .add(1);
--      }
+-      if (geoipTimeoutPossible)
+-        Services.telemetry.getHistogramById("SEARCH_SERVICE_COUNTRY_TIMEOUT").add(1);
 -      timerId = null;
 -      resolve();
 -    }, timeoutMS);
@@ -67,21 +58,13 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -      if (result) {
 -        storeRegion(result);
 -      }
--      Services.telemetry
--        .getHistogramById("SEARCH_SERVICE_COUNTRY_FETCH_RESULT")
--        .add(reason);
+-      Services.telemetry.getHistogramById("SEARCH_SERVICE_COUNTRY_FETCH_RESULT").add(reason);
 -
 -      // This notification is just for tests...
--      Services.obs.notifyObservers(
--        null,
--        SearchUtils.TOPIC_SEARCH_SERVICE,
--        "geoip-lookup-xhr-complete"
--      );
+-      Services.obs.notifyObservers(null, SearchUtils.TOPIC_SEARCH_SERVICE, "geoip-lookup-xhr-complete");
 -
 -      if (timerId) {
--        Services.telemetry
--          .getHistogramById("SEARCH_SERVICE_COUNTRY_TIMEOUT")
--          .add(0);
+-        Services.telemetry.getHistogramById("SEARCH_SERVICE_COUNTRY_TIMEOUT").add(0);
 -        geoipTimeoutPossible = false;
 -      }
 -
@@ -96,12 +79,10 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -      };
 -
 -      if (result && gGeoSpecificDefaultsEnabled) {
--        fetchRegionDefault(ss)
--          .then(callback)
--          .catch(err => {
--            Cu.reportError(err);
--            callback();
--          });
+-        fetchRegionDefault(ss).then(callback).catch(err => {
+-          Cu.reportError(err);
+-          callback();
+-        });
 -      } else {
 -        callback();
 -      }
@@ -109,30 +90,18 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -
 -    let request = new XMLHttpRequest();
 -    // This notification is just for tests...
--    Services.obs.notifyObservers(
--      request,
--      SearchUtils.TOPIC_SEARCH_SERVICE,
--      "geoip-lookup-xhr-starting"
--    );
+-    Services.obs.notifyObservers(request, SearchUtils.TOPIC_SEARCH_SERVICE, "geoip-lookup-xhr-starting");
 -    request.timeout = 100000; // 100 seconds as the last-chance fallback
 -    request.onload = function(event) {
 -      let took = Date.now() - startTime;
 -      let region = event.target.response && event.target.response.country_code;
--      SearchUtils.log(
--        "_fetchRegion got success response in " + took + "ms: " + region
--      );
--      Services.telemetry
--        .getHistogramById("SEARCH_SERVICE_COUNTRY_FETCH_TIME_MS")
--        .add(took);
--      let reason = region
--        ? TELEMETRY_RESULT_ENUM.SUCCESS
--        : TELEMETRY_RESULT_ENUM.SUCCESS_WITHOUT_DATA;
+-      SearchUtils.log("_fetchRegion got success response in " + took + "ms: " + region);
+-      Services.telemetry.getHistogramById("SEARCH_SERVICE_COUNTRY_FETCH_TIME_MS").add(took);
+-      let reason = region ? TELEMETRY_RESULT_ENUM.SUCCESS : TELEMETRY_RESULT_ENUM.SUCCESS_WITHOUT_DATA;
 -      resolveAndReportSuccess(region, reason);
 -    };
 -    request.ontimeout = function(event) {
--      SearchUtils.log(
--        "_fetchRegion: XHR finally timed-out fetching region information"
--      );
+-      SearchUtils.log("_fetchRegion: XHR finally timed-out fetching region information");
 -      resolveAndReportSuccess(null, TELEMETRY_RESULT_ENUM.XHRTIMEOUT);
 -    };
 -    request.onerror = function(event) {
@@ -147,118 +116,99 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
  }
  
  // This converts our legacy google engines to the
-@@ -425,97 +295,7 @@ function convertGoogleEngines(engineName
+@@ -356,84 +258,7 @@ function convertGoogleEngines(engineName
+ // responsibility to ensure with a timer that we are not going to
  // block the async init for too long.
- var fetchRegionDefault = ss =>
-   new Promise(resolve => {
--    let urlTemplate = Services.prefs
--      .getDefaultBranch(SearchUtils.BROWSER_SEARCH_PREF)
--      .getCharPref("geoSpecificDefaults.url");
--    let endpoint = Services.urlFormatter.formatURL(urlTemplate);
+ var fetchRegionDefault = (ss) => new Promise(resolve => {
+-  let urlTemplate = Services.prefs.getDefaultBranch(SearchUtils.BROWSER_SEARCH_PREF)
+-                            .getCharPref("geoSpecificDefaults.url");
+-  let endpoint = Services.urlFormatter.formatURL(urlTemplate);
 -
--    // As an escape hatch, no endpoint means no region specific defaults.
--    if (!endpoint) {
-       resolve();
+-  // As an escape hatch, no endpoint means no region specific defaults.
+-  if (!endpoint) {
+     resolve();
+-    return;
+-  }
+-
+-  // Append the optional cohort value.
+-  const cohortPref = "browser.search.cohort";
+-  let cohort = Services.prefs.getCharPref(cohortPref, "");
+-  if (cohort)
+-    endpoint += "/" + cohort;
+-
+-  SearchUtils.log("fetchRegionDefault starting with endpoint " + endpoint);
+-
+-  let startTime = Date.now();
+-  let request = new XMLHttpRequest();
+-  request.timeout = 100000; // 100 seconds as the last-chance fallback
+-  request.onload = function(event) {
+-    let took = Date.now() - startTime;
+-
+-    let status = event.target.status;
+-    if (status != 200) {
+-      SearchUtils.log("fetchRegionDefault failed with HTTP code " + status);
+-      let retryAfter = request.getResponseHeader("retry-after");
+-      if (retryAfter) {
+-        ss.setGlobalAttr("searchDefaultExpir", Date.now() + retryAfter * 1000);
+-      }
+-      resolve();
 -      return;
 -    }
 -
--    // Append the optional cohort value.
--    const cohortPref = "browser.search.cohort";
--    let cohort = Services.prefs.getCharPref(cohortPref, "");
--    if (cohort) {
--      endpoint += "/" + cohort;
+-    let response = event.target.response || {};
+-    SearchUtils.log("received " + response.toSource());
+-
+-    if (response.cohort) {
+-      Services.prefs.setCharPref(cohortPref, response.cohort);
+-    } else {
+-      Services.prefs.clearUserPref(cohortPref);
 -    }
 -
--    SearchUtils.log("fetchRegionDefault starting with endpoint " + endpoint);
+-    if (response.settings && response.settings.searchDefault) {
+-      let defaultEngine = response.settings.searchDefault;
+-      ss.setVerifiedGlobalAttr("searchDefault", defaultEngine);
+-      SearchUtils.log("fetchRegionDefault saved searchDefault: " + defaultEngine);
+-    }
 -
--    let startTime = Date.now();
--    let request = new XMLHttpRequest();
--    request.timeout = 100000; // 100 seconds as the last-chance fallback
--    request.onload = function(event) {
--      let took = Date.now() - startTime;
+-    if (response.settings && response.settings.visibleDefaultEngines) {
+-      let visibleDefaultEngines = response.settings.visibleDefaultEngines;
+-      let string = visibleDefaultEngines.join(",");
+-      ss.setVerifiedGlobalAttr("visibleDefaultEngines", string);
+-      SearchUtils.log("fetchRegionDefault saved visibleDefaultEngines: " + string);
+-    }
 -
--      let status = event.target.status;
--      if (status != 200) {
--        SearchUtils.log("fetchRegionDefault failed with HTTP code " + status);
--        let retryAfter = request.getResponseHeader("retry-after");
--        if (retryAfter) {
--          ss.setGlobalAttr(
--            "searchDefaultExpir",
--            Date.now() + retryAfter * 1000
--          );
--        }
--        resolve();
--        return;
--      }
+-    let interval = response.interval || SEARCH_GEO_DEFAULT_UPDATE_INTERVAL;
+-    let milliseconds = interval * 1000; // |interval| is in seconds.
+-    ss.setGlobalAttr("searchDefaultExpir", Date.now() + milliseconds);
 -
--      let response = event.target.response || {};
--      SearchUtils.log("received " + response.toSource());
--
--      if (response.cohort) {
--        Services.prefs.setCharPref(cohortPref, response.cohort);
--      } else {
--        Services.prefs.clearUserPref(cohortPref);
--      }
--
--      if (response.settings && response.settings.searchDefault) {
--        let defaultEngine = response.settings.searchDefault;
--        ss.setVerifiedGlobalAttr("searchDefault", defaultEngine);
--        SearchUtils.log(
--          "fetchRegionDefault saved searchDefault: " + defaultEngine
--        );
--      }
--
--      if (response.settings && response.settings.visibleDefaultEngines) {
--        let visibleDefaultEngines = response.settings.visibleDefaultEngines;
--        let string = visibleDefaultEngines.join(",");
--        ss.setVerifiedGlobalAttr("visibleDefaultEngines", string);
--        SearchUtils.log(
--          "fetchRegionDefault saved visibleDefaultEngines: " + string
--        );
--      }
--
--      let interval = response.interval || SEARCH_GEO_DEFAULT_UPDATE_INTERVAL;
--      let milliseconds = interval * 1000; // |interval| is in seconds.
--      ss.setGlobalAttr("searchDefaultExpir", Date.now() + milliseconds);
--
--      SearchUtils.log(
--        "fetchRegionDefault got success response in " + took + "ms"
--      );
--      // If we're doing this somewhere during the app's lifetime, reload the list
--      // of engines in order to pick up any geo-specific changes.
--      ss._maybeReloadEngines().finally(resolve);
--    };
--    request.ontimeout = function(event) {
--      SearchUtils.log("fetchRegionDefault: XHR finally timed-out");
--      resolve();
--    };
--    request.onerror = function(event) {
--      SearchUtils.log(
--        "fetchRegionDefault: failed to retrieve territory default information"
--      );
--      resolve();
--    };
--    request.open("GET", endpoint, true);
--    request.setRequestHeader("Content-Type", "application/json");
--    request.responseType = "json";
--    request.send();
-   });
+-    SearchUtils.log("fetchRegionDefault got success response in " + took + "ms");
+-    // If we're doing this somewhere during the app's lifetime, reload the list
+-    // of engines in order to pick up any geo-specific changes.
+-    ss._maybeReloadEngines().finally(resolve);
+-  };
+-  request.ontimeout = function(event) {
+-    SearchUtils.log("fetchRegionDefault: XHR finally timed-out");
+-    resolve();
+-  };
+-  request.onerror = function(event) {
+-    SearchUtils.log("fetchRegionDefault: failed to retrieve territory default information");
+-    resolve();
+-  };
+-  request.open("GET", endpoint, true);
+-  request.setRequestHeader("Content-Type", "application/json");
+-  request.responseType = "json";
+-  request.send();
+ });
  
  /**
-@@ -2957,53 +2737,6 @@ SearchService.prototype = {
+@@ -2592,40 +2417,6 @@ SearchService.prototype = {
  
    // nsITimerCallback
    notify(timer) {
 -    SearchUtils.log("_notify: checking for updates");
 -
--    if (
--      !Services.prefs.getBoolPref(
--        SearchUtils.BROWSER_SEARCH_PREF + "update",
--        true
--      )
--    ) {
+-    if (!Services.prefs.getBoolPref(SearchUtils.BROWSER_SEARCH_PREF + "update", true))
 -      return;
--    }
 -
 -    // Our timer has expired, but unfortunately, we can't get any data from it.
 -    // Therefore, we need to walk our engine-list, looking for expired engines
@@ -266,21 +216,14 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
 -    SearchUtils.log("currentTime: " + currentTime);
 -    for (let name in this._engines) {
 -      let engine = this._engines[name].wrappedJSObject;
--      if (!engine._hasUpdates) {
+-      if (!engine._hasUpdates)
 -        continue;
--      }
 -
 -      SearchUtils.log("checking " + engine.name);
 -
 -      var expirTime = engine.getAttr("updateexpir");
--      SearchUtils.log(
--        "expirTime: " +
--          expirTime +
--          "\nupdateURL: " +
--          engine._updateURL +
--          "\niconUpdateURL: " +
--          engine._iconUpdateURL
--      );
+-      SearchUtils.log("expirTime: " + expirTime + "\nupdateURL: " + engine._updateURL +
+-          "\niconUpdateURL: " + engine._iconUpdateURL);
 -
 -      var engineExpired = expirTime <= currentTime;
 -
@@ -299,28 +242,21 @@ diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/se
    },
  
    _addObservers() {
-@@ -3085,46 +2818,6 @@ var engineUpdateService = {
+@@ -2703,39 +2494,6 @@ var engineUpdateService = {
    },
  
    update(engine) {
 -    engine = engine.wrappedJSObject;
 -    this._log("update called for " + engine._name);
--    if (
--      !Services.prefs.getBoolPref(
--        SearchUtils.BROWSER_SEARCH_PREF + "update",
--        true
--      ) ||
--      !engine._hasUpdates
--    ) {
+-    if (!Services.prefs.getBoolPref(SearchUtils.BROWSER_SEARCH_PREF + "update", true) ||
+-        !engine._hasUpdates)
 -      return;
--    }
 -
 -    let testEngine = null;
 -    let updateURL = engine._getURLOfType(SearchUtils.URL_TYPE.OPENSEARCH);
--    let updateURI =
--      updateURL && updateURL._hasRelation("self")
--        ? updateURL.getSubmission("", engine).uri
--        : makeURI(engine._updateURL);
+-    let updateURI = (updateURL && updateURL._hasRelation("self")) ?
+-                     updateURL.getSubmission("", engine).uri :
+-                     makeURI(engine._updateURL);
 -    if (updateURI) {
 -      if (engine._isDefault && !updateURI.schemeIs("https")) {
 -        this._log("Invalid scheme for default engine update");

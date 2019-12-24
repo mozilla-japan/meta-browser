@@ -1,14 +1,13 @@
 diff --git a/browser/actors/NetErrorChild.jsm b/browser/actors/NetErrorChild.jsm
 --- a/browser/actors/NetErrorChild.jsm
 +++ b/browser/actors/NetErrorChild.jsm
-@@ -871,10 +871,6 @@ class NetErrorChild extends ActorChild {
-         }),
-       })
-     );
+@@ -719,9 +719,6 @@ class NetErrorChild extends ActorChild {
+         hideAddExceptionButton,
+       }),
+     }));
 -
--    this.mm.sendAsyncMessage("Browser:SSLErrorReportTelemetry", {
--      reportStatus: TLS_ERROR_REPORT_TELEMETRY_UI_SHOWN,
--    });
+-    this.mm.sendAsyncMessage("Browser:SSLErrorReportTelemetry",
+-                            {reportStatus: TLS_ERROR_REPORT_TELEMETRY_UI_SHOWN});
    }
  
    onResetPreferences(evt) {
@@ -41,29 +40,25 @@ diff --git a/browser/base/content/browser-menubar.inc b/browser/base/content/bro
 diff --git a/browser/base/content/browser-sidebar.js b/browser/base/content/browser-sidebar.js
 --- a/browser/base/content/browser-sidebar.js
 +++ b/browser/base/content/browser-sidebar.js
-@@ -34,18 +34,6 @@ var SidebarUI = {
-           triggerButtonId: "appMenuViewHistorySidebar",
-         },
-       ],
--      [
--        "viewTabsSidebar",
--        {
--          title: document
--            .getElementById("sidebar-switcher-tabs")
--            .getAttribute("label"),
--          url: "chrome://browser/content/syncedtabs/sidebar.xhtml",
--          menuId: "menu_tabsSidebar",
--          buttonId: "sidebar-switcher-tabs",
--          triggerButtonId: "PanelUI-remotetabs-view-sidebar",
--        },
--      ],
-     ]));
+@@ -26,14 +26,6 @@ var SidebarUI = {
+         buttonId: "sidebar-switcher-history",
+         triggerButtonId: "appMenuViewHistorySidebar",
+       }],
+-      ["viewTabsSidebar", {
+-        title: document.getElementById("sidebar-switcher-tabs")
+-                       .getAttribute("label"),
+-        url: "chrome://browser/content/syncedtabs/sidebar.xhtml",
+-        menuId: "menu_tabsSidebar",
+-        buttonId: "sidebar-switcher-tabs",
+-        triggerButtonId: "PanelUI-remotetabs-view-sidebar",
+-      }],
+     ]);
    },
  
 diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
 --- a/browser/base/content/browser.js
 +++ b/browser/base/content/browser.js
-@@ -16,9 +16,7 @@ ChromeUtils.import("resource://gre/modul
+@@ -12,9 +12,7 @@ ChromeUtils.import("resource://gre/modul
  
  XPCOMUtils.defineLazyModuleGetters(this, {
    AddonManager: "resource://gre/modules/AddonManager.jsm",
@@ -73,7 +68,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
    BrowserUtils: "resource://gre/modules/BrowserUtils.jsm",
    BrowserWindowTracker: "resource:///modules/BrowserWindowTracker.jsm",
    CFRPageActions: "resource://activity-stream/lib/CFRPageActions.jsm",
-@@ -79,9 +77,7 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -73,9 +71,7 @@ XPCOMUtils.defineLazyModuleGetters(this,
    UrlbarTokenizer: "resource:///modules/UrlbarTokenizer.jsm",
    UrlbarUtils: "resource:///modules/UrlbarUtils.jsm",
    UrlbarValueFormatter: "resource:///modules/UrlbarValueFormatter.jsm",
@@ -83,19 +78,16 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
    webrtcUI: "resource:///modules/webrtcUI.jsm",
    ZoomUI: "resource:///modules/ZoomUI.jsm",
  });
-@@ -176,11 +172,6 @@ XPCOMUtils.defineLazyScriptGetter(
- );
- XPCOMUtils.defineLazyScriptGetter(
-   this,
--  "gSync",
--  "chrome://browser/content/browser-sync.js"
--);
--XPCOMUtils.defineLazyScriptGetter(
--  this,
-   "gBrowserThumbnails",
-   "chrome://browser/content/browser-thumbnails.js"
- );
-@@ -661,20 +652,10 @@ function showFxaToolbarMenu(enable) {
+@@ -119,8 +115,6 @@ XPCOMUtils.defineLazyScriptGetter(this, 
+                                   "chrome://browser/content/browser-gestureSupport.js");
+ XPCOMUtils.defineLazyScriptGetter(this, "gSafeBrowsing",
+                                   "chrome://browser/content/browser-safebrowsing.js");
+-XPCOMUtils.defineLazyScriptGetter(this, "gSync",
+-                                  "chrome://browser/content/browser-sync.js");
+ XPCOMUtils.defineLazyScriptGetter(this, "gBrowserThumbnails",
+                                   "chrome://browser/content/browser-thumbnails.js");
+ XPCOMUtils.defineLazyScriptGetter(this, ["setContextMenuContentData",
+@@ -516,20 +510,10 @@ function showFxaToolbarMenu(enable) {
    const fxaPanelEl = document.getElementById("PanelUI-fxa");
  
    mainWindowEl.setAttribute("fxastatus", "not_configured");
@@ -116,18 +108,15 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
      // We set an attribute here so that we can toggle the custom
      // badge depending on whether the FxA menu was ever accessed.
      if (!gFxaToolbarAccessed) {
-@@ -1810,10 +1791,6 @@ var gBrowserInit = {
+@@ -1512,7 +1496,6 @@ var gBrowserInit = {
      let mm = window.getGroupMessageManager("browsers");
      mm.loadFrameScript("chrome://browser/content/tab-content.js", true, true);
      mm.loadFrameScript("chrome://browser/content/content.js", true, true);
--    mm.loadFrameScript(
--      "chrome://global/content/content-HybridContentTelemetry.js",
--      true
--    );
+-    mm.loadFrameScript("chrome://global/content/content-HybridContentTelemetry.js", true);
  
      window.messageManager.addMessageListener("Browser:LoadURI", RedirectLoad);
  
-@@ -2263,11 +2240,6 @@ var gBrowserInit = {
+@@ -1906,11 +1889,6 @@ var gBrowserInit = {
      }
  
      scheduleIdleTask(() => {
@@ -139,7 +128,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
        // Initialize the all tabs menu
        gTabsPanel.init();
      });
-@@ -2317,29 +2289,6 @@ var gBrowserInit = {
+@@ -1955,26 +1933,6 @@ var gBrowserInit = {
        scheduleIdleTask(() => Win7Features.onOpenWindow());
      }
  
@@ -154,22 +143,19 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
 -        }
 -
 -        let browser = gBrowser.selectedBrowser;
--        let browserBounds = window.windowUtils.getBoundsWithoutFlushing(
--          browser
--        );
+-        let browserBounds = window.windowUtils.getBoundsWithoutFlushing(browser);
 -
 -        Services.telemetry.keyedScalarAdd(
 -          "resistfingerprinting.content_window_size",
 -          `${browserBounds.width}x${browserBounds.height}`,
--          1
--        );
+-          1);
 -      }, 300 * 1000);
 -    });
 -
      scheduleIdleTask(async () => {
        NewTabPagePreloading.maybeCreatePreloadedBrowser(window);
      });
-@@ -2438,8 +2387,6 @@ var gBrowserInit = {
+@@ -2066,8 +2024,6 @@ var gBrowserInit = {
  
      FullScreen.uninit();
  
@@ -177,8 +163,8 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
 -
      gExtensionsNotifications.uninit();
  
-     Services.obs.removeObserver(
-@@ -2458,8 +2405,6 @@ var gBrowserInit = {
+     Services.obs.removeObserver(gPluginHandler.NPAPIPluginCrashed, "plugin-crashed");
+@@ -2084,8 +2040,6 @@ var gBrowserInit = {
  
      TabletModeUpdater.uninit();
  
@@ -187,7 +173,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
      BrowserOnClick.uninit();
  
      CaptivePortalWatcher.uninit();
-@@ -3545,7 +3490,6 @@ var BrowserOnClick = {
+@@ -3059,7 +3013,6 @@ var BrowserOnClick = {
      mm.addMessageListener("Browser:EnableOnlineMode", this);
      mm.addMessageListener("Browser:SetSSLErrorReportAuto", this);
      mm.addMessageListener("Browser:ResetSSLPreferences", this);
@@ -195,7 +181,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
      mm.addMessageListener("Browser:SSLErrorGoBack", this);
      mm.addMessageListener("Browser:PrimeMitm", this);
      mm.addMessageListener("Browser:ResetEnterpriseRootsPref", this);
-@@ -3558,7 +3502,6 @@ var BrowserOnClick = {
+@@ -3072,7 +3025,6 @@ var BrowserOnClick = {
      mm.removeMessageListener("Browser:EnableOnlineMode", this);
      mm.removeMessageListener("Browser:SetSSLErrorReportAuto", this);
      mm.removeMessageListener("Browser:ResetSSLPreferences", this);
@@ -203,31 +189,28 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
      mm.removeMessageListener("Browser:SSLErrorGoBack", this);
      mm.removeMessageListener("Browser:PrimeMitm", this);
      mm.removeMessageListener("Browser:ResetEnterpriseRootsPref", this);
-@@ -3606,17 +3549,6 @@ var BrowserOnClick = {
-           "security.ssl.errorReporting.automatic",
-           msg.json.automatic
-         );
+@@ -3109,16 +3061,6 @@ var BrowserOnClick = {
+       break;
+       case "Browser:SetSSLErrorReportAuto":
+         Services.prefs.setBoolPref("security.ssl.errorReporting.automatic", msg.json.automatic);
 -        let bin = TLS_ERROR_REPORT_TELEMETRY_AUTO_UNCHECKED;
 -        if (msg.json.automatic) {
 -          bin = TLS_ERROR_REPORT_TELEMETRY_AUTO_CHECKED;
 -        }
 -        Services.telemetry.getHistogramById("TLS_ERROR_REPORT_UI").add(bin);
--        break;
+-      break;
 -      case "Browser:SSLErrorReportTelemetry":
 -        let reportStatus = msg.data.reportStatus;
--        Services.telemetry
--          .getHistogramById("TLS_ERROR_REPORT_UI")
+-        Services.telemetry.getHistogramById("TLS_ERROR_REPORT_UI")
 -          .add(reportStatus);
-         break;
+       break;
        case "Browser:SSLErrorGoBack":
          goBackFromErrorPage();
-@@ -3823,24 +3755,15 @@ var BrowserOnClick = {
+@@ -3288,22 +3230,15 @@ var BrowserOnClick = {
        sendTelemetry = true;
        bucketName = "WARNING_HARMFUL_PAGE_";
      }
--    let secHistogram = Services.telemetry.getHistogramById(
--      "URLCLASSIFIER_UI_EVENTS"
--    );
+-    let secHistogram = Services.telemetry.getHistogramById("URLCLASSIFIER_UI_EVENTS");
      let nsISecTel = Ci.IUrlClassifierUITelemetry;
      bucketName += isTopFrame ? "TOP_" : "FRAME_";
  
@@ -246,7 +229,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
            this.ignoreWarningLink(reason, blockedInfo);
          }
          break;
-@@ -5049,11 +4972,6 @@ const BrowserSearch = {
+@@ -4370,11 +4305,6 @@ const BrowserSearch = {
     *        selected it: {selection: {index: The selected index, kind: "key" or "mouse"}}
     */
    recordSearchInTelemetry(engine, source, details = {}) {
@@ -258,12 +241,12 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
    },
  
    /**
-@@ -5070,12 +4988,6 @@ const BrowserSearch = {
+@@ -4391,12 +4321,6 @@ const BrowserSearch = {
     *        (string) Indicates how the user selected the search item.
     */
    recordOneoffSearchInTelemetry(engine, source, type) {
 -    try {
--      const details = { type, isOneOff: true };
+-      const details = {type, isOneOff: true};
 -      BrowserUsageTelemetry.recordSearch(gBrowser, engine, source, details);
 -    } catch (ex) {
 -      Cu.reportError(ex);
@@ -271,7 +254,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
    },
  };
  
-@@ -5877,8 +5789,6 @@ var XULBrowserWindow = {
+@@ -5075,8 +4999,6 @@ var XULBrowserWindow = {
  
        SafeBrowsingNotificationBox.onLocationChange(aLocationURI);
  
@@ -280,15 +263,15 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
        this._updateElementsForContentType();
  
        // Try not to instantiate gCustomizeMode as much as possible,
-@@ -6564,7 +6474,6 @@ var TabsProgressListener = {
+@@ -5667,7 +5589,6 @@ var TabsProgressListener = {
              TelemetryStopwatch.cancel("FX_PAGE_LOAD_MS_2", aBrowser);
            }
            TelemetryStopwatch.start("FX_PAGE_LOAD_MS_2", aBrowser);
 -          Services.telemetry.getHistogramById("FX_TOTAL_TOP_VISITS").add(true);
-         } else if (
-           aStateFlags & Ci.nsIWebProgressListener.STATE_STOP &&
-           stopwatchRunning /* we won't see STATE_START events for pre-rendered tabs */
-@@ -7209,36 +7118,6 @@ var TabletModeUpdater = {
+         } else if (aStateFlags & Ci.nsIWebProgressListener.STATE_STOP &&
+                    stopwatchRunning /* we won't see STATE_START events for pre-rendered tabs */) {
+           TelemetryStopwatch.finish("FX_PAGE_LOAD_MS_2", aBrowser);
+@@ -6152,34 +6073,6 @@ var TabletModeUpdater = {
    },
  };
  
@@ -313,9 +296,7 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
 -
 -  finish() {
 -    if (this.enabled) {
--      let histogram = Services.telemetry.getKeyedHistogramById(
--        "FX_TABLETMODE_PAGE_LOAD"
--      );
+-      let histogram = Services.telemetry.getKeyedHistogramById("FX_TABLETMODE_PAGE_LOAD");
 -      histogram.add("tablet", this._tabletCount);
 -      histogram.add("desktop", this._desktopCount);
 -    }
@@ -325,33 +306,33 @@ diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
  function displaySecurityInfo() {
    BrowserPageInfo(null, "securityTab");
  }
-@@ -7919,12 +7798,6 @@ var ToolbarContextMenu = {
+@@ -6761,12 +6654,6 @@ var ToolbarContextMenu = {
        return;
      }
-     let { remove, report } = promptRemoveExtension(addon);
+     let {remove, report} = promptRemoveExtension(addon);
 -    AMTelemetry.recordActionEvent({
 -      object: "browserAction",
 -      action: "uninstall",
 -      value: remove ? "accepted" : "cancelled",
--      extra: { addonId: addon.id },
+-      extra: {addonId: addon.id},
 -    });
      if (remove) {
        // Leave the extension in pending uninstall if we are also
        // reporting the add-on.
-@@ -7953,11 +7826,6 @@ var ToolbarContextMenu = {
+@@ -6795,11 +6682,6 @@ var ToolbarContextMenu = {
      if (id) {
        let viewID = "addons://detail/" + encodeURIComponent(id);
        BrowserOpenAddonsMgr(viewID);
 -      AMTelemetry.recordActionEvent({
 -        object: "browserAction",
 -        action: "manage",
--        extra: { addonId: id },
+-        extra: {addonId: id},
 -      });
      }
    },
  };
-@@ -9220,7 +9088,6 @@ const gAccessibilityServiceIndicator = {
-       );
+@@ -7873,7 +7755,6 @@ const gAccessibilityServiceIndicator = {
+         Services.urlFormatter.formatURLPref("accessibility.support.url");
        // This is a known URL coming from trusted UI
        openTrustedLinkIn(a11yServicesSupportURL, "tab");
 -      Services.telemetry.scalarSet("a11y.indicator_acted_on", true);
@@ -389,7 +370,7 @@ diff --git a/browser/base/content/moz.build b/browser/base/content/moz.build
 diff --git a/browser/base/content/nsContextMenu.js b/browser/base/content/nsContextMenu.js
 --- a/browser/base/content/nsContextMenu.js
 +++ b/browser/base/content/nsContextMenu.js
-@@ -389,7 +389,6 @@ nsContextMenu.prototype = {
+@@ -330,7 +330,6 @@ nsContextMenu.prototype = {
      this.initLeaveDOMFullScreenItems();
      this.initClickToPlayItems();
      this.initPasswordManagerItems();
@@ -397,7 +378,7 @@ diff --git a/browser/base/content/nsContextMenu.js b/browser/base/content/nsCont
    },
  
    initPageMenuSeparator: function CM_initPageMenuSeparator() {
-@@ -1032,10 +1031,6 @@ nsContextMenu.prototype = {
+@@ -776,10 +775,6 @@ nsContextMenu.prototype = {
      popup.insertBefore(fragment, insertBeforeElement);
    },
  
@@ -443,16 +424,16 @@ diff --git a/browser/base/jar.mn b/browser/base/jar.mn
 diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/BrowserContentHandler.jsm
 --- a/browser/components/BrowserContentHandler.jsm
 +++ b/browser/components/BrowserContentHandler.jsm
-@@ -23,7 +23,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -16,7 +16,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
    PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.jsm",
    SessionStartup: "resource:///modules/sessionstore/SessionStartup.jsm",
    ShellService: "resource:///modules/ShellService.jsm",
 -  UpdatePing: "resource://gre/modules/UpdatePing.jsm",
-   RemotePages:
-     "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",
+   RemotePages: "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",
  });
-@@ -672,8 +671,6 @@ nsBrowserContentHandler.prototype = {
-             );
+ XPCOMUtils.defineLazyServiceGetter(this, "WindowsUIUtils",
+@@ -564,8 +563,6 @@ nsBrowserContentHandler.prototype = {
+             overridePage = Services.urlFormatter.formatURLPref("startup.homepage_override_url");
              if (prefb.prefHasUserValue("app.update.postupdate")) {
                overridePage = getPostUpdateOverridePage(overridePage);
 -              // Send the update ping to signal that the update was successful.
@@ -463,7 +444,7 @@ diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/B
 diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue.jsm
 --- a/browser/components/BrowserGlue.jsm
 +++ b/browser/components/BrowserGlue.jsm
-@@ -271,26 +271,6 @@ let LEGACY_ACTORS = {
+@@ -278,26 +278,6 @@ let LEGACY_ACTORS = {
      },
    },
  
@@ -472,7 +453,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      module: "resource:///actors/SearchTelemetryChild.jsm",
 -      events: {
 -        DOMContentLoaded: {},
--        pageshow: { mozSystemGroup: true },
+-        "pageshow": {mozSystemGroup: true},
 -      },
 -    },
 -  },
@@ -481,7 +462,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    child: {
 -      module: "resource://normandy-content/ShieldFrameChild.jsm",
 -      events: {
--        ShieldPageEvent: { wantUntrusted: true },
+-        "ShieldPageEvent": {wantUntrusted: true},
 -      },
 -      matches: ["about:studies"],
 -    },
@@ -490,27 +471,25 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    UITour: {
      child: {
        module: "resource:///modules/UITourChild.jsm",
-@@ -414,11 +394,6 @@ XPCOMUtils.defineLazyServiceGetters(this
-     "nsIAboutNewTabService",
-   ],
+@@ -404,9 +384,6 @@ let LEGACY_ACTORS = {
+ XPCOMUtils.defineLazyServiceGetters(this, {
+   aboutNewTabService: ["@mozilla.org/browser/aboutnewtab-service;1", "nsIAboutNewTabService"],
  });
--XPCOMUtils.defineLazyGetter(
--  this,
--  "WeaveService",
--  () => Cc["@mozilla.org/weave/service;1"].getService().wrappedJSObject
+-XPCOMUtils.defineLazyGetter(this, "WeaveService", () =>
+-  Cc["@mozilla.org/weave/service;1"].getService().wrappedJSObject
 -);
  
  // lazy module getters
  
-@@ -434,7 +409,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -420,7 +397,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
    Blocklist: "resource://gre/modules/Blocklist.jsm",
    BookmarkHTMLUtils: "resource://gre/modules/BookmarkHTMLUtils.jsm",
    BookmarkJSONUtils: "resource://gre/modules/BookmarkJSONUtils.jsm",
 -  BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.jsm",
    BrowserWindowTracker: "resource:///modules/BrowserWindowTracker.jsm",
-   ContextualIdentityService:
-     "resource://gre/modules/ContextualIdentityService.jsm",
-@@ -443,21 +417,17 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   ContextualIdentityService: "resource://gre/modules/ContextualIdentityService.jsm",
+   Corroborate: "resource://gre/modules/Corroborate.jsm",
+@@ -428,21 +404,17 @@ XPCOMUtils.defineLazyModuleGetters(this,
    Discovery: "resource:///modules/Discovery.jsm",
    ExtensionsUI: "resource:///modules/ExtensionsUI.jsm",
    FileSource: "resource://gre/modules/L10nRegistry.jsm",
@@ -532,7 +511,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    PlacesBackups: "resource://gre/modules/PlacesBackups.jsm",
    PlacesUtils: "resource://gre/modules/PlacesUtils.jsm",
    PluralForm: "resource://gre/modules/PluralForm.jsm",
-@@ -468,13 +438,11 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -453,13 +425,11 @@ XPCOMUtils.defineLazyModuleGetters(this,
    SafeBrowsing: "resource://gre/modules/SafeBrowsing.jsm",
    Sanitizer: "resource:///modules/Sanitizer.jsm",
    SaveToPocket: "chrome://pocket/content/SaveToPocket.jsm",
@@ -546,20 +525,17 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    UITour: "resource:///modules/UITour.jsm",
    WebChannel: "resource://gre/modules/WebChannel.jsm",
    WindowsRegistry: "resource://gre/modules/WindowsRegistry.jsm",
-@@ -709,94 +677,6 @@ BrowserGlue.prototype = {
+@@ -670,89 +640,6 @@ BrowserGlue.prototype = {
      Services.prefs.savePrefFile(null);
    },
  
 -  _setSyncAutoconnectDelay: function BG__setSyncAutoconnectDelay() {
 -    // Assume that a non-zero value for services.sync.autoconnectDelay should override
 -    if (Services.prefs.prefHasUserValue("services.sync.autoconnectDelay")) {
--      let prefDelay = Services.prefs.getIntPref(
--        "services.sync.autoconnectDelay"
--      );
+-      let prefDelay = Services.prefs.getIntPref("services.sync.autoconnectDelay");
 -
--      if (prefDelay > 0) {
+-      if (prefDelay > 0)
 -        return;
--      }
 -    }
 -
 -    // delays are in seconds
@@ -575,7 +551,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    }
 -    delay = delay <= MAX_DELAY ? delay : MAX_DELAY;
 -
--    const { Weave } = ChromeUtils.import("resource://services-sync/main.js");
+-    const {Weave} = ChromeUtils.import("resource://services-sync/main.js");
 -    Weave.Service.scheduler.delayedAutoConnect(delay);
 -  },
 -
@@ -605,10 +581,8 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    // Note that a user could use about:blank and web extension at the same time
 -    // to overwrite the about:newtab, but the web extension takes priority, so the
 -    // ordering matters in the following check.
--    if (
--      Services.prefs.getBoolPref("browser.newtabpage.enabled") &&
--      !aboutNewTabService.overridden
--    ) {
+-    if (Services.prefs.getBoolPref("browser.newtabpage.enabled") &&
+-                                   !aboutNewTabService.overridden) {
 -      newTabSetting = 0;
 -    } else if (aboutNewTabService.newTabURL.startsWith("moz-extension://")) {
 -      newTabSetting = 2;
@@ -634,14 +608,14 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      value: newTabSetting | (homePageSetting << 2),
 -    };
 -    const ACTIVITY_STREAM_ID = "activity-stream";
--    const options = { filter: ACTIVITY_STREAM_ID };
+-    const options = {filter: ACTIVITY_STREAM_ID};
 -    this.pingCentre.sendPing(payload, options);
 -  },
 -
    // nsIObserver implementation
    observe: async function BG_observe(subject, topic, data) {
      switch (topic) {
-@@ -839,28 +719,6 @@ BrowserGlue.prototype = {
+@@ -795,28 +682,6 @@ BrowserGlue.prototype = {
            this._setPrefToSaveSession();
          }
          break;
@@ -670,7 +644,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
        case "session-save":
          this._setPrefToSaveSession(true);
          subject.QueryInterface(Ci.nsISupportsPRBool);
-@@ -980,9 +838,6 @@ BrowserGlue.prototype = {
+@@ -923,9 +788,6 @@ BrowserGlue.prototype = {
            this._notifyUnsignedAddonsDisabled();
          }
          break;
@@ -680,7 +654,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
        case "handlersvc-store-initialized":
          // Initialize PdfJs when running in-process and remote. This only
          // happens once since PdfJs registers global hooks. If the PdfJs
-@@ -993,10 +848,6 @@ BrowserGlue.prototype = {
+@@ -936,10 +798,6 @@ BrowserGlue.prototype = {
          // shim for privileged api access.
          PdfJs.init(true);
          break;
@@ -691,7 +665,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      }
    },
  
-@@ -1033,7 +884,6 @@ BrowserGlue.prototype = {
+@@ -976,7 +834,6 @@ BrowserGlue.prototype = {
      os.addObserver(this, "xpi-signature-changed");
      os.addObserver(this, "sync-ui-state:update");
      os.addObserver(this, "handlersvc-store-initialized");
@@ -699,31 +673,28 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
  
      ActorManagerParent.addActors(ACTORS);
      ActorManagerParent.addLegacyActors(LEGACY_ACTORS);
-@@ -1097,12 +947,7 @@ BrowserGlue.prototype = {
+@@ -1033,9 +890,7 @@ BrowserGlue.prototype = {
      os.removeObserver(this, "flash-plugin-hang");
      os.removeObserver(this, "xpi-signature-changed");
      os.removeObserver(this, "sync-ui-state:update");
 -    os.removeObserver(this, "shield-init-complete");
 -
--    Services.prefs.removeObserver(
--      "permissions.eventTelemetry.enabled",
--      this._togglePermissionPromptTelemetry
--    );
+-    Services.prefs.removeObserver("permissions.eventTelemetry.enabled", this._togglePermissionPromptTelemetry);
 +
-     Services.prefs.removeObserver(
-       "privacy.trackingprotection",
-       this._matchCBCategory
-@@ -1187,8 +1032,6 @@ BrowserGlue.prototype = {
-       "resource:///modules/themes/dark/"
-     );
+     Services.prefs.removeObserver("privacy.trackingprotection", this._matchCBCategory);
+     Services.prefs.removeObserver("network.cookie.cookieBehavior", this._matchCBCategory);
+     Services.prefs.removeObserver(ContentBlockingCategoriesPrefs.PREF_CB_CATEGORY, this._updateCBCategory);
+@@ -1087,8 +942,6 @@ BrowserGlue.prototype = {
+         "firefox-compact-dark@mozilla.org", "1.0",
+         "resource:///modules/themes/dark/");
  
 -    Normandy.init();
 -
      SaveToPocket.init();
      Services.obs.notifyObservers(null, "browser-ui-startup-complete");
    },
-@@ -1483,39 +1326,6 @@ BrowserGlue.prototype = {
-     );
+@@ -1285,31 +1138,6 @@ BrowserGlue.prototype = {
+       win.gHighPriorityNotificationBox.PRIORITY_WARNING_MEDIUM, buttons);
    },
  
 -  _firstWindowTelemetry(aWindow) {
@@ -740,19 +711,11 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    // definitions be referred to as "cold" startups, but probably not since we likely
 -    // just wrote many of the files we use to disk. This way we should approximate a lower
 -    // bound to the number of cold startups rather than an upper bound.
--    let lastCheckSeconds = Services.prefs.getIntPref(
--      "browser.startup.lastColdStartupCheck",
--      nowSeconds
--    );
--    Services.prefs.setIntPref(
--      "browser.startup.lastColdStartupCheck",
--      nowSeconds
--    );
+-    let lastCheckSeconds = Services.prefs.getIntPref("browser.startup.lastColdStartupCheck", nowSeconds);
+-    Services.prefs.setIntPref("browser.startup.lastColdStartupCheck", nowSeconds);
 -    try {
--      let secondsSinceLastOSRestart =
--        Services.startup.secondsSinceLastOSRestart;
--      let isColdStartup =
--        nowSeconds - secondsSinceLastOSRestart > lastCheckSeconds;
+-      let secondsSinceLastOSRestart = Services.startup.secondsSinceLastOSRestart;
+-      let isColdStartup = nowSeconds - secondsSinceLastOSRestart > lastCheckSeconds;
 -      Services.telemetry.scalarSet("startup.is_cold", isColdStartup);
 -    } catch (ex) {
 -      Cu.reportError(ex);
@@ -762,7 +725,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    // the first browser window has finished initializing
    _onFirstWindowLoaded: function BG__onFirstWindowLoaded(aWindow) {
      TabCrashHandler.init();
-@@ -1591,10 +1401,6 @@ BrowserGlue.prototype = {
+@@ -1369,10 +1197,6 @@ BrowserGlue.prototype = {
  
      AutoCompletePopup.init();
      DateTimePickerParent.init();
@@ -773,7 +736,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
  
      PageThumbs.init();
  
-@@ -1606,11 +1412,8 @@ BrowserGlue.prototype = {
+@@ -1384,11 +1208,8 @@ BrowserGlue.prototype = {
  
      PageActions.init();
  
@@ -783,21 +746,15 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    this._collectStartupConditionsTelemetry();
 -
      // Set the default favicon size for UI views that use the page-icon protocol.
-     PlacesUtils.favicons.setDefaultIconURIPreferredSize(
-       16 * aWindow.devicePixelRatio
-@@ -1632,10 +1435,6 @@ BrowserGlue.prototype = {
-       this._updateCBCategory
-     );
-     Services.prefs.addObserver(
--      "media.autoplay.default",
--      this._updateAutoplayPref
--    );
--    Services.prefs.addObserver(
-       "privacy.trackingprotection",
-       this._setPrefExpectations
-     );
-@@ -1645,11 +1444,6 @@ BrowserGlue.prototype = {
-     );
+     PlacesUtils.favicons.setDefaultIconURIPreferredSize(16 * aWindow.devicePixelRatio);
+     this._setPrefExpectationsAndUpdate();
+@@ -1398,16 +1219,10 @@ BrowserGlue.prototype = {
+     Services.prefs.addObserver("privacy.trackingprotection", this._matchCBCategory);
+     Services.prefs.addObserver("network.cookie.cookieBehavior", this._matchCBCategory);
+     Services.prefs.addObserver(ContentBlockingCategoriesPrefs.PREF_CB_CATEGORY, this._updateCBCategory);
+-    Services.prefs.addObserver("media.autoplay.default", this._updateAutoplayPref);
+     Services.prefs.addObserver("privacy.trackingprotection", this._setPrefExpectations);
+     Services.prefs.addObserver("browser.contentblocking.features.strict", this._setPrefExpectationsAndUpdate);
    },
  
 -  _updateAutoplayPref() {
@@ -808,20 +765,16 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    _setPrefExpectations() {
      ContentBlockingCategoriesPrefs.setPrefExpectations();
    },
-@@ -1667,107 +1461,6 @@ BrowserGlue.prototype = {
+@@ -1425,73 +1240,6 @@ BrowserGlue.prototype = {
      ContentBlockingCategoriesPrefs.updateCBCategory();
    },
  
 -  _togglePermissionPromptTelemetry() {
--    let enablePermissionPromptTelemetry = Services.prefs.getBoolPref(
--      "permissions.eventTelemetry.enabled",
--      false
--    );
+-    let enablePermissionPromptTelemetry =
+-      Services.prefs.getBoolPref("permissions.eventTelemetry.enabled", false);
 -
--    Services.telemetry.setEventRecordingEnabled(
--      "security.ui.permissionprompt",
--      enablePermissionPromptTelemetry
--    );
+-    Services.telemetry.setEventRecordingEnabled("security.ui.permissionprompt",
+-      enablePermissionPromptTelemetry);
 -
 -    if (!enablePermissionPromptTelemetry) {
 -      // Remove the saved unique identifier to reduce the (remote) chance
@@ -831,31 +784,16 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -  },
 -
 -  _recordContentBlockingTelemetry() {
--    let recordIdentityPopupEvents = Services.prefs.getBoolPref(
--      "security.identitypopup.recordEventElemetry"
--    );
--    Services.telemetry.setEventRecordingEnabled(
--      "security.ui.identitypopup",
--      recordIdentityPopupEvents
--    );
+-    let recordIdentityPopupEvents = Services.prefs.getBoolPref("security.identitypopup.recordEventElemetry");
+-    Services.telemetry.setEventRecordingEnabled("security.ui.identitypopup", recordIdentityPopupEvents);
 -
--    let tpEnabled = Services.prefs.getBoolPref(
--      "privacy.trackingprotection.enabled"
--    );
--    Services.telemetry
--      .getHistogramById("TRACKING_PROTECTION_ENABLED")
--      .add(tpEnabled);
+-    let tpEnabled = Services.prefs.getBoolPref("privacy.trackingprotection.enabled");
+-    Services.telemetry.getHistogramById("TRACKING_PROTECTION_ENABLED").add(tpEnabled);
 -
--    let tpPBDisabled = Services.prefs.getBoolPref(
--      "privacy.trackingprotection.pbmode.enabled"
--    );
--    Services.telemetry
--      .getHistogramById("TRACKING_PROTECTION_PBM_DISABLED")
--      .add(!tpPBDisabled);
+-    let tpPBDisabled = Services.prefs.getBoolPref("privacy.trackingprotection.pbmode.enabled");
+-    Services.telemetry.getHistogramById("TRACKING_PROTECTION_PBM_DISABLED").add(!tpPBDisabled);
 -
--    let cookieBehavior = Services.prefs.getIntPref(
--      "network.cookie.cookieBehavior"
--    );
+-    let cookieBehavior = Services.prefs.getIntPref("network.cookie.cookieBehavior");
 -    Services.telemetry.getHistogramById("COOKIE_BEHAVIOR").add(cookieBehavior);
 -
 -    let exceptions = 0;
@@ -866,49 +804,34 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    }
 -    Services.telemetry.scalarSet("contentblocking.exceptions", exceptions);
 -
--    let fpEnabled = Services.prefs.getBoolPref(
--      "privacy.trackingprotection.fingerprinting.enabled"
--    );
--    let cmEnabled = Services.prefs.getBoolPref(
--      "privacy.trackingprotection.cryptomining.enabled"
--    );
+-    let fpEnabled = Services.prefs.getBoolPref("privacy.trackingprotection.fingerprinting.enabled");
+-    let cmEnabled = Services.prefs.getBoolPref("privacy.trackingprotection.cryptomining.enabled");
 -    let categoryPref;
--    switch (
--      Services.prefs.getStringPref("browser.contentblocking.category", null)
--    ) {
--      case "standard":
--        categoryPref = 0;
--        break;
--      case "strict":
--        categoryPref = 1;
--        break;
--      case "custom":
--        categoryPref = 2;
--        break;
--      default:
--        // Any other value is unsupported.
--        categoryPref = 3;
--        break;
+-    switch (Services.prefs.getStringPref("browser.contentblocking.category", null)) {
+-    case "standard":
+-      categoryPref = 0;
+-      break;
+-    case "strict":
+-      categoryPref = 1;
+-      break;
+-    case "custom":
+-      categoryPref = 2;
+-      break;
+-    default:
+-      // Any other value is unsupported.
+-      categoryPref = 3;
+-      break;
 -    }
 -
--    Services.telemetry.scalarSet(
--      "contentblocking.fingerprinting_blocking_enabled",
--      fpEnabled
--    );
--    Services.telemetry.scalarSet(
--      "contentblocking.cryptomining_blocking_enabled",
--      cmEnabled
--    );
+-    Services.telemetry.scalarSet("contentblocking.fingerprinting_blocking_enabled", fpEnabled);
+-    Services.telemetry.scalarSet("contentblocking.cryptomining_blocking_enabled", cmEnabled);
 -    Services.telemetry.scalarSet("contentblocking.category", categoryPref);
 -  },
 -
 -  _sendMediaTelemetry() {
 -    let win = Services.wm.getMostRecentWindow("navigator:browser");
 -    if (win) {
--      let v = win.document.createElementNS(
--        "http://www.w3.org/1999/xhtml",
--        "video"
--      );
+-      let v = win.document.createElementNS("http://www.w3.org/1999/xhtml", "video");
 -      v.reportCanPlayTelemetry();
 -    }
 -  },
@@ -916,7 +839,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    /**
     * Application shutdown handler.
     */
-@@ -1797,13 +1490,6 @@ BrowserGlue.prototype = {
+@@ -1519,13 +1267,6 @@ BrowserGlue.prototype = {
        }
      }
  
@@ -930,7 +853,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      PageThumbs.uninit();
      NewTabUtils.uninit();
      AboutNetErrorHandler.uninit();
-@@ -1811,42 +1497,9 @@ BrowserGlue.prototype = {
+@@ -1533,42 +1274,9 @@ BrowserGlue.prototype = {
      AutoCompletePopup.uninit();
      DateTimePickerParent.uninit();
  
@@ -947,9 +870,9 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      let addon = await AddonManager.getAddonByID(ID);
 -      let disabled = Services.prefs.getBoolPref(PREF, false);
 -      if (disabled) {
--        await addon.disable({ allowSystemAddons: true });
+-        await addon.disable({allowSystemAddons: true});
 -      } else {
--        await addon.enable({ allowSystemAddons: true });
+-        await addon.enable({allowSystemAddons: true});
 -      }
 -    };
 -    Services.prefs.addObserver(PREF, _checkScreenshotsPref);
@@ -963,9 +886,9 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      let addon = await AddonManager.getAddonByID(ID);
 -      let enabled = Services.prefs.getBoolPref(PREF, false);
 -      if (enabled && !addon.isActive) {
--        await addon.enable({ allowSystemAddons: true });
+-        await addon.enable({allowSystemAddons: true});
 -      } else if (!enabled && addon.isActive) {
--        await addon.disable({ allowSystemAddons: true });
+-        await addon.disable({allowSystemAddons: true});
 -      }
 -    });
 -  },
@@ -973,7 +896,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
    _showNewInstallModal() {
      // Allow other observers of the same topic to run while we open the dialog.
      Services.tm.dispatchToMainThread(() => {
-@@ -1875,9 +1528,6 @@ BrowserGlue.prototype = {
+@@ -1592,9 +1300,6 @@ BrowserGlue.prototype = {
      }
      this._windowsWereRestored = true;
  
@@ -981,11 +904,11 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    SearchTelemetry.init();
 -
      // Show update notification, if needed.
-     if (Services.prefs.prefHasUserValue("app.update.postupdate")) {
+     if (Services.prefs.prefHasUserValue("app.update.postupdate"))
        this._showUpdateNotification();
-@@ -1929,9 +1579,6 @@ BrowserGlue.prototype = {
-       LATE_TASKS_IDLE_TIME_SEC
-     );
+@@ -1637,9 +1342,6 @@ BrowserGlue.prototype = {
+     this._idleService.addIdleObserver(
+       this._lateTasksIdleObserver, LATE_TASKS_IDLE_TIME_SEC);
  
 -    this._monitorScreenshotsPref();
 -    this._monitorWebcompatReporterPref();
@@ -993,26 +916,19 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      if (Services.prefs.getBoolPref("corroborator.enabled", true)) {
        Corroborate.init().catch(Cu.reportError);
      }
-@@ -1970,29 +1617,6 @@ BrowserGlue.prototype = {
+@@ -1677,22 +1379,6 @@ BrowserGlue.prototype = {
        Discovery.update();
      });
  
 -    Services.tm.idleDispatchToMainThread(() => {
--      let enableCertErrorUITelemetry = Services.prefs.getBoolPref(
--        "security.certerrors.recordEventTelemetry",
--        false
--      );
--      Services.telemetry.setEventRecordingEnabled(
--        "security.ui.certerror",
--        enableCertErrorUITelemetry
--      );
+-      let enableCertErrorUITelemetry =
+-        Services.prefs.getBoolPref("security.certerrors.recordEventTelemetry", false);
+-      Services.telemetry.setEventRecordingEnabled("security.ui.certerror",
+-        enableCertErrorUITelemetry);
 -    });
 -
 -    Services.tm.idleDispatchToMainThread(() => {
--      Services.prefs.addObserver(
--        "permissions.eventTelemetry.enabled",
--        this._togglePermissionPromptTelemetry
--      );
+-      Services.prefs.addObserver("permissions.eventTelemetry.enabled", this._togglePermissionPromptTelemetry);
 -      this._togglePermissionPromptTelemetry();
 -    });
 -
@@ -1023,7 +939,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      // Load the Login Manager data from disk off the main thread, some time
      // after startup.  If the data is required before this runs, for example
      // because a restored page contains a password field, it will be loaded on
-@@ -2107,25 +1731,6 @@ BrowserGlue.prototype = {
+@@ -1793,22 +1479,6 @@ BrowserGlue.prototype = {
     */
    _scheduleArbitrarilyLateIdleTasks() {
      Services.tm.idleDispatchToMainThread(() => {
@@ -1033,15 +949,12 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    Services.tm.idleDispatchToMainThread(() => {
 -      // Telemetry for master-password - we do this after a delay as it
 -      // can cause IO if NSS/PSM has not already initialized.
--      let tokenDB = Cc["@mozilla.org/security/pk11tokendb;1"].getService(
--        Ci.nsIPK11TokenDB
--      );
+-      let tokenDB = Cc["@mozilla.org/security/pk11tokendb;1"]
+-                .getService(Ci.nsIPK11TokenDB);
 -      let token = tokenDB.getInternalKeyToken();
 -      let mpEnabled = token.hasPassword;
 -      if (mpEnabled) {
--        Services.telemetry
--          .getHistogramById("MASTER_PASSWORD_ENABLED")
--          .add(mpEnabled);
+-        Services.telemetry.getHistogramById("MASTER_PASSWORD_ENABLED").add(mpEnabled);
 -      }
 -    });
 -
@@ -1049,83 +962,64 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
        let obj = {};
        ChromeUtils.import("resource://gre/modules/GMPInstallManager.jsm", obj);
        this._gmpInstallManager = new obj.GMPInstallManager();
-@@ -2593,14 +2198,6 @@ BrowserGlue.prototype = {
-             let backupAge = Math.round(
-               (profileLastUse - lastBackupTime) / 86400000
-             );
+@@ -2196,14 +1866,6 @@ BrowserGlue.prototype = {
+           // available backup compared to that session.
+           if (profileLastUse > lastBackupTime) {
+             let backupAge = Math.round((profileLastUse - lastBackupTime) / 86400000);
 -            // Report the age of the last available backup.
 -            try {
 -              Services.telemetry
--                .getHistogramById("PLACES_BACKUPS_DAYSFROMLAST")
--                .add(backupAge);
+-                      .getHistogramById("PLACES_BACKUPS_DAYSFROMLAST")
+-                      .add(backupAge);
 -            } catch (ex) {
 -              Cu.reportError(new Error("Unable to report telemetry."));
 -            }
  
-             if (backupAge > BOOKMARKS_BACKUP_MAX_INTERVAL_DAYS) {
+             if (backupAge > BOOKMARKS_BACKUP_MAX_INTERVAL_DAYS)
                this._bookmarksBackupIdleTime /= 2;
-@@ -2691,34 +2288,6 @@ BrowserGlue.prototype = {
+@@ -2272,21 +1934,6 @@ BrowserGlue.prototype = {
      notification.persistence = -1; // Until user closes it
    },
  
 -  _showSyncStartedDoorhanger() {
--    let bundle = Services.strings.createBundle(
--      "chrome://browser/locale/accounts.properties"
--    );
+-    let bundle = Services.strings.createBundle("chrome://browser/locale/accounts.properties");
 -    let productName = gBrandBundle.GetStringFromName("brandShortName");
 -    let title = bundle.GetStringFromName("syncStartNotification.title");
--    let body = bundle.formatStringFromName(
--      "syncStartNotification.body2",
--      [productName],
--      1
--    );
+-    let body = bundle.formatStringFromName("syncStartNotification.body2",
+-                                            [productName], 1);
 -
 -    let clickCallback = (subject, topic, data) => {
--      if (topic != "alertclickcallback") {
+-      if (topic != "alertclickcallback")
 -        return;
--      }
 -      this._openPreferences("sync");
 -    };
--    this.AlertsService.showAlertNotification(
--      null,
--      title,
--      body,
--      true,
--      null,
--      clickCallback
--    );
+-    this.AlertsService.showAlertNotification(null, title, body, true, null, clickCallback);
 -  },
 -
    /**
     * Uncollapses PersonalToolbar if its collapsed status is not
     * persisted, and user customized it or changed default bookmarks.
-@@ -3194,25 +2763,6 @@ BrowserGlue.prototype = {
-       );
+@@ -2681,19 +2328,6 @@ BrowserGlue.prototype = {
+       Services.prefs.setIntPref("browser.shell.defaultBrowserCheckCount", promptCount);
      }
  
 -    try {
 -      // Report default browser status on startup to telemetry
 -      // so we can track whether we are the default.
--      Services.telemetry
--        .getHistogramById("BROWSER_IS_USER_DEFAULT")
--        .add(isDefault);
--      Services.telemetry
--        .getHistogramById("BROWSER_IS_USER_DEFAULT_ERROR")
--        .add(isDefaultError);
--      Services.telemetry
--        .getHistogramById("BROWSER_SET_DEFAULT_ALWAYS_CHECK")
--        .add(shouldCheck);
--      Services.telemetry
--        .getHistogramById("BROWSER_SET_DEFAULT_DIALOG_PROMPT_RAWCOUNT")
--        .add(promptCount);
--    } catch (ex) {
--      /* Don't break the default prompt if telemetry is broken. */
--    }
+-      Services.telemetry.getHistogramById("BROWSER_IS_USER_DEFAULT")
+-                        .add(isDefault);
+-      Services.telemetry.getHistogramById("BROWSER_IS_USER_DEFAULT_ERROR")
+-                        .add(isDefaultError);
+-      Services.telemetry.getHistogramById("BROWSER_SET_DEFAULT_ALWAYS_CHECK")
+-                        .add(shouldCheck);
+-      Services.telemetry.getHistogramById("BROWSER_SET_DEFAULT_DIALOG_PROMPT_RAWCOUNT")
+-                        .add(promptCount);
+-    } catch (ex) { /* Don't break the default prompt if telemetry is broken. */ }
 -
      if (willPrompt) {
        DefaultBrowserCheck.prompt(BrowserWindowTracker.getTopWindow());
      }
-@@ -3238,19 +2788,6 @@ BrowserGlue.prototype = {
+@@ -2719,19 +2353,6 @@ BrowserGlue.prototype = {
      // Firefox 60, the hardcoded default was to show history/bookmarks first.
      // After 60, it's to show search suggestions first.
  
@@ -1145,7 +1039,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      // Now get the pref's value.  If the study is active, the value will have
      // just been set (on the default branch) as part of Shield's init.  The pref
      // should not exist otherwise (normally).
-@@ -3338,218 +2875,6 @@ BrowserGlue.prototype = {
+@@ -2805,165 +2426,6 @@ BrowserGlue.prototype = {
      });
    },
  
@@ -1160,9 +1054,9 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      const URIs = data.wrappedJSObject.object;
 -
 -      // win can be null, but it's ok, we'll assign it later in openTab()
--      let win = BrowserWindowTracker.getTopWindow({ private: false });
+-      let win = BrowserWindowTracker.getTopWindow({private: false});
 -
--      const openTab = async URI => {
+-      const openTab = async (URI) => {
 -        let tab;
 -        if (!win) {
 -          win = await this._openURLInNewWindow(URI.uri);
@@ -1180,19 +1074,13 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -
 -      const deviceName = URIs[0].sender && URIs[0].sender.name;
 -      let title, body;
--      const bundle = Services.strings.createBundle(
--        "chrome://browser/locale/accounts.properties"
--      );
+-      const bundle = Services.strings.createBundle("chrome://browser/locale/accounts.properties");
 -      if (URIs.length == 1) {
 -        // Due to bug 1305895, tabs from iOS may not have device information, so
 -        // we have separate strings to handle those cases. (See Also
 -        // unnamedTabsArrivingNotificationNoDevice.body below)
 -        if (deviceName) {
--          title = bundle.formatStringFromName(
--            "tabArrivingNotificationWithDevice.title",
--            [deviceName],
--            1
--          );
+-          title = bundle.formatStringFromName("tabArrivingNotificationWithDevice.title", [deviceName], 1);
 -        } else {
 -          title = bundle.GetStringFromName("tabArrivingNotification.title");
 -        }
@@ -1205,20 +1093,12 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -          body = win.gURLBar.trimValue(body);
 -        }
 -        if (wasTruncated) {
--          body = bundle.formatStringFromName(
--            "singleTabArrivingWithTruncatedURL.body",
--            [body],
--            1
--          );
+-          body = bundle.formatStringFromName("singleTabArrivingWithTruncatedURL.body", [body], 1);
 -        }
 -      } else {
--        title = bundle.GetStringFromName(
--          "multipleTabsArrivingNotification.title"
--        );
+-        title = bundle.GetStringFromName("multipleTabsArrivingNotification.title");
 -        const allKnownSender = URIs.every(URI => URI.sender != null);
--        const allSameDevice =
--          allKnownSender &&
--          URIs.every(URI => URI.sender.id == URIs[0].sender.id);
+-        const allSameDevice = allKnownSender && URIs.every(URI => URI.sender.id == URIs[0].sender.id);
 -        let tabArrivingBody;
 -        if (allSameDevice) {
 -          if (deviceName) {
@@ -1247,26 +1127,19 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      if (AppConstants.platform == "win") {
 -        imageURL = "chrome://branding/content/icon64.png";
 -      }
--      this.AlertsService.showAlertNotification(
--        imageURL,
--        title,
--        body,
--        true,
--        null,
--        clickCallback
--      );
+-      this.AlertsService.showAlertNotification(imageURL, title, body, true, null, clickCallback);
 -    } catch (ex) {
 -      Cu.reportError("Error displaying tab(s) received by Sync: " + ex);
 -    }
 -  },
 -
--  async _onVerifyLoginNotification({ body, title, url }) {
+-  async _onVerifyLoginNotification({body, title, url}) {
 -    let tab;
 -    let imageURL;
 -    if (AppConstants.platform == "win") {
 -      imageURL = "chrome://branding/content/icon64.png";
 -    }
--    let win = BrowserWindowTracker.getTopWindow({ private: false });
+-    let win = BrowserWindowTracker.getTopWindow({private: false});
 -    if (!win) {
 -      win = await this._openURLInNewWindow(url);
 -      let tabs = win.gBrowser.tabs;
@@ -1276,21 +1149,13 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    }
 -    tab.setAttribute("attention", true);
 -    let clickCallback = (subject, topic, data) => {
--      if (topic != "alertclickcallback") {
+-      if (topic != "alertclickcallback")
 -        return;
--      }
 -      win.gBrowser.selectedTab = tab;
 -    };
 -
 -    try {
--      this.AlertsService.showAlertNotification(
--        imageURL,
--        title,
--        body,
--        true,
--        null,
--        clickCallback
--      );
+-      this.AlertsService.showAlertNotification(imageURL, title, body, true, null, clickCallback);
 -    } catch (ex) {
 -      Cu.reportError("Error notifying of a verify login event: " + ex);
 -    }
@@ -1301,20 +1166,15 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -      "chrome://browser/locale/accounts.properties"
 -    );
 -    let title = accountsBundle.GetStringFromName("deviceConnectedTitle");
--    let body = accountsBundle.formatStringFromName(
--      "deviceConnectedBody" + (deviceName ? "" : ".noDeviceName"),
--      [deviceName],
--      1
--    );
+-    let body = accountsBundle.formatStringFromName("deviceConnectedBody" +
+-                                                   (deviceName ? "" : ".noDeviceName"),
+-                                                   [deviceName], 1);
 -
 -    let clickCallback = async (subject, topic, data) => {
--      if (topic != "alertclickcallback") {
+-      if (topic != "alertclickcallback")
 -        return;
--      }
--      let url = await FxAccounts.config.promiseManageDevicesURI(
--        "device-connected-notification"
--      );
--      let win = BrowserWindowTracker.getTopWindow({ private: false });
+-      let url = await FxAccounts.config.promiseManageDevicesURI("device-connected-notification");
+-      let win = BrowserWindowTracker.getTopWindow({private: false});
 -      if (!win) {
 -        this._openURLInNewWindow(url);
 -      } else {
@@ -1323,76 +1183,51 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    };
 -
 -    try {
--      this.AlertsService.showAlertNotification(
--        null,
--        title,
--        body,
--        true,
--        null,
--        clickCallback
--      );
+-      this.AlertsService.showAlertNotification(null, title, body, true, null, clickCallback);
 -    } catch (ex) {
 -      Cu.reportError("Error notifying of a new Sync device: " + ex);
 -    }
 -  },
 -
 -  _onDeviceDisconnected() {
--    let bundle = Services.strings.createBundle(
--      "chrome://browser/locale/accounts.properties"
--    );
--    let title = bundle.GetStringFromName(
--      "deviceDisconnectedNotification.title"
--    );
+-    let bundle = Services.strings.createBundle("chrome://browser/locale/accounts.properties");
+-    let title = bundle.GetStringFromName("deviceDisconnectedNotification.title");
 -    let body = bundle.GetStringFromName("deviceDisconnectedNotification.body");
 -
 -    let clickCallback = (subject, topic, data) => {
--      if (topic != "alertclickcallback") {
+-      if (topic != "alertclickcallback")
 -        return;
--      }
 -      this._openPreferences("sync");
 -    };
--    this.AlertsService.showAlertNotification(
--      null,
--      title,
--      body,
--      true,
--      null,
--      clickCallback
--    );
+-    this.AlertsService.showAlertNotification(null, title, body, true, null, clickCallback);
 -  },
 -
    _handleFlashHang() {
      ++this._flashHangCount;
      if (this._flashHangCount < 2) {
-@@ -3611,20 +2936,6 @@ BrowserGlue.prototype = {
-     );
+@@ -3005,16 +2467,6 @@ BrowserGlue.prototype = {
+       win.gNotificationBox.PRIORITY_INFO_MEDIUM, buttons);
    },
  
 -  _updateFxaBadges() {
 -    let state = UIState.get();
--    if (
--      state.status == UIState.STATUS_LOGIN_FAILED ||
--      state.status == UIState.STATUS_NOT_VERIFIED
--    ) {
--      AppMenuNotifications.showBadgeOnlyNotification(
--        "fxa-needs-authentication"
--      );
+-    if (state.status == UIState.STATUS_LOGIN_FAILED ||
+-        state.status == UIState.STATUS_NOT_VERIFIED) {
+-      AppMenuNotifications.showBadgeOnlyNotification("fxa-needs-authentication");
 -    } else {
 -      AppMenuNotifications.removeNotification("fxa-needs-authentication");
 -    }
 -  },
 -
-   QueryInterface: ChromeUtils.generateQI([
-     Ci.nsIObserver,
-     Ci.nsISupportsWeakReference,
-@@ -3941,48 +3252,6 @@ ContentPermissionPrompt.prototype = {
+   QueryInterface: ChromeUtils.generateQI([Ci.nsIObserver,
+                                           Ci.nsISupportsWeakReference]),
+ };
+@@ -3292,41 +2744,6 @@ ContentPermissionPrompt.prototype = {
        request.cancel();
        throw ex;
      }
 -
--    let schemeHistogram = Services.telemetry.getKeyedHistogramById(
--      "PERMISSION_REQUEST_ORIGIN_SCHEME"
--    );
+-    let schemeHistogram = Services.telemetry.getKeyedHistogramById("PERMISSION_REQUEST_ORIGIN_SCHEME");
 -    let scheme = 0;
 -    try {
 -      // URI is null for system principals.
@@ -1419,22 +1254,17 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -
 -    // request.element should be the browser element in e10s.
 -    if (request.element && request.element.contentPrincipal) {
--      let thirdPartyHistogram = Services.telemetry.getKeyedHistogramById(
--        "PERMISSION_REQUEST_THIRD_PARTY_ORIGIN"
--      );
--      let isThirdParty =
--        request.principal.origin != request.element.contentPrincipal.origin;
+-      let thirdPartyHistogram = Services.telemetry.getKeyedHistogramById("PERMISSION_REQUEST_THIRD_PARTY_ORIGIN");
+-      let isThirdParty = request.principal.origin != request.element.contentPrincipal.origin;
 -      thirdPartyHistogram.add(type, isThirdParty);
 -    }
 -
--    let userInputHistogram = Services.telemetry.getKeyedHistogramById(
--      "PERMISSION_REQUEST_HANDLING_USER_INPUT"
--    );
+-    let userInputHistogram = Services.telemetry.getKeyedHistogramById("PERMISSION_REQUEST_HANDLING_USER_INPUT");
 -    userInputHistogram.add(type, request.isHandlingUserInput);
    },
  };
  
-@@ -3999,7 +3268,6 @@ var DefaultBrowserCheck = {
+@@ -3341,7 +2758,6 @@ var DefaultBrowserCheck = {
  
    setAsDefault() {
      let claimAllTypes = true;
@@ -1442,7 +1272,7 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
      if (AppConstants.platform == "win") {
        try {
          // In Windows 8+, the UI for selecting default protocol is much
-@@ -4013,19 +3281,8 @@ var DefaultBrowserCheck = {
+@@ -3355,17 +2771,8 @@ var DefaultBrowserCheck = {
      try {
        ShellService.setDefaultBrowser(claimAllTypes, false);
      } catch (ex) {
@@ -1453,32 +1283,27 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -    // to be inverse of each other, but that is only because this function is
 -    // called when the browser is set as the default. During startup we record
 -    // the BROWSER_IS_USER_DEFAULT value without recording BROWSER_SET_USER_DEFAULT_ERROR.
--    Services.telemetry
--      .getHistogramById("BROWSER_IS_USER_DEFAULT")
--      .add(!setAsDefaultError);
--    Services.telemetry
--      .getHistogramById("BROWSER_SET_DEFAULT_ERROR")
--      .add(setAsDefaultError);
+-    Services.telemetry.getHistogramById("BROWSER_IS_USER_DEFAULT")
+-                      .add(!setAsDefaultError);
+-    Services.telemetry.getHistogramById("BROWSER_SET_DEFAULT_ERROR")
+-                      .add(setAsDefaultError);
    },
  
    _createPopup(win, notNowStrings, neverStrings) {
-@@ -4173,15 +3430,6 @@ var DefaultBrowserCheck = {
+@@ -3474,12 +2881,6 @@ var DefaultBrowserCheck = {
        } else if (!shouldAsk.value) {
          ShellService.shouldCheckDefaultBrowser = false;
        }
 -
 -      try {
 -        let resultEnum = rv * 2 + shouldAsk.value;
--        Services.telemetry
--          .getHistogramById("BROWSER_SET_DEFAULT_RESULT")
--          .add(resultEnum);
--      } catch (ex) {
--        /* Don't break if Telemetry is acting up. */
--      }
+-        Services.telemetry.getHistogramById("BROWSER_SET_DEFAULT_RESULT")
+-                          .add(resultEnum);
+-      } catch (ex) { /* Don't break if Telemetry is acting up. */ }
      }
    },
  
-@@ -4298,13 +3546,3 @@ var JawsScreenReaderVersionCheck = {
+@@ -3581,10 +2982,3 @@ var JawsScreenReaderVersionCheck = {
  Services.mm.addMessageListener("UITour:onPageEvent", function(aMessage) {
    UITour.onPageEvent(aMessage, aMessage.data);
  });
@@ -1486,12 +1311,9 @@ diff --git a/browser/components/BrowserGlue.jsm b/browser/components/BrowserGlue
 -// Listen for HybridContentTelemetry messages.
 -// Do it here instead of HybridContentTelemetry.init() so that
 -// the module can be lazily loaded on the first message.
--Services.mm.addMessageListener(
--  "HybridContentTelemetry:onTelemetryMessage",
--  aMessage => {
--    HybridContentTelemetry.onTelemetryMessage(aMessage, aMessage.data);
--  }
--);
+-Services.mm.addMessageListener("HybridContentTelemetry:onTelemetryMessage", aMessage => {
+-  HybridContentTelemetry.onTelemetryMessage(aMessage, aMessage.data);
+-});
 diff --git a/browser/components/about/AboutRedirector.cpp b/browser/components/about/AboutRedirector.cpp
 --- a/browser/components/about/AboutRedirector.cpp
 +++ b/browser/components/about/AboutRedirector.cpp
@@ -1516,7 +1338,7 @@ diff --git a/browser/components/about/AboutRedirector.cpp b/browser/components/a
 diff --git a/browser/components/customizableui/CustomizableWidgets.jsm b/browser/components/customizableui/CustomizableWidgets.jsm
 --- a/browser/components/customizableui/CustomizableWidgets.jsm
 +++ b/browser/components/customizableui/CustomizableWidgets.jsm
-@@ -613,39 +613,15 @@ if (Services.prefs.getBoolPref("identity
+@@ -522,39 +522,15 @@ if (Services.prefs.getBoolPref("identity
      onViewShowing(aEvent) {
        let doc = aEvent.target.ownerDocument;
        this._tabsList = doc.getElementById("PanelUI-remotetabs-tabslist");
@@ -1555,22 +1377,19 @@ diff --git a/browser/components/customizableui/CustomizableWidgets.jsm b/browser
 -      }
      },
      setDeckIndex(index) {
-       let deck = this._tabsList.ownerDocument.getElementById(
-@@ -657,76 +633,6 @@ if (Services.prefs.getBoolPref("identity
+       let deck = this._tabsList.ownerDocument.getElementById("PanelUI-remotetabs-deck");
+@@ -564,66 +540,6 @@ if (Services.prefs.getBoolPref("identity
        deck.setAttribute("selectedIndex", index);
      },
  
 -    _showTabsPromise: Promise.resolve(),
 -    // Update the tab list after any existing in-flight updates are complete.
 -    _showTabs(paginationInfo) {
--      this._showTabsPromise = this._showTabsPromise.then(
--        () => {
--          return this.__showTabs(paginationInfo);
--        },
--        e => {
--          Cu.reportError(e);
--        }
--      );
+-      this._showTabsPromise = this._showTabsPromise.then(() => {
+-        return this.__showTabs(paginationInfo);
+-      }, e => {
+-        Cu.reportError(e);
+-      });
 -    },
 -    // Return a new promise to update the tab list.
 -    __showTabs(paginationInfo) {
@@ -1580,75 +1399,67 @@ diff --git a/browser/components/customizableui/CustomizableWidgets.jsm b/browser
 -        return undefined;
 -      }
 -      let doc = this._tabsList.ownerDocument;
--      return SyncedTabs.getTabClients()
--        .then(clients => {
--          // The view may have been hidden while the promise was resolving.
--          if (!this._tabsList) {
--            return;
--          }
--          if (clients.length === 0 && !SyncedTabs.hasSyncedThisSession) {
--            // the "fetching tabs" deck is being shown - let's leave it there.
--            // When that first sync completes we'll be notified and update.
--            return;
--          }
+-      return SyncedTabs.getTabClients().then(clients => {
+-        // The view may have been hidden while the promise was resolving.
+-        if (!this._tabsList) {
+-          return;
+-        }
+-        if (clients.length === 0 && !SyncedTabs.hasSyncedThisSession) {
+-          // the "fetching tabs" deck is being shown - let's leave it there.
+-          // When that first sync completes we'll be notified and update.
+-          return;
+-        }
 -
--          if (clients.length === 0) {
--            this.setDeckIndex(this.deckIndices.DECKINDEX_NOCLIENTS);
--            return;
--          }
+-        if (clients.length === 0) {
+-          this.setDeckIndex(this.deckIndices.DECKINDEX_NOCLIENTS);
+-          return;
+-        }
 -
--          this.setDeckIndex(this.deckIndices.DECKINDEX_TABS);
--          this._clearTabList();
--          SyncedTabs.sortTabClientsByLastUsed(clients);
--          let fragment = doc.createDocumentFragment();
+-        this.setDeckIndex(this.deckIndices.DECKINDEX_TABS);
+-        this._clearTabList();
+-        SyncedTabs.sortTabClientsByLastUsed(clients);
+-        let fragment = doc.createDocumentFragment();
 -
--          for (let client of clients) {
--            // add a menu separator for all clients other than the first.
--            if (fragment.lastElementChild) {
--              let separator = doc.createXULElement("menuseparator");
--              fragment.appendChild(separator);
--            }
--            if (paginationInfo && paginationInfo.clientId == client.id) {
--              this._appendClient(client, fragment, paginationInfo.maxTabs);
--            } else {
--              this._appendClient(client, fragment);
--            }
+-        for (let client of clients) {
+-          // add a menu separator for all clients other than the first.
+-          if (fragment.lastElementChild) {
+-            let separator = doc.createXULElement("menuseparator");
+-            fragment.appendChild(separator);
 -          }
--          this._tabsList.appendChild(fragment);
--          PanelView.forNode(
--            this._tabsList.closest("panelview")
--          ).descriptionHeightWorkaround();
--        })
--        .catch(err => {
--          Cu.reportError(err);
--        })
--        .then(() => {
--          // an observer for tests.
--          Services.obs.notifyObservers(
--            null,
--            "synced-tabs-menu:test:tabs-updated"
--          );
--        });
+-          if (paginationInfo && paginationInfo.clientId == client.id) {
+-            this._appendClient(client, fragment, paginationInfo.maxTabs);
+-          } else {
+-            this._appendClient(client, fragment);
+-          }
+-        }
+-        this._tabsList.appendChild(fragment);
+-        PanelView.forNode(this._tabsList.closest("panelview"))
+-                 .descriptionHeightWorkaround();
+-      }).catch(err => {
+-        Cu.reportError(err);
+-      }).then(() => {
+-        // an observer for tests.
+-        Services.obs.notifyObservers(null, "synced-tabs-menu:test:tabs-updated");
+-      });
 -    },
      _clearTabList() {
        let list = this._tabsList;
        while (list.lastChild) {
-@@ -789,14 +695,6 @@ if (Services.prefs.getBoolPref("identity
+@@ -677,13 +593,6 @@ if (Services.prefs.getBoolPref("identity
            let tabEnt = this._createTabElement(doc, tab);
            attachFragment.appendChild(tabEnt);
          }
 -        if (hasNextPage) {
--          let showAllEnt = this._createShowMoreElement(
--            doc,
--            client.id,
--            nextPageIsLastPage ? Infinity : maxTabs + this.TABS_PER_PAGE
--          );
+-          let showAllEnt = this._createShowMoreElement(doc, client.id,
+-                                                       nextPageIsLastPage ?
+-                                                       Infinity :
+-                                                       maxTabs + this.TABS_PER_PAGE);
 -          attachFragment.appendChild(showAllEnt);
 -        }
        }
      },
      _createTabElement(doc, tabInfo) {
-@@ -829,29 +727,6 @@ if (Services.prefs.getBoolPref("identity
+@@ -710,29 +619,6 @@ if (Services.prefs.getBoolPref("identity
        });
        return item;
      },
@@ -1681,40 +1492,37 @@ diff --git a/browser/components/customizableui/CustomizableWidgets.jsm b/browser
 diff --git a/browser/components/customizableui/CustomizeMode.jsm b/browser/components/customizableui/CustomizeMode.jsm
 --- a/browser/components/customizableui/CustomizeMode.jsm
 +++ b/browser/components/customizableui/CustomizeMode.jsm
-@@ -41,11 +41,6 @@ ChromeUtils.defineModuleGetter(
- );
- ChromeUtils.defineModuleGetter(
-   this,
--  "AMTelemetry",
--  "resource://gre/modules/AddonManager.jsm"
--);
--ChromeUtils.defineModuleGetter(
--  this,
-   "DragPositionManager",
-   "resource:///modules/DragPositionManager.jsm"
- );
-@@ -1338,13 +1333,11 @@ CustomizeMode.prototype = {
+@@ -30,8 +30,6 @@ XPCOMUtils.defineLazyGlobalGetters(this,
+ 
+ ChromeUtils.defineModuleGetter(this, "AddonManager",
+                                "resource://gre/modules/AddonManager.jsm");
+-ChromeUtils.defineModuleGetter(this, "AMTelemetry",
+-                               "resource://gre/modules/AddonManager.jsm");
+ ChromeUtils.defineModuleGetter(this, "DragPositionManager",
+                                "resource:///modules/DragPositionManager.jsm");
+ ChromeUtils.defineModuleGetter(this, "BrowserUtils",
+@@ -1217,13 +1215,11 @@ CustomizeMode.prototype = {
  
    openAddonsManagerThemes(aEvent) {
      aEvent.target.parentNode.parentNode.hidePopup();
--    AMTelemetry.recordLinkEvent({ object: "customize", value: "manageThemes" });
+-    AMTelemetry.recordLinkEvent({object: "customize", value: "manageThemes"});
      this.window.BrowserOpenAddonsMgr("addons://list/theme");
    },
  
    getMoreThemes(aEvent) {
      aEvent.target.parentNode.parentNode.hidePopup();
--    AMTelemetry.recordLinkEvent({ object: "customize", value: "getThemes" });
-     let getMoreURL = Services.urlFormatter.formatURLPref(
-       "lightweightThemes.getMoreURL"
-     );
-@@ -1534,11 +1527,6 @@ CustomizeMode.prototype = {
+-    AMTelemetry.recordLinkEvent({object: "customize", value: "getThemes"});
+     let getMoreURL = Services.urlFormatter.formatURLPref("lightweightThemes.getMoreURL");
+     this.window.openTrustedLinkIn(getMoreURL, "tab");
+   },
+@@ -1383,11 +1379,6 @@ CustomizeMode.prototype = {
        button.addEventListener("command", async () => {
          await button.theme.enable();
          onThemeSelected(panel);
 -        AMTelemetry.recordActionEvent({
 -          object: "customize",
 -          action: "enable",
--          extra: { type: "theme", addonId: theme.id },
+-          extra: {type: "theme", addonId: theme.id},
 -        });
        });
        panel.insertBefore(button, footer);
@@ -1722,24 +1530,24 @@ diff --git a/browser/components/customizableui/CustomizeMode.jsm b/browser/compo
 diff --git a/browser/components/extensions/parent/ext-search.js b/browser/components/extensions/parent/ext-search.js
 --- a/browser/components/extensions/parent/ext-search.js
 +++ b/browser/components/extensions/parent/ext-search.js
-@@ -13,10 +13,6 @@ ChromeUtils.defineModuleGetter(
-   "resource://gre/modules/Services.jsm"
- );
+@@ -10,10 +10,6 @@
+ ChromeUtils.defineModuleGetter(this, "Services",
+                                "resource://gre/modules/Services.jsm");
  
 -XPCOMUtils.defineLazyModuleGetters(this, {
 -  BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.jsm",
 -});
 -
- XPCOMUtils.defineLazyPreferenceGetter(
-   this,
-   "searchLoadInBackground",
-@@ -91,24 +87,16 @@ this.search = class extends ExtensionAPI
+ XPCOMUtils.defineLazyPreferenceGetter(this, "searchLoadInBackground",
+                                       "browser.search.context.loadInBackground");
+ 
+@@ -77,20 +73,16 @@ this.search = class extends ExtensionAPI
              postData: submission.postData,
              triggeringPrincipal: context.principal,
            };
 -          let tabbrowser;
            if (searchProperties.tabId === null) {
-             let { gBrowser } = windowTracker.topWindow;
+             let {gBrowser} = windowTracker.topWindow;
              let nativeTab = gBrowser.addTab(submission.uri.spec, options);
              if (!searchLoadInBackground) {
                gBrowser.selectedTab = nativeTab;
@@ -1750,11 +1558,7 @@ diff --git a/browser/components/extensions/parent/ext-search.js b/browser/compon
              tab.linkedBrowser.loadURI(submission.uri.spec, options);
 -            tabbrowser = tab.linkedBrowser.getTabBrowser();
            }
--          BrowserUsageTelemetry.recordSearch(
--            tabbrowser,
--            engine,
--            "webextension"
--          );
+-          BrowserUsageTelemetry.recordSearch(tabbrowser, engine, "webextension");
          },
        },
      };
@@ -2129,7 +1933,7 @@ diff --git a/browser/components/newtab/lib/TelemetryFeed.jsm b/browser/component
 diff --git a/browser/components/places/PlacesUIUtils.jsm b/browser/components/places/PlacesUIUtils.jsm
 --- a/browser/components/places/PlacesUIUtils.jsm
 +++ b/browser/components/places/PlacesUIUtils.jsm
-@@ -24,7 +24,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -20,7 +20,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
    PluralForm: "resource://gre/modules/PluralForm.jsm",
    PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.jsm",
    PromiseUtils: "resource://gre/modules/PromiseUtils.jsm",
@@ -2137,13 +1941,12 @@ diff --git a/browser/components/places/PlacesUIUtils.jsm b/browser/components/pl
  });
  
  XPCOMUtils.defineLazyGetter(this, "bundle", function() {
-@@ -845,10 +844,7 @@ var PlacesUIUtils = {
+@@ -759,9 +758,7 @@ var PlacesUIUtils = {
    },
  
    shouldShowTabsFromOtherComputersMenuitem() {
--    let weaveOK =
--      Weave.Status.checkSetup() != Weave.CLIENT_NOT_CONFIGURED &&
--      Weave.Svc.Prefs.get("firstSync", "") != "notReady";
+-    let weaveOK = Weave.Status.checkSetup() != Weave.CLIENT_NOT_CONFIGURED &&
+-                  Weave.Svc.Prefs.get("firstSync", "") != "notReady";
 -    return weaveOK;
 +    return false;
    },
@@ -2176,85 +1979,82 @@ diff --git a/browser/components/preferences/in-content/preferences.xul b/browser
 diff --git a/browser/components/search/content/autocomplete-popup.js b/browser/components/search/content/autocomplete-popup.js
 --- a/browser/components/search/content/autocomplete-popup.js
 +++ b/browser/components/search/content/autocomplete-popup.js
-@@ -197,11 +197,6 @@
+@@ -187,11 +187,6 @@ class MozSearchAutocompleteRichlistboxPo
  
-       // Check for middle-click or modified clicks on the search bar
-       if (popupForSearchBar) {
--        BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
--          aEvent,
--          this.selectedIndex
--        );
+     // Check for middle-click or modified clicks on the search bar
+     if (popupForSearchBar) {
+-      BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
+-        aEvent,
+-        this.selectedIndex
+-      );
 -
-         // Handle search bar popup clicks
-         let search = this.input.controller.getValueAt(this.selectedIndex);
+       // Handle search bar popup clicks
+       let search = this.input.controller.getValueAt(this.selectedIndex);
  
 diff --git a/browser/components/search/content/searchbar.js b/browser/components/search/content/searchbar.js
 --- a/browser/components/search/content/searchbar.js
 +++ b/browser/components/search/content/searchbar.js
-@@ -308,44 +308,8 @@
-       let textBox = this._textbox;
-       let textValue = textBox.value;
+@@ -271,41 +271,8 @@ class MozSearchbar extends MozXULElement
+     let textBox = this._textbox;
+     let textValue = textBox.value;
  
--      let selection = this.telemetrySearchDetails;
-       let oneOffRecorded = false;
+-    let selection = this.telemetrySearchDetails;
+     let oneOffRecorded = false;
  
--      BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
--        aEvent,
--        selection ? selection.index : -1
--      );
+-    BrowserUsageTelemetry.recordSearchbarSelectedResultMethod(
+-      aEvent,
+-      selection ? selection.index : -1
+-    );
 -
--      if (!selection || selection.index == -1) {
--        oneOffRecorded = this.textbox.popup.oneOffButtons.maybeRecordTelemetry(
--          aEvent
--        );
--        if (!oneOffRecorded) {
--          let source = "unknown";
--          let type = "unknown";
--          let target = aEvent.originalTarget;
--          if (aEvent instanceof KeyboardEvent) {
--            type = "key";
--          } else if (aEvent instanceof MouseEvent) {
--            type = "mouse";
--            if (
--              target.classList.contains("search-panel-header") ||
--              target.parentNode.classList.contains("search-panel-header")
--            ) {
--              source = "header";
--            }
--          } else if (aEvent instanceof XULCommandEvent) {
--            if (target.getAttribute("anonid") == "paste-and-search") {
--              source = "paste";
--            }
+-    if (!selection || (selection.index == -1)) {
+-      oneOffRecorded = this.textbox.popup.oneOffButtons
+-        .maybeRecordTelemetry(aEvent);
+-      if (!oneOffRecorded) {
+-        let source = "unknown";
+-        let type = "unknown";
+-        let target = aEvent.originalTarget;
+-        if (aEvent instanceof KeyboardEvent) {
+-          type = "key";
+-        } else if (aEvent instanceof MouseEvent) {
+-          type = "mouse";
+-          if (target.classList.contains("search-panel-header") ||
+-            target.parentNode.classList.contains("search-panel-header")) {
+-            source = "header";
 -          }
--          if (!aEngine) {
--            aEngine = this.currentEngine;
+-        } else if (aEvent instanceof XULCommandEvent) {
+-          if (target.getAttribute("anonid") == "paste-and-search") {
+-            source = "paste";
 -          }
--          BrowserSearch.recordOneoffSearchInTelemetry(aEngine, source, type);
 -        }
+-        if (!aEngine) {
+-          aEngine = this.currentEngine;
+-        }
+-        BrowserSearch.recordOneoffSearchInTelemetry(aEngine, source, type);
 -      }
+-    }
 -
-       // This is a one-off search only if oneOffRecorded is true.
-       this.doSearch(textValue, aWhere, aEngine, aParams, oneOffRecorded);
+     // This is a one-off search only if oneOffRecorded is true.
+     this.doSearch(textValue, aWhere, aEngine, aParams, oneOffRecorded);
  
-@@ -381,18 +345,6 @@
+@@ -331,18 +298,6 @@ class MozSearchbar extends MozXULElement
  
-       let engine = aEngine || this.currentEngine;
-       let submission = engine.getSubmission(aData, null, "searchbar");
--      let telemetrySearchDetails = this.telemetrySearchDetails;
--      this.telemetrySearchDetails = null;
--      if (telemetrySearchDetails && telemetrySearchDetails.index == -1) {
--        telemetrySearchDetails = null;
--      }
--      // If we hit here, we come either from a one-off, a plain search or a suggestion.
--      const details = {
--        isOneOff: aOneOff,
--        isSuggestion: !aOneOff && telemetrySearchDetails,
--        selection: telemetrySearchDetails,
--      };
--      BrowserSearch.recordSearchInTelemetry(engine, "searchbar", details);
-       // null parameter below specifies HTML response for search
-       let params = {
-         postData: submission.postData,
+     let engine = aEngine || this.currentEngine;
+     let submission = engine.getSubmission(aData, null, "searchbar");
+-    let telemetrySearchDetails = this.telemetrySearchDetails;
+-    this.telemetrySearchDetails = null;
+-    if (telemetrySearchDetails && telemetrySearchDetails.index == -1) {
+-      telemetrySearchDetails = null;
+-    }
+-    // If we hit here, we come either from a one-off, a plain search or a suggestion.
+-    const details = {
+-      isOneOff: aOneOff,
+-      isSuggestion: (!aOneOff && telemetrySearchDetails),
+-      selection: telemetrySearchDetails,
+-    };
+-    BrowserSearch.recordSearchInTelemetry(engine, "searchbar", details);
+     // null parameter below specifies HTML response for search
+     let params = {
+       postData: submission.postData,
 diff --git a/browser/components/search/moz.build b/browser/components/search/moz.build
 --- a/browser/components/search/moz.build
 +++ b/browser/components/search/moz.build
@@ -2272,46 +2072,36 @@ diff --git a/browser/components/search/moz.build b/browser/components/search/moz
 diff --git a/browser/components/uitour/UITour.jsm b/browser/components/uitour/UITour.jsm
 --- a/browser/components/uitour/UITour.jsm
 +++ b/browser/components/uitour/UITour.jsm
-@@ -26,11 +26,6 @@ ChromeUtils.defineModuleGetter(
- );
- ChromeUtils.defineModuleGetter(
-   this,
--  "FxAccounts",
--  "resource://gre/modules/FxAccounts.jsm"
--);
--ChromeUtils.defineModuleGetter(
--  this,
-   "PageActions",
-   "resource:///modules/PageActions.jsm"
- );
-@@ -588,54 +583,6 @@ var UITour = {
+@@ -15,8 +15,6 @@ XPCOMUtils.defineLazyGlobalGetters(this,
+ 
+ ChromeUtils.defineModuleGetter(this, "CustomizableUI",
+   "resource:///modules/CustomizableUI.jsm");
+-ChromeUtils.defineModuleGetter(this, "FxAccounts",
+-  "resource://gre/modules/FxAccounts.jsm");
+ ChromeUtils.defineModuleGetter(this, "PageActions",
+   "resource:///modules/PageActions.jsm");
+ ChromeUtils.defineModuleGetter(this, "PrivateBrowsingUtils",
+@@ -442,43 +440,6 @@ var UITour = {
          break;
        }
  
 -      case "showFirefoxAccounts": {
--        Promise.resolve()
--          .then(() => {
--            return data.email
--              ? FxAccounts.config.promiseEmailURI(data.email, "uitour")
--              : FxAccounts.config.promiseSignUpURI("uitour");
--          })
--          .then(uri => {
--            const url = new URL(uri);
--            // Call our helper to validate extraURLCampaignParams and populate URLSearchParams
--            if (
--              !this._populateCampaignParams(url, data.extraURLCampaignParams)
--            ) {
--              log.warn("showFirefoxAccounts: invalid campaign args specified");
--              return;
--            }
+-        Promise.resolve().then(() => {
+-          return data.email ? FxAccounts.config.promiseEmailURI(data.email, "uitour") :
+-                              FxAccounts.config.promiseSignUpURI("uitour");
+-        }).then(uri => {
+-          const url = new URL(uri);
+-          // Call our helper to validate extraURLCampaignParams and populate URLSearchParams
+-          if (!this._populateCampaignParams(url, data.extraURLCampaignParams)) {
+-            log.warn("showFirefoxAccounts: invalid campaign args specified");
+-            return;
+-          }
 -
--            // We want to replace the current tab.
--            browser.loadURI(url.href, {
--              triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal(
--                {}
--              ),
--            });
+-          // We want to replace the current tab.
+-          browser.loadURI(url.href, {
+-            triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal({}),
 -          });
+-        });
 -        break;
 -      }
 -
@@ -2320,17 +2110,13 @@ diff --git a/browser/components/uitour/UITour.jsm b/browser/components/uitour/UI
 -          const url = new URL(uri);
 -          // Call our helper to validate extraURLCampaignParams and populate URLSearchParams
 -          if (!this._populateCampaignParams(url, data.extraURLCampaignParams)) {
--            log.warn(
--              "showConnectAnotherDevice: invalid campaign args specified"
--            );
+-            log.warn("showConnectAnotherDevice: invalid campaign args specified");
 -            return;
 -          }
 -
 -          // We want to replace the current tab.
 -          browser.loadURI(url.href, {
--            triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal(
--              {}
--            ),
+-            triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal({}),
 -          });
 -        });
 -        break;
@@ -2342,8 +2128,8 @@ diff --git a/browser/components/uitour/UITour.jsm b/browser/components/uitour/UI
 diff --git a/browser/components/urlbar/UrlbarController.jsm b/browser/components/urlbar/UrlbarController.jsm
 --- a/browser/components/urlbar/UrlbarController.jsm
 +++ b/browser/components/urlbar/UrlbarController.jsm
-@@ -12,12 +12,10 @@ const { XPCOMUtils } = ChromeUtils.impor
- const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+@@ -12,12 +12,10 @@ const {XPCOMUtils} = ChromeUtils.import(
+ const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
  XPCOMUtils.defineLazyModuleGetters(this, {
    AppConstants: "resource://gre/modules/AppConstants.jsm",
 -  BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.jsm",
@@ -2355,39 +2141,35 @@ diff --git a/browser/components/urlbar/UrlbarController.jsm b/browser/components
  });
  
  const TELEMETRY_1ST_RESULT = "PLACES_AUTOCOMPLETE_1ST_RESULT_TIME_MS";
-@@ -458,11 +456,6 @@ class UrlbarController {
+@@ -433,8 +431,6 @@ class UrlbarController {
        // will happen when you press the Enter key.  Treat it as no selection.
-       selectedResult = resultIndex > 0 || !result.heuristic ? resultIndex : -1;
+       selectedResult = (resultIndex > 0 || !result.heuristic) ? resultIndex : -1;
      }
 -    BrowserUsageTelemetry.recordUrlbarSelectedResultMethod(
--      event,
--      selectedResult,
--      this._userSelectionBehavior
--    );
+-      event, selectedResult, this._userSelectionBehavior);
  
      if (!result) {
        return;
-@@ -506,24 +499,6 @@ class UrlbarController {
+@@ -471,23 +467,6 @@ class UrlbarController {
          Cu.reportError(`Unknown Result Type ${result.type}`);
          return;
      }
 -
 -    Services.telemetry
--      .getHistogramById("FX_URLBAR_SELECTED_RESULT_INDEX")
--      .add(resultIndex);
+-            .getHistogramById("FX_URLBAR_SELECTED_RESULT_INDEX")
+-            .add(resultIndex);
 -    // You can add values but don't change any of the existing values.
 -    // Otherwise you'll break our data.
 -    if (telemetryType in URLBAR_SELECTED_RESULT_TYPES) {
 -      Services.telemetry
--        .getHistogramById("FX_URLBAR_SELECTED_RESULT_TYPE")
--        .add(URLBAR_SELECTED_RESULT_TYPES[telemetryType]);
+-              .getHistogramById("FX_URLBAR_SELECTED_RESULT_TYPE")
+-              .add(URLBAR_SELECTED_RESULT_TYPES[telemetryType]);
 -      Services.telemetry
--        .getKeyedHistogramById("FX_URLBAR_SELECTED_RESULT_INDEX_BY_TYPE")
--        .add(telemetryType, resultIndex);
+-              .getKeyedHistogramById("FX_URLBAR_SELECTED_RESULT_INDEX_BY_TYPE")
+-              .add(telemetryType, resultIndex);
 -    } else {
--      Cu.reportError(
--        "Unknown FX_URLBAR_SELECTED_RESULT_TYPE type: " + telemetryType
--      );
+-      Cu.reportError("Unknown FX_URLBAR_SELECTED_RESULT_TYPE type: " +
+-                     telemetryType);
 -    }
    }
  
@@ -2482,24 +2264,18 @@ diff --git a/browser/locales/Makefile.in b/browser/locales/Makefile.in
 diff --git a/browser/modules/PermissionUI.jsm b/browser/modules/PermissionUI.jsm
 --- a/browser/modules/PermissionUI.jsm
 +++ b/browser/modules/PermissionUI.jsm
-@@ -76,16 +76,6 @@ ChromeUtils.defineModuleGetter(
-   "PrivateBrowsingUtils",
-   "resource://gre/modules/PrivateBrowsingUtils.jsm"
- );
--ChromeUtils.defineModuleGetter(
--  this,
--  "URICountListener",
--  "resource:///modules/BrowserUsageTelemetry.jsm"
--);
--ChromeUtils.defineModuleGetter(
--  this,
--  "PermissionUITelemetry",
--  "resource:///modules/PermissionUITelemetry.jsm"
--);
+@@ -68,10 +68,6 @@ ChromeUtils.defineModuleGetter(this, "Si
+   "resource:///modules/SitePermissions.jsm");
+ ChromeUtils.defineModuleGetter(this, "PrivateBrowsingUtils",
+   "resource://gre/modules/PrivateBrowsingUtils.jsm");
+-ChromeUtils.defineModuleGetter(this, "URICountListener",
+-  "resource:///modules/BrowserUsageTelemetry.jsm");
+-ChromeUtils.defineModuleGetter(this, "PermissionUITelemetry",
+-  "resource:///modules/PermissionUITelemetry.jsm");
  
- XPCOMUtils.defineLazyServiceGetter(
-   this,
-@@ -601,20 +591,6 @@ var PermissionPromptPrototype = {
+ XPCOMUtils.defineLazyServiceGetter(this, "IDNService",
+   "@mozilla.org/network/idn-service;1", "nsIIDNService");
+@@ -554,18 +550,6 @@ var PermissionPromptPrototype = {
  
      let options = this.popupOptions;
  
@@ -2509,53 +2285,46 @@ diff --git a/browser/modules/PermissionUI.jsm b/browser/modules/PermissionUI.jsm
 -        permissionTelemetryKey: this.permissionTelemetryKey,
 -        permissionKey: this.permissionKey,
 -        principal: this.principal,
--        documentDOMContentLoadedTimestamp: this.request
--          .documentDOMContentLoadedTimestamp,
+-        documentDOMContentLoadedTimestamp: this.request.documentDOMContentLoadedTimestamp,
 -        isHandlingUserInput: this.request.isHandlingUserInput,
--        userHadInteractedWithDocument: this.request
--          .userHadInteractedWithDocument,
+-        userHadInteractedWithDocument: this.request.userHadInteractedWithDocument,
 -      };
 -    }
 -
      if (!options.hasOwnProperty("displayURI") || options.displayURI) {
        options.displayURI = this.principal.URI;
      }
-@@ -646,13 +622,6 @@ var PermissionPromptPrototype = {
+@@ -597,10 +581,6 @@ var PermissionPromptPrototype = {
        // You can remove this restriction if you need it, but be
        // mindful of other consumers.
        if (topic == "removed" && !postPrompt) {
 -        if (telemetryData) {
--          PermissionUITelemetry.onRemoved(
--            telemetryData,
--            this._buttonAction,
--            nextRemovalReason
--          );
+-          PermissionUITelemetry.onRemoved(telemetryData, this._buttonAction,
+-                                          nextRemovalReason);
 -        }
          this.onAfterShow();
        }
        return false;
-@@ -675,9 +644,6 @@ var PermissionPromptPrototype = {
-         secondaryActions,
-         options
-       );
+@@ -621,9 +601,6 @@ var PermissionPromptPrototype = {
+                                         mainAction,
+                                         secondaryActions,
+                                         options);
 -      if (telemetryData) {
 -        PermissionUITelemetry.onShow(telemetryData);
 -      }
      }
    },
  };
-@@ -1265,10 +1231,8 @@ StorageAccessPermissionPrompt.prototype 
+@@ -1132,8 +1109,7 @@ StorageAccessPermissionPrompt.prototype 
+     // session (but not to exceed 24 hours), or the value of the
      // dom.storage_access.max_concurrent_auto_grants preference, whichever is
      // higher.
-     return Math.max(
--      Math.max(
--        Math.floor(URICountListener.uniqueDomainsVisitedInPast24Hours / 100),
-         this._maxConcurrentAutoGrants
--      ),
-+      ,
-       0
-     );
+-    return Math.max(Math.max(Math.floor(URICountListener.uniqueDomainsVisitedInPast24Hours / 100),
+-                             this._maxConcurrentAutoGrants), 0);
++    return Math.max(this._maxConcurrentAutoGrants, 0);
    },
+ 
+   getOriginsThirdPartyHasAccessTo(thirdPartyOrigin) {
 diff --git a/browser/modules/moz.build b/browser/modules/moz.build
 --- a/browser/modules/moz.build
 +++ b/browser/modules/moz.build
@@ -2829,7 +2598,7 @@ diff --git a/toolkit/components/backgroundhangmonitor/moz.build b/toolkit/compon
 diff --git a/toolkit/components/extensions/ExtensionStorageSync.jsm b/toolkit/components/extensions/ExtensionStorageSync.jsm
 --- a/toolkit/components/extensions/ExtensionStorageSync.jsm
 +++ b/toolkit/components/extensions/ExtensionStorageSync.jsm
-@@ -56,7 +56,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -49,7 +49,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
    CommonUtils: "resource://services-common/utils.js",
    CryptoUtils: "resource://services-crypto/utils.js",
    ExtensionCommon: "resource://gre/modules/ExtensionCommon.jsm",
@@ -2837,7 +2606,7 @@ diff --git a/toolkit/components/extensions/ExtensionStorageSync.jsm b/toolkit/co
    KintoHttpClient: "resource://services-common/kinto-http-client.js",
    Kinto: "resource://services-common/kinto-offline-client.js",
    FirefoxAdapter: "resource://services-common/kinto-storage-adapter.js",
-@@ -94,9 +93,6 @@ const log = Log.repository.getLogger("Sy
+@@ -80,9 +79,6 @@ const log = Log.repository.getLogger("Sy
  // A global that is fxAccounts, or null if (as on android) fxAccounts
  // isn't available.
  let _fxaService = null;
@@ -2872,19 +2641,16 @@ diff --git a/toolkit/components/moz.build b/toolkit/components/moz.build
 diff --git a/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm b/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm
 --- a/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm
 +++ b/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm
-@@ -15,11 +15,6 @@ const { XPCOMUtils } = ChromeUtils.impor
-   "resource://gre/modules/XPCOMUtils.jsm"
- );
- const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
--ChromeUtils.defineModuleGetter(
--  this,
--  "SyncedTabs",
--  "resource://services-sync/SyncedTabs.jsm"
--);
+@@ -13,8 +13,6 @@ var EXPORTED_SYMBOLS = ["PlacesRemoteTab
+ 
+ const {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+ const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
+-ChromeUtils.defineModuleGetter(this, "SyncedTabs",
+-  "resource://services-sync/SyncedTabs.jsm");
  
  XPCOMUtils.defineLazyGetter(this, "weaveXPCService", function() {
    try {
-@@ -41,19 +36,6 @@ function escapeRegExp(string) {
+@@ -36,19 +34,6 @@ function escapeRegExp(string) {
  async function buildItems() {
    // This is sorted by most recent client, most recent tab.
    let tabsData = [];
@@ -2897,7 +2663,7 @@ diff --git a/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm 
 -    SyncedTabs.sortTabClientsByLastUsed(clients);
 -    for (let client of clients) {
 -      for (let tab of client.tabs) {
--        tabsData.push({ tab, client });
+-        tabsData.push({tab, client});
 -      }
 -    }
 -  }
@@ -2907,33 +2673,29 @@ diff --git a/toolkit/components/places/PlacesRemoteTabsAutocompleteProvider.jsm 
 diff --git a/toolkit/components/reader/AboutReader.jsm b/toolkit/components/reader/AboutReader.jsm
 --- a/toolkit/components/reader/AboutReader.jsm
 +++ b/toolkit/components/reader/AboutReader.jsm
-@@ -26,11 +26,6 @@ ChromeUtils.defineModuleGetter(
- );
- ChromeUtils.defineModuleGetter(
-   this,
--  "UITelemetry",
--  "resource://gre/modules/UITelemetry.jsm"
--);
--ChromeUtils.defineModuleGetter(
--  this,
-   "PluralForm",
-   "resource://gre/modules/PluralForm.jsm"
- );
-@@ -1122,10 +1117,6 @@ AboutReader.prototype = {
+@@ -12,7 +12,6 @@ const {Services} = ChromeUtils.import("r
  
-           aEvent.stopPropagation();
+ ChromeUtils.defineModuleGetter(this, "AsyncPrefs", "resource://gre/modules/AsyncPrefs.jsm");
+ ChromeUtils.defineModuleGetter(this, "NarrateControls", "resource://gre/modules/narrate/NarrateControls.jsm");
+-ChromeUtils.defineModuleGetter(this, "UITelemetry", "resource://gre/modules/UITelemetry.jsm");
+ ChromeUtils.defineModuleGetter(this, "PluralForm", "resource://gre/modules/PluralForm.jsm");
  
--          // Just pass the ID of the button as an extra and hope the ID doesn't change
--          // unless the context changes
--          UITelemetry.addEvent("action.1", "button", null, id);
+ var gStrings = Services.strings.createBundle("chrome://global/locale/aboutReader.properties");
+@@ -952,10 +951,6 @@ AboutReader.prototype = {
+ 
+         aEvent.stopPropagation();
+ 
+-        // Just pass the ID of the button as an extra and hope the ID doesn't change
+-        // unless the context changes
+-        UITelemetry.addEvent("action.1", "button", null, id);
 -
-           let items = segmentedButton.children;
-           for (let j = items.length - 1; j >= 0; j--) {
-             items[j].classList.remove("selected");
+         let items = segmentedButton.children;
+         for (let j = items.length - 1; j >= 0; j--) {
+           items[j].classList.remove("selected");
 diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/components/telemetry/app/TelemetryController.jsm
 --- a/toolkit/components/telemetry/app/TelemetryController.jsm
 +++ b/toolkit/components/telemetry/app/TelemetryController.jsm
-@@ -60,7 +60,6 @@ XPCOMUtils.defineLazyServiceGetter(
+@@ -51,7 +51,6 @@ XPCOMUtils.defineLazyServiceGetter(this,
  
  XPCOMUtils.defineLazyModuleGetters(this, {
    ClientID: "resource://gre/modules/ClientID.jsm",
@@ -2941,13 +2703,12 @@ diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/
    AsyncShutdown: "resource://gre/modules/AsyncShutdown.jsm",
    TelemetryStorage: "resource://gre/modules/TelemetryStorage.jsm",
    TelemetryEnvironment: "resource://gre/modules/TelemetryEnvironment.jsm",
-@@ -69,14 +68,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -59,13 +58,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+   TelemetrySession: "resource://gre/modules/TelemetrySession.jsm",
    TelemetrySend: "resource://gre/modules/TelemetrySend.jsm",
-   TelemetryReportingPolicy:
-     "resource://gre/modules/TelemetryReportingPolicy.jsm",
+   TelemetryReportingPolicy: "resource://gre/modules/TelemetryReportingPolicy.jsm",
 -  TelemetryModules: "resource://gre/modules/ModulesPing.jsm",
--  TelemetryUntrustedModulesPing:
--    "resource://gre/modules/UntrustedModulesPing.jsm",
+-  TelemetryUntrustedModulesPing: "resource://gre/modules/UntrustedModulesPing.jsm",
 -  UpdatePing: "resource://gre/modules/UpdatePing.jsm",
 -  TelemetryHealthPing: "resource://gre/modules/HealthPing.jsm",
 -  TelemetryEventPing: "resource://gre/modules/EventPing.jsm",
@@ -2956,7 +2717,7 @@ diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/
    OS: "resource://gre/modules/osfile.jsm",
  });
  
-@@ -743,10 +734,6 @@ var Impl = {
+@@ -654,10 +646,6 @@ var Impl = {
      // lead to some stale client ids.
      this._clientID = ClientID.getCachedClientID();
  
@@ -2967,34 +2728,34 @@ diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/
      // Delay full telemetry initialization to give the browser time to
      // run various late initializers. Otherwise our gathered memory
      // footprint and other numbers would be too optimistic.
-@@ -820,26 +807,6 @@ var Impl = {
-           // in the future.
-           TelemetryStorage.removeFHRDatabase();
+@@ -711,26 +699,6 @@ var Impl = {
+         // in the future.
+         TelemetryStorage.removeFHRDatabase();
  
--          // The init sequence is forced to run on shutdown for short sessions and
--          // we don't want to start TelemetryModules as the timer registration will fail.
--          if (!this._shuttingDown) {
--            // Report the modules loaded in the Firefox process.
--            TelemetryModules.start();
+-        // The init sequence is forced to run on shutdown for short sessions and
+-        // we don't want to start TelemetryModules as the timer registration will fail.
+-        if (!this._shuttingDown) {
+-          // Report the modules loaded in the Firefox process.
+-          TelemetryModules.start();
 -
--            // Send coverage ping.
--            await CoveragePing.startup();
+-          // Send coverage ping.
+-          await CoveragePing.startup();
 -
--            // Start the untrusted modules ping, which reports events where
--            // untrusted modules were loaded into the Firefox process.
--            if (AppConstants.NIGHTLY_BUILD && AppConstants.platform == "win") {
--              TelemetryUntrustedModulesPing.start();
--            }
+-          // Start the untrusted modules ping, which reports events where
+-          // untrusted modules were loaded into the Firefox process.
+-          if (AppConstants.NIGHTLY_BUILD && AppConstants.platform == "win") {
+-            TelemetryUntrustedModulesPing.start();
 -          }
+-        }
 -
--          TelemetryEventPing.startup();
--          EcosystemTelemetry.startup();
--          TelemetryPrioPing.startup();
+-        TelemetryEventPing.startup();
+-        EcosystemTelemetry.startup();
+-        TelemetryPrioPing.startup();
 -
-           this._delayedInitTaskDeferred.resolve();
-         } catch (e) {
-           this._delayedInitTaskDeferred.reject(e);
-@@ -905,12 +872,6 @@ var Impl = {
+         this._delayedInitTaskDeferred.resolve();
+       } catch (e) {
+         this._delayedInitTaskDeferred.reject(e);
+@@ -787,12 +755,6 @@ var Impl = {
          await this._delayedNewPingTask.finalize();
        }
  
@@ -3007,7 +2768,7 @@ diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/
        // Stop the datachoices infobar display.
        TelemetryReportingPolicy.shutdown();
        TelemetryEnvironment.shutdown();
-@@ -918,9 +879,6 @@ var Impl = {
+@@ -800,9 +762,6 @@ var Impl = {
        // Stop any ping sending.
        await TelemetrySend.shutdown();
  
@@ -3020,19 +2781,16 @@ diff --git a/toolkit/components/telemetry/app/TelemetryController.jsm b/toolkit/
 diff --git a/toolkit/components/telemetry/app/TelemetryEnvironment.jsm b/toolkit/components/telemetry/app/TelemetryEnvironment.jsm
 --- a/toolkit/components/telemetry/app/TelemetryEnvironment.jsm
 +++ b/toolkit/components/telemetry/app/TelemetryEnvironment.jsm
-@@ -26,11 +26,6 @@ const { AddonManager, AddonManagerPrivat
+@@ -20,8 +20,6 @@ const Utils = TelemetryUtils;
  
- ChromeUtils.defineModuleGetter(
-   this,
--  "AttributionCode",
--  "resource:///modules/AttributionCode.jsm"
--);
--ChromeUtils.defineModuleGetter(
--  this,
-   "ctypes",
-   "resource://gre/modules/ctypes.jsm"
- );
-@@ -1664,40 +1659,12 @@ EnvironmentCache.prototype = {
+ const {AddonManager, AddonManagerPrivate} = ChromeUtils.import("resource://gre/modules/AddonManager.jsm");
+ 
+-ChromeUtils.defineModuleGetter(this, "AttributionCode",
+-                               "resource:///modules/AttributionCode.jsm");
+ ChromeUtils.defineModuleGetter(this, "ctypes",
+                                "resource://gre/modules/ctypes.jsm");
+ ChromeUtils.defineModuleGetter(this, "ProfileAge",
+@@ -1530,38 +1528,12 @@ EnvironmentCache.prototype = {
     * @returns Promise<> resolved when the I/O is complete.
     */
    async _loadAttributionAsync() {
@@ -3064,10 +2822,8 @@ diff --git a/toolkit/components/telemetry/app/TelemetryEnvironment.jsm b/toolkit
 -
 -    let attributionData = {};
 -    for (let key in data) {
--      attributionData[key] = limitStringToLength(
--        data[key],
--        MAX_ATTRIBUTION_STRING_LENGTH
--      );
+-      attributionData[key] =
+-        limitStringToLength(data[key], MAX_ATTRIBUTION_STRING_LENGTH);
 -    }
 -    this._currentEnvironment.settings.attribution = attributionData;
    },
@@ -3076,21 +2832,17 @@ diff --git a/toolkit/components/telemetry/app/TelemetryEnvironment.jsm b/toolkit
 diff --git a/toolkit/components/telemetry/app/TelemetryScheduler.jsm b/toolkit/components/telemetry/app/TelemetryScheduler.jsm
 --- a/toolkit/components/telemetry/app/TelemetryScheduler.jsm
 +++ b/toolkit/components/telemetry/app/TelemetryScheduler.jsm
-@@ -21,13 +21,6 @@ const { XPCOMUtils } = ChromeUtils.impor
- const { clearTimeout, setTimeout } = ChromeUtils.import(
-   "resource://gre/modules/Timer.jsm"
- );
+@@ -14,9 +14,6 @@ const {TelemetrySession} = ChromeUtils.i
+ const {TelemetryUtils} = ChromeUtils.import("resource://gre/modules/TelemetryUtils.jsm");
+ const {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm", this);
+ const {clearTimeout, setTimeout} = ChromeUtils.import("resource://gre/modules/Timer.jsm");
 -// Other pings
--const { EcosystemTelemetry } = ChromeUtils.import(
--  "resource://gre/modules/EcosystemTelemetry.jsm"
--);
--const { TelemetryPrioPing } = ChromeUtils.import(
--  "resource://gre/modules/PrioPing.jsm"
--);
+-const {EcosystemTelemetry} = ChromeUtils.import("resource://gre/modules/EcosystemTelemetry.jsm");
+-const {TelemetryPrioPing} = ChromeUtils.import("resource://gre/modules/PrioPing.jsm");
  
  XPCOMUtils.defineLazyServiceGetters(this, {
    idleService: ["@mozilla.org/widget/idleservice;1", "nsIIdleService"],
-@@ -374,9 +367,6 @@ var TelemetryScheduler = {
+@@ -337,9 +334,6 @@ var TelemetryScheduler = {
      if (shouldSendPeriodic) {
        this._log.trace("_schedulerTickLogic - Periodic ping due.");
        this._lastPeriodicPingTime = now;
@@ -3103,45 +2855,40 @@ diff --git a/toolkit/components/telemetry/app/TelemetryScheduler.jsm b/toolkit/c
 diff --git a/toolkit/components/telemetry/app/TelemetrySend.jsm b/toolkit/components/telemetry/app/TelemetrySend.jsm
 --- a/toolkit/components/telemetry/app/TelemetrySend.jsm
 +++ b/toolkit/components/telemetry/app/TelemetrySend.jsm
-@@ -42,11 +42,6 @@ XPCOMUtils.defineLazyServiceGetter(
-   "@mozilla.org/base/telemetry;1",
-   "nsITelemetry"
- );
--ChromeUtils.defineModuleGetter(
--  this,
--  "TelemetryHealthPing",
--  "resource://gre/modules/HealthPing.jsm"
--);
+@@ -34,9 +34,6 @@ ChromeUtils.defineModuleGetter(this, "OS
+ XPCOMUtils.defineLazyServiceGetter(this, "Telemetry",
+                                    "@mozilla.org/base/telemetry;1",
+                                    "nsITelemetry");
+-ChromeUtils.defineModuleGetter(this, "TelemetryHealthPing",
+-                               "resource://gre/modules/HealthPing.jsm");
+-
  
  const Utils = TelemetryUtils;
  
 diff --git a/toolkit/components/telemetry/app/TelemetryStorage.jsm b/toolkit/components/telemetry/app/TelemetryStorage.jsm
 --- a/toolkit/components/telemetry/app/TelemetryStorage.jsm
 +++ b/toolkit/components/telemetry/app/TelemetryStorage.jsm
-@@ -41,11 +41,6 @@ ChromeUtils.defineModuleGetter(
-   "CommonUtils",
-   "resource://services-common/utils.js"
- );
--ChromeUtils.defineModuleGetter(
--  this,
--  "TelemetryHealthPing",
--  "resource://gre/modules/HealthPing.jsm"
--);
+@@ -38,8 +38,6 @@ XPCOMUtils.defineLazyGetter(this, "gAbor
+ });
+ ChromeUtils.defineModuleGetter(this, "CommonUtils",
+                                "resource://services-common/utils.js");
+-ChromeUtils.defineModuleGetter(this, "TelemetryHealthPing",
+-                               "resource://gre/modules/HealthPing.jsm");
  // Maxmimum time, in milliseconds, archive pings should be retained.
  const MAX_ARCHIVED_PINGS_RETENTION_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
  
-@@ -1485,7 +1480,6 @@ var TelemetryStorageImpl = {
+@@ -1310,7 +1308,6 @@ var TelemetryStorageImpl = {
  
        // Currently we don't have the ping type available without loading the ping from disk.
        // Bug 1384903 will fix that.
 -      TelemetryHealthPing.recordDiscardedPing("<unknown>");
-       throw new Error(
-         "loadPendingPing - exceeded the maximum ping size: " + fileSize
-       );
-@@ -1787,10 +1781,6 @@ var TelemetryStorageImpl = {
-             Telemetry.getHistogramById(
-               "TELEMETRY_PING_SIZE_EXCEEDED_PENDING"
-             ).add();
+       throw new Error("loadPendingPing - exceeded the maximum ping size: " + fileSize);
+     }
+ 
+@@ -1569,10 +1566,6 @@ var TelemetryStorageImpl = {
+             Telemetry.getHistogramById("TELEMETRY_DISCARDED_PENDING_PINGS_SIZE_MB")
+                      .add(Math.floor(info.size / 1024 / 1024));
+             Telemetry.getHistogramById("TELEMETRY_PING_SIZE_EXCEEDED_PENDING").add();
 -
 -            // Currently we don't have the ping type available without loading the ping from disk.
 -            // Bug 1384903 will fix that.
@@ -3242,39 +2989,33 @@ diff --git a/toolkit/components/telemetry/moz.build b/toolkit/components/telemet
 diff --git a/toolkit/components/telemetry/pings/TelemetrySession.jsm b/toolkit/components/telemetry/pings/TelemetrySession.jsm
 --- a/toolkit/components/telemetry/pings/TelemetrySession.jsm
 +++ b/toolkit/components/telemetry/pings/TelemetrySession.jsm
-@@ -17,8 +17,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
+@@ -15,8 +15,6 @@ XPCOMUtils.defineLazyModuleGetters(this,
    AddonManagerPrivate: "resource://gre/modules/AddonManager.jsm",
    TelemetryController: "resource://gre/modules/TelemetryController.jsm",
    TelemetryStorage: "resource://gre/modules/TelemetryStorage.jsm",
 -  UITelemetry: "resource://gre/modules/UITelemetry.jsm",
 -  GCTelemetry: "resource://gre/modules/GCTelemetry.jsm",
    TelemetryEnvironment: "resource://gre/modules/TelemetryEnvironment.jsm",
-   TelemetryReportingPolicy:
-     "resource://gre/modules/TelemetryReportingPolicy.jsm",
-@@ -713,12 +711,6 @@ var Impl = {
-         reason == REASON_GATHER_SUBSESSION_PAYLOAD
-       );
+   TelemetryReportingPolicy: "resource://gre/modules/TelemetryReportingPolicy.jsm",
+   TelemetryScheduler: "resource://gre/modules/TelemetryScheduler.jsm",
+@@ -628,10 +626,6 @@ var Impl = {
+ 
+       let clearUIsession = !(reason == REASON_GATHER_PAYLOAD || reason == REASON_GATHER_SUBSESSION_PAYLOAD);
  
 -      if (AppConstants.platform == "android") {
--        payloadObj.UIMeasurements = protect(() =>
--          UITelemetry.getUIMeasurements(clearUIsession)
--        );
+-        payloadObj.UIMeasurements = protect(() => UITelemetry.getUIMeasurements(clearUIsession));
 -      }
 -
-       if (
-         this._slowSQLStartup &&
-         Object.keys(this._slowSQLStartup).length != 0 &&
-@@ -728,15 +720,6 @@ var Impl = {
+       if (this._slowSQLStartup &&
+           Object.keys(this._slowSQLStartup).length != 0 &&
+           (Object.keys(this._slowSQLStartup.mainThread).length ||
+@@ -639,11 +633,6 @@ var Impl = {
          payloadObj.slowSQLStartup = this._slowSQLStartup;
        }
  
 -      if (!this._isClassicReason(reason)) {
--        payloadObj.processes.parent.gc = protect(() =>
--          GCTelemetry.entries("main", clearSubsession)
--        );
--        payloadObj.processes.content.gc = protect(() =>
--          GCTelemetry.entries("content", clearSubsession)
--        );
+-        payloadObj.processes.parent.gc = protect(() => GCTelemetry.entries("main", clearSubsession));
+-        payloadObj.processes.content.gc = protect(() => GCTelemetry.entries("content", clearSubsession));
 -      }
 -
        // Adding captured stacks to the payload only if any exist and clearing

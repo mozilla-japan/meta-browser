@@ -1,7 +1,7 @@
 diff --git a/services/settings/Utils.jsm b/services/settings/Utils.jsm
 --- a/services/settings/Utils.jsm
 +++ b/services/settings/Utils.jsm
-@@ -55,96 +55,11 @@ var Utils = {
+@@ -53,82 +53,11 @@ var Utils = {
     * @param {Object} filters
     */
    async fetchLatestChanges(serverUrl, options = {}) {
@@ -31,11 +31,7 @@ diff --git a/services/settings/Utils.jsm b/services/settings/Utils.jsm
 -      params._expected = expectedTimestamp;
 -    }
 -    if (params) {
--      url +=
--        "?" +
--        Object.entries(params)
--          .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
--          .join("&");
+-      url += "?" + Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 -    }
 -    const response = await fetch(url, { headers });
 -
@@ -57,15 +53,9 @@ diff --git a/services/settings/Utils.jsm b/services/settings/Utils.jsm
 -        // If the server is failing, the JSON response might not contain the
 -        // expected data. For example, real server errors (Bug 1259145)
 -        // or dummy local server for tests (Bug 1481348)
--        const is404FromCustomServer =
--          response.status == 404 &&
--          Services.prefs.prefHasUserValue("services.settings.server");
+-        const is404FromCustomServer = response.status == 404 && Services.prefs.prefHasUserValue("services.settings.server");
 -        if (!is404FromCustomServer) {
--          throw new Error(
--            `Server error ${response.status} ${
--              response.statusText
--            }: ${JSON.stringify(payload)}`
--          );
+-          throw new Error(`Server error ${response.status} ${response.statusText}: ${JSON.stringify(payload)}`);
 -        }
 -      } else {
 -        changes = payload.data;
@@ -73,14 +63,10 @@ diff --git a/services/settings/Utils.jsm b/services/settings/Utils.jsm
 -    }
 -    // The server should always return ETag. But we've had situations where the CDN
 -    // was interfering.
--    const currentEtag = response.headers.has("ETag")
--      ? response.headers.get("ETag")
--      : undefined;
+-    const currentEtag = response.headers.has("ETag") ? response.headers.get("ETag") : undefined;
 -    let serverTimeMillis = Date.parse(response.headers.get("Date"));
 -    // Since the response is served via a CDN, the Date header value could have been cached.
--    const cacheAgeSeconds = response.headers.has("Age")
--      ? parseInt(response.headers.get("Age"), 10)
--      : 0;
+-    const cacheAgeSeconds = response.headers.has("Age") ? parseInt(response.headers.get("Age"), 10) : 0;
 -    serverTimeMillis += cacheAgeSeconds * 1000;
 -
 -    // Age of data (time between publication and now).
@@ -100,5 +86,5 @@ diff --git a/services/settings/Utils.jsm b/services/settings/Utils.jsm
 +    const ageSeconds = undefined;
 +    let backoffSeconds = undefined;
  
-     return {
-       changes,
+     return { changes, currentEtag, serverTimeMillis, backoffSeconds, ageSeconds };
+   },

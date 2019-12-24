@@ -1,7 +1,7 @@
 diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolocationProvider.jsm
 --- a/dom/system/NetworkGeolocationProvider.jsm
 +++ b/dom/system/NetworkGeolocationProvider.jsm
-@@ -27,10 +27,6 @@ var gLoggingEnabled = false;
+@@ -25,10 +25,6 @@ var gLoggingEnabled = false;
     data and xhr it to the location server.
  */
  
@@ -12,32 +12,29 @@ diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolo
  function LOG(aMsg) {
    if (gLoggingEnabled) {
      aMsg = "*** WIFI GEO: " + aMsg + "\n";
-@@ -255,13 +251,7 @@ function WifiGeoPositionProvider() {
-     "geo.wifi.logging.enabled",
-     false
-   );
--  gLocationRequestTimeout = Services.prefs.getIntPref(
--    "geo.wifi.timeToWaitBeforeSending",
--    5000
--  );
+@@ -231,10 +227,7 @@ WifiGeoPositionObject.prototype = {
+ 
+ function WifiGeoPositionProvider() {
+   gLoggingEnabled = Services.prefs.getBoolPref("geo.wifi.logging.enabled", false);
+-  gLocationRequestTimeout = Services.prefs.getIntPref("geo.wifi.timeToWaitBeforeSending", 5000);
 -  gWifiScanningEnabled = Services.prefs.getBoolPref("geo.wifi.scan", true);
  
 -  this.wifiService = null;
    this.timer = null;
    this.started = false;
  }
-@@ -285,8 +275,8 @@ WifiGeoPositionProvider.prototype = {
+@@ -255,8 +248,8 @@ WifiGeoPositionProvider.prototype = {
+     // wifi thread triggers WifiGeoPositionProvider to proceed, with no wifi, do manual timeout
      this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-     this.timer.initWithCallback(
-       this,
--      gLocationRequestTimeout,
--      this.timer.TYPE_REPEATING_SLACK
-+      0,
-+      this.timer.TYPE_ONE_SHOT
-     );
+     this.timer.initWithCallback(this,
+-                                gLocationRequestTimeout,
+-                                this.timer.TYPE_REPEATING_SLACK);
++                                0,
++                                this.timer.TYPE_ONE_SHOT);
    },
  
-@@ -297,16 +287,6 @@ WifiGeoPositionProvider.prototype = {
+   startup() {
+@@ -265,14 +258,6 @@ WifiGeoPositionProvider.prototype = {
  
      this.started = true;
  
@@ -45,16 +42,14 @@ diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolo
 -      if (this.wifiService) {
 -        this.wifiService.stopWatching(this);
 -      }
--      this.wifiService = Cc["@mozilla.org/wifi/monitor;1"].getService(
--        Ci.nsIWifiMonitor
--      );
+-      this.wifiService = Cc["@mozilla.org/wifi/monitor;1"].getService(Ci.nsIWifiMonitor);
 -      this.wifiService.startWatching(this);
 -    }
 -
      this.resetTimer();
      LOG("startup called.");
    },
-@@ -330,11 +310,6 @@ WifiGeoPositionProvider.prototype = {
+@@ -296,11 +281,6 @@ WifiGeoPositionProvider.prototype = {
        this.timer = null;
      }
  
@@ -66,7 +61,7 @@ diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolo
      this.listener = null;
      this.started = false;
    },
-@@ -383,84 +358,7 @@ WifiGeoPositionProvider.prototype = {
+@@ -347,68 +327,7 @@ WifiGeoPositionProvider.prototype = {
    },
  
    sendLocationRequest(wifiData) {
@@ -75,10 +70,8 @@ diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolo
 -      data.wifiAccessPoints = wifiData;
 -    }
 -
--    let useCached = isCachedRequestMoreAccurateThanServerRequest(
--      data.cellTowers,
--      data.wifiAccessPoints
--    );
+-    let useCached = isCachedRequestMoreAccurateThanServerRequest(data.cellTowers,
+-                                                                 data.wifiAccessPoints);
 -
 -    LOG("Use request cache:" + useCached + " reason:" + gDebugCacheReasoning);
 -
@@ -114,35 +107,21 @@ diff --git a/dom/system/NetworkGeolocationProvider.jsm b/dom/system/NetworkGeolo
 -      notifyPositionUnavailable(this.listener);
 -    };
 -    xhr.onload = () => {
--      LOG(
--        "server returned status: " +
--          xhr.status +
--          " --> " +
--          JSON.stringify(xhr.response)
--      );
--      if (
--        (xhr.channel instanceof Ci.nsIHttpChannel && xhr.status != 200) ||
--        !xhr.response ||
--        !xhr.response.location
--      ) {
+-      LOG("server returned status: " + xhr.status + " --> " + JSON.stringify(xhr.response));
+-      if ((xhr.channel instanceof Ci.nsIHttpChannel && xhr.status != 200) ||
+-          !xhr.response || !xhr.response.location) {
 -        notifyPositionUnavailable(this.listener);
 -        return;
 -      }
 -
--      let newLocation = new WifiGeoPositionObject(
--        xhr.response.location.lat,
--        xhr.response.location.lng,
--        xhr.response.accuracy
--      );
+-      let newLocation = new WifiGeoPositionObject(xhr.response.location.lat,
+-                                                  xhr.response.location.lng,
+-                                                  xhr.response.accuracy);
 -
 -      if (this.listener) {
 -        this.listener.update(newLocation);
 -      }
--      gCachedRequest = new CachedRequest(
--        newLocation,
--        data.cellTowers,
--        data.wifiAccessPoints
--      );
+-      gCachedRequest = new CachedRequest(newLocation, data.cellTowers, data.wifiAccessPoints);
 -    };
 -
 -    var requestData = JSON.stringify(data);
