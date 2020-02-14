@@ -1,0 +1,44 @@
+diff --git a/gfx/gl/GLScreenBuffer.cpp b/gfx/gl/GLScreenBuffer.cpp
+--- a/gfx/gl/GLScreenBuffer.cpp
++++ b/gfx/gl/GLScreenBuffer.cpp
+@@ -30,6 +30,7 @@
+ #endif
+ 
+ #ifdef MOZ_X11
++#  include <gdk/gdkx.h>
+ #  include "GLXLibrary.h"
+ #  include "SharedSurfaceGLX.h"
+ #endif
+@@ -81,9 +82,6 @@ UniquePtr<SurfaceFactory> GLScreenBuffer
+   if (useGl) {
+ #if defined(XP_MACOSX)
+     factory = SurfaceFactory_IOSurface::Create(gl, caps, ipcChannel, flags);
+-#elif defined(MOZ_X11)
+-    if (sGLXLibrary.UseTextureFromPixmap())
+-      factory = SurfaceFactory_GLXDrawable::Create(gl, caps, ipcChannel, flags);
+ #elif defined(MOZ_WIDGET_UIKIT)
+     factory = MakeUnique<SurfaceFactory_GLTexture>(mGLContext, caps, ipcChannel,
+                                                    mFlags);
+@@ -95,6 +93,11 @@ UniquePtr<SurfaceFactory> GLScreenBuffer
+           SurfaceFactory_SurfaceTexture::Create(gl, caps, ipcChannel, flags);
+     }
+ #else
++#  if defined(MOZ_X11)
++    if (gl->GetContextType() == GLContextType::GLX &&
++	sGLXLibrary.UseTextureFromPixmap())
++      factory = SurfaceFactory_GLXDrawable::Create(gl, caps, ipcChannel, flags);
++#  endif
+     if (gl->GetContextType() == GLContextType::EGL) {
+       if (XRE_IsParentProcess()) {
+         factory = SurfaceFactory_EGLImage::Create(gl, caps, ipcChannel, flags);
+@@ -125,7 +128,9 @@ UniquePtr<SurfaceFactory> GLScreenBuffer
+   }
+ 
+ #ifdef MOZ_X11
+-  if (!factory && sGLXLibrary.UseTextureFromPixmap()) {
++  // Bug 1241486: Use SharedSurface_GLX with XRender
++  if (!factory && GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
++      sGLXLibrary.UseTextureFromPixmap()) {
+     factory = SurfaceFactory_GLXDrawable::Create(gl, caps, ipcChannel, flags);
+   }
+ #endif
