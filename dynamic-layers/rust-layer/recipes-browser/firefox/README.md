@@ -7,7 +7,7 @@ Build requirements
 ------------------
 
 * [meta-rust](https://github.com/meta-rust/meta-rust)
-  * Rust-1.34 or later
+  * Rust-1.43 or later
 * [meta-clang](https://github.com/kraj/meta-clang)
   * Clang-7 or later
 

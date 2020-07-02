@@ -1,0 +1,35 @@
+From: Mitchell Hentges <mhentges@mozilla.com>
+Date: Wed, 3 Jun 2020 18:15:38 +0000
+Subject: Bug 1632429: "enum34" and "enum" virtualenv packages are now only
+ available to the python2 env r=rstewart
+
+When running |mach python| with python 3, it was failing when importing "enum", since it would get the python 2 backport. By making these packages only
+available to python 2, we allow python 3 to import standard library packages properly.
+
+Differential Revision: https://phabricator.services.mozilla.com/D77960
+---
+ build/virtualenv_packages.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/build/virtualenv_packages.txt b/build/virtualenv_packages.txt
+index 018103ea523..be8279c0afa 100644
+--- a/build/virtualenv_packages.txt
++++ b/build/virtualenv_packages.txt
+@@ -22,7 +22,7 @@ mozilla.pth:third_party/python/diskcache
+ mozilla.pth:third_party/python/distro
+ mozilla.pth:third_party/python/dlmanager
+ mozilla.pth:third_party/python/ecdsa/src
+-mozilla.pth:third_party/python/enum34
++python2:mozilla.pth:third_party/python/enum34
+ mozilla.pth:third_party/python/esprima
+ mozilla.pth:third_party/python/fluent.migrate
+ mozilla.pth:third_party/python/fluent.syntax
+@@ -95,7 +95,7 @@ mozilla.pth:tools
+ mozilla.pth:testing/web-platform
+ mozilla.pth:testing/web-platform/tests/tools/third_party/html5lib
+ mozilla.pth:testing/web-platform/tests/tools/third_party/webencodings
+-mozilla.pth:testing/web-platform/tests/tools/third_party/enum
++python2:mozilla.pth:testing/web-platform/tests/tools/third_party/enum
+ mozilla.pth:testing/web-platform/tests/tools/third_party/h2
+ mozilla.pth:testing/web-platform/tests/tools/third_party/hpack
+ mozilla.pth:testing/web-platform/tests/tools/third_party/hyperframe

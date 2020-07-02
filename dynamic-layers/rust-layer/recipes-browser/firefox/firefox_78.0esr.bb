@@ -11,48 +11,54 @@ DEPENDS += "curl startup-notification libevent cairo libnotify \
 RDEPENDS_${PN}-dev = "dbus"
 
 LICENSE = "MPLv2"
-LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=35d7fa1c4b86c115051c925fd624a5be"
+LIC_FILES_CHKSUM = "file://toolkit/content/license.html;endline=33;md5=b186c4b15b6099eac08a112f6243ee46"
 
 CVE_PRODUCT = "mozilla:firefox"
 
-SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${PV}.source.tar.xz \
+SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${PV}.source.tar.xz;name=archive \
            file://mozconfig \
            file://mozilla-firefox.png \
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
-           file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
-           file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
-           file://fixes/Bug-1556197-amend-Bug-1544631-for-fixing-mips32.patch \
-           file://fixes/Bug-1560340-Only-add-confvars.sh-as-a-dependency-to-.patch \
            file://fixes/bug1545437-enable-to-specify-rust-target.patch \
            file://fixes/avoid-running-autoconf2.13.patch \
            file://fixes/pre-generated-old-configure.patch \
            file://fixes/link-with-libpangoft.patch \
+           file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
+           file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
+           file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
+           file://fixes/Bug-1632429-enum34-and-enum-virtualenv-packages-are-.patch \
+           file://fixes/0001-rust-target-lexicon-0.9.0-Add-Poky-to-Vendor.patch \
+           file://fixes/0002-Don-t-include-dependency-flags-in-HOST_CFLAGS-for-ru.patch \
+           file://fixes/0003-rust-autocfg-0.1.6-Don-t-specify-target-for-rustc.patch \
            file://porting/Add-xptcall-support-for-SH4-processors.patch \
            file://porting/NSS-Fix-FTBFS-on-Hurd-because-of-MAXPATHLEN.patch \
            file://porting/Work-around-Debian-bug-844357.patch \
            file://porting/Use-NEON_FLAGS-instead-of-VPX_ASFLAGS-for-libaom-neo.patch \
+           file://porting/Work-around-GCC-ICE-on-mips-i386-and-s390x.patch \
+           file://porting/Work-around-another-GCC-ICE-on-arm.patch \
            file://prefs/Set-javascript.options.showInConsole.patch \
            file://prefs/Set-DPI-to-system-settings.patch \
            file://prefs/Don-t-auto-disable-extensions-in-system-directories.patch \
+           file://debian-hacks/Avoid-wrong-sessionstore-data-to-keep-windows-out-of.patch \
            file://debian-hacks/Add-another-preferences-directory-for-applications-p.patch \
            file://debian-hacks/Don-t-register-plugins-if-the-MOZILLA_DISABLE_PLUGIN.patch \
-           file://debian-hacks/Don-t-error-out-when-run-time-libsqlite-is-older-tha.patch \
            file://debian-hacks/Add-a-2-minutes-timeout-on-xpcshell-tests.patch \
            file://debian-hacks/Don-t-build-image-gtests.patch \
-           file://debian-hacks/Allow-to-override-ICU_DATA_FILE-from-the-environment.patch \
            file://debian-hacks/Set-program-name-from-the-remoting-name.patch \
            file://debian-hacks/Use-the-Mozilla-Location-Service-key-when-the-Google.patch \
            file://debian-hacks/Avoid-using-vmrs-vmsr-on-armel.patch \
            file://debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch \
            file://debian-hacks/Use-build-id-as-langpack-version-for-reproducibility.patch \
-           file://wayland/bug1451816-workaround-for-grabbing-popup.patch \
+           file://debian-hacks/Don-t-build-ICU-in-parallel.patch \
+           file://debian-hacks/Allow-to-build-with-older-versions-of-nodejs-10.patch \
            file://wayland/egl/bug1571603-Disable-eglQueryString-nullptr-EGL_EXTENSIONS.patch \
            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            "
 
-SRC_URI[sha256sum] = "935105e1a8a97d64daffb372690e2b566b5f07641f01470929dbbc82d20d4407"
+SRC_URI[archive.md5sum] = "0a095e672a2e1e468a21a0d0c9a328ae"
+SRC_URI[archive.sha256sum] = "cc5d177899899b25c0d37d55592962e2dfa1666e784825d4de04bf53bb497309"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"

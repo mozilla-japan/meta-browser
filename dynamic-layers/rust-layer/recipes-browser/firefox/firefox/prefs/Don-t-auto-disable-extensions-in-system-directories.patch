@@ -1,17 +1,16 @@
-From 2cbaf81a1525540f199d661cef7d8eb7d3560378 Mon Sep 17 00:00:00 2001
 From: Mike Hommey <mh@glandium.org>
 Date: Fri, 17 Feb 2012 17:47:15 +0100
-Subject: [PATCH] Don't auto-disable extensions in system directories
+Subject: Don't auto-disable extensions in system directories
 
 ---
  browser/app/profile/firefox.js | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
-index 04fd609ac9..d735929909 100644
+index cd9bc929697..c972b70ac08 100644
 --- a/browser/app/profile/firefox.js
 +++ b/browser/app/profile/firefox.js
-@@ -62,7 +62,7 @@ pref("extensions.systemAddon.update.enabled", true);
+@@ -55,7 +55,7 @@ pref("extensions.systemAddon.update.enabled", true);
  
  // Disable add-ons that are not installed by the user in all scopes by default.
  // See the SCOPE constants in AddonManager.jsm for values to use here.

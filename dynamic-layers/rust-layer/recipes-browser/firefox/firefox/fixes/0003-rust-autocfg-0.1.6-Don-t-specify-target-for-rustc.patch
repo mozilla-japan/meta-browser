@@ -1,0 +1,55 @@
+From 470c04a1247d5bcaf9f4adcf661406ef1357fb6d Mon Sep 17 00:00:00 2001
+From: INAJIMA Daisuke <inajima@soum.co.jp>
+Date: Fri, 19 Jun 2020 13:21:05 +0900
+Subject: [PATCH 3/3] rust/autocfg-0.1.6: Don't specify --target for rustc
+
+TARGET variable in Yocto is like aarch64-poky-linux, but "poky" vendor
+is not supported by rustc.  When you execute `rustc --target
+aarch64-poky-linux ...`, then you'll get a following error.
+
+```
+'+v8' is not a recognized feature for this target (ignoring feature)
+error[E0463]: can't find crate for `std`
+  |
+  = note: the `aarch64-poky-linux` target may not be installed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --expl'
+```
+
+Actually, `rustc --print target-list` doesn't have aarch64-poky-linux.
+However `rustc --target aarch64-unknown-linux-gnu ...` also fails
+although aarch-64-unknown-linux-gnu is included in target-list.
+
+This is just workaround to cross-compile firefox aarch64 on x86_64 host,
+it should be removed in future by fixing build environment problem.
+---
+ third_party/rust/autocfg-0.1.6/.cargo-checksum.json | 2 +-
+ third_party/rust/autocfg-0.1.6/src/lib.rs           | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/third_party/rust/autocfg-0.1.6/.cargo-checksum.json b/third_party/rust/autocfg-0.1.6/.cargo-checksum.json
+index e7bd53b6e17f..aa4c00a7a99f 100644
+--- a/third_party/rust/autocfg-0.1.6/.cargo-checksum.json
++++ b/third_party/rust/autocfg-0.1.6/.cargo-checksum.json
+@@ -1 +1 @@
+-{"files":{"Cargo.lock":"461e5e87b13d7faf25813b08b5003060c39d8af0953f30d5b80ae0926c888022","Cargo.toml":"1eded5c9954b3bb92bb2c7403e026198e66a2a42199db06fc9cafddc8d1fd677","LICENSE-APACHE":"a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2","LICENSE-MIT":"27995d58ad5c1145c1a8cd86244ce844886958a35eb2b78c6b772748669999ac","README.md":"ba9a1621483e0b9f017f07c282d00d5cf3a2d8660cca6df6b14941319d748953","examples/integers.rs":"589ff4271566dfa322becddf3e2c7b592e6e0bc97b02892ce75619b7e452e930","examples/paths.rs":"1b30e466b824ce8df7ad0a55334424131d9d2573d6cf9f7d5d50c09c8901d526","examples/traits.rs":"cbee6a3e1f7db60b02ae25b714926517144a77cb492021f492774cf0e1865a9e","examples/versions.rs":"38535e6d9f5bfae0de474a3db79a40e8f5da8ba9334c5ff4c363de9bc99d4d12","src/error.rs":"12de7dafea4a35d1dc2f0fa79bfa038386bbbea72bf083979f4ddf227999eeda","src/lib.rs":"411d8dbc48ab0f67cb10243f1e16b235407818c96556c838182e4004da995dff","src/tests.rs":"0b1353344e832553d328c47f1639ced877b5dff70fd2024d84130bd1c33eee07","src/version.rs":"175727d5f02f2fe2271ddc9b041db2a5b9c6fe0f95afd17c73a4d982612764a3"},"package":"b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"}
+\ No newline at end of file
++{"files":{"Cargo.lock":"461e5e87b13d7faf25813b08b5003060c39d8af0953f30d5b80ae0926c888022","Cargo.toml":"1eded5c9954b3bb92bb2c7403e026198e66a2a42199db06fc9cafddc8d1fd677","LICENSE-APACHE":"a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2","LICENSE-MIT":"27995d58ad5c1145c1a8cd86244ce844886958a35eb2b78c6b772748669999ac","README.md":"ba9a1621483e0b9f017f07c282d00d5cf3a2d8660cca6df6b14941319d748953","examples/integers.rs":"589ff4271566dfa322becddf3e2c7b592e6e0bc97b02892ce75619b7e452e930","examples/paths.rs":"1b30e466b824ce8df7ad0a55334424131d9d2573d6cf9f7d5d50c09c8901d526","examples/traits.rs":"cbee6a3e1f7db60b02ae25b714926517144a77cb492021f492774cf0e1865a9e","examples/versions.rs":"38535e6d9f5bfae0de474a3db79a40e8f5da8ba9334c5ff4c363de9bc99d4d12","src/error.rs":"12de7dafea4a35d1dc2f0fa79bfa038386bbbea72bf083979f4ddf227999eeda","src/lib.rs":"53188e72b8f66d378f4b15aedde5a604376cad3e11eb8387cb97171e3f2298cc","src/tests.rs":"0b1353344e832553d328c47f1639ced877b5dff70fd2024d84130bd1c33eee07","src/version.rs":"175727d5f02f2fe2271ddc9b041db2a5b9c6fe0f95afd17c73a4d982612764a3"},"package":"b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"}
+diff --git a/third_party/rust/autocfg-0.1.6/src/lib.rs b/third_party/rust/autocfg-0.1.6/src/lib.rs
+index 96cceedbfb64..6b0246cebd26 100644
+--- a/third_party/rust/autocfg-0.1.6/src/lib.rs
++++ b/third_party/rust/autocfg-0.1.6/src/lib.rs
+@@ -149,7 +149,7 @@ impl AutoCfg {
+             out_dir: dir,
+             rustc: rustc,
+             rustc_version: rustc_version,
+-            target: env::var_os("TARGET"),
++            target: None,
+             no_std: false,
+         };
+ 
+-- 
+2.27.0
+

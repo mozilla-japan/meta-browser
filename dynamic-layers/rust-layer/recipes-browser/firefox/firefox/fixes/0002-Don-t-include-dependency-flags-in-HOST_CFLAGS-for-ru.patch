@@ -1,0 +1,30 @@
+From 9856ec157ff51264cbc2cd2f3f3288beb3617aff Mon Sep 17 00:00:00 2001
+From: INAJIMA Daisuke <inajima@soum.co.jp>
+Date: Fri, 19 Jun 2020 12:33:56 +0900
+Subject: [PATCH 2/3] Don't include dependency flags in HOST_CFLAGS for rust
+
+When compiling force-cargo-library-build, compile error occurred because
+it refers .deps/force-cargo-library-build.pp and it is not found.
+
+Removing dependency flags from HOST_CFLAGS suppress the error.
+---
+ config/makefiles/rust.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/config/makefiles/rust.mk b/config/makefiles/rust.mk
+index a9abcc9af4c0..d6bcb791bb68 100644
+--- a/config/makefiles/rust.mk
++++ b/config/makefiles/rust.mk
+@@ -152,6 +152,9 @@ export CFLAGS_$(rust_cc_env_name)=$(CC_BASE_FLAGS)
+ export CXXFLAGS_$(rust_cc_env_name)=$(CXX_BASE_FLAGS)
+ endif
+ 
++export HOST_CFLAGS=$(COMPUTED_HOST_CFLAGS)
++export HOST_CXXFLAGS=$(COMPUTED_HOST_CXXFLAGS)
++
+ # Force the target down to all bindgen callers, even those that may not
+ # read BINDGEN_SYSTEM_FLAGS some way or another.
+ export BINDGEN_EXTRA_CLANG_ARGS:=$(filter --target=%,$(BINDGEN_SYSTEM_FLAGS))
+-- 
+2.27.0
+
