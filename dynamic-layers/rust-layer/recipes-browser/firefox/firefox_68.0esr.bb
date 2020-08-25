@@ -28,6 +28,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/Bug-1609040-GLScreenBuffer-should-use-EGL-backend.patch \
+           file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
            file://porting/Add-xptcall-support-for-SH4-processors.patch \
            file://porting/NSS-Fix-FTBFS-on-Hurd-because-of-MAXPATHLEN.patch \
            file://porting/Work-around-Debian-bug-844357.patch \
