@@ -56,6 +56,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://wayland/egl/bug1571603-Disable-eglQueryString-nullptr-EGL_EXTENSIONS.patch \
            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \
            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
+           file://wayland/firefox-wayland.sh \
            "
 
 SRC_URI[archive.md5sum] = "0a095e672a2e1e468a21a0d0c9a328ae"
@@ -122,6 +123,10 @@ do_install_append() {
     if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'forbit-multiple-compositors', '1', '', d)}" ]; then
         install -m 0644 ${WORKDIR}/prefs/single-compositor.js ${D}${libdir}/${PN}/defaults/pref/
     fi
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'wayland', '1', '', d)}" ]; then
+        install -d ${D}${sysconfdir}/profile.d
+        install -m 0755 ${WORKDIR}/wayland/firefox-wayland.sh ${D}${sysconfdir}/profile.d/
+    fi
 
     # Fix ownership of files
     chown root:root -R ${D}${datadir}
@@ -133,7 +138,8 @@ FILES_${PN} = "${bindir}/${PN} \
                ${datadir}/pixmaps/ \
                ${libdir}/${PN}/* \
                ${libdir}/${PN}/.autoreg \
-               ${bindir}/defaults"
+               ${bindir}/defaults \
+               ${sysconfdir}/profile.d/*"
 FILES_${PN}-dev += "${datadir}/idl ${bindir}/${PN}-config ${libdir}/${PN}-devel-*"
 FILES_${PN}-staticdev += "${libdir}/${PN}-devel-*/sdk/lib/*.a"
 FILES_${PN}-dbg += "${libdir}/${PN}/.debug \
