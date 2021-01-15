@@ -27,7 +27,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
            file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
-           file://fixes/Bug-1632429-enum34-and-enum-virtualenv-packages-are-.patch \
            file://fixes/0001-rust-target-lexicon-0.9.0-Add-Poky-to-Vendor.patch \
            file://fixes/0002-Don-t-include-dependency-flags-in-HOST_CFLAGS-for-ru.patch \
            file://fixes/0003-rust-autocfg-0.1.6-Don-t-specify-target-for-rustc.patch \
@@ -57,8 +56,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://wayland/egl/0001-Mark-GLFeature-framebuffer_multisample-as-unsupporte.patch \
            "
 
-SRC_URI[archive.md5sum] = "0a095e672a2e1e468a21a0d0c9a328ae"
-SRC_URI[archive.sha256sum] = "cc5d177899899b25c0d37d55592962e2dfa1666e784825d4de04bf53bb497309"
+SRC_URI[archive.md5sum] = "063ee0d760599aff5aaf4438d933ef3d"
+SRC_URI[archive.sha256sum] = "596b085e32a2d683ba960e161ea65c6271f90f576d4bf956e0d48e83af992c21"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
