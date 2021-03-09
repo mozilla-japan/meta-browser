@@ -8,7 +8,7 @@ Closes: #931757
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/gfx/skia/skia/third_party/skcms/src/Transform_inl.h b/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
-index c4b312286a2..cfaae3ea361 100644
+index c4b3122..cfaae3e 100644
 --- a/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
 +++ b/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
 @@ -685,7 +685,7 @@ SI void sample_clut_16(const skcms_A2B* a2b, I32 ix, F* r, F* g, F* b) {

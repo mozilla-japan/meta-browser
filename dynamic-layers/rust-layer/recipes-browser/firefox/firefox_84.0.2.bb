@@ -51,7 +51,6 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://debian-hacks/Avoid-using-vmrs-vmsr-on-armel.patch \
            file://debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch \
            file://debian-hacks/Use-build-id-as-langpack-version-for-reproducibility.patch \
-           file://debian-hacks/Don-t-build-ICU-in-parallel.patch \
            file://debian-hacks/Allow-to-build-with-older-versions-of-nodejs-10.patch \
            file://wayland/egl/bug1571603-Disable-eglQueryString-nullptr-EGL_EXTENSIONS.patch \
            file://wayland/egl/0001-GLLibraryLoader-Use-given-symbol-lookup-function-fir.patch \

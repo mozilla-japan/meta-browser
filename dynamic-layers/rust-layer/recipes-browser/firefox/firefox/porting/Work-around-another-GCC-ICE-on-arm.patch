@@ -7,7 +7,7 @@ Subject: Work around another GCC ICE on arm
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/gfx/skia/skia/third_party/skcms/src/Transform_inl.h b/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
-index cfaae3ea361..604e10957f6 100644
+index cfaae3e..604e109 100644
 --- a/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
 +++ b/gfx/skia/skia/third_party/skcms/src/Transform_inl.h
 @@ -685,7 +685,7 @@ SI void sample_clut_16(const skcms_A2B* a2b, I32 ix, F* r, F* g, F* b) {

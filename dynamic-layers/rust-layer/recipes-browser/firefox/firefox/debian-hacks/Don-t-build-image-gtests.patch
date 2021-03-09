@@ -9,15 +9,15 @@ is shipped, and not currently run either, just skip building them.
  1 file changed, 2 deletions(-)
 
 diff --git a/image/moz.build b/image/moz.build
-index 509a23ca198..da0e9af1f68 100644
+index 427077f..74949b7 100644
 --- a/image/moz.build
 +++ b/image/moz.build
 @@ -5,8 +5,6 @@
  # file, You can obtain one at http://mozilla.org/MPL/2.0/.
  
- DIRS += ['build', 'decoders', 'encoders']
--if CONFIG['ENABLE_TESTS']:
--    DIRS += ['test/gtest']
+ DIRS += ["build", "decoders", "encoders"]
+-if CONFIG["ENABLE_TESTS"]:
+-    DIRS += ["test/gtest"]
  
- if CONFIG['FUZZING_INTERFACES']:
-     DIRS += ['test/fuzzing']
+ if CONFIG["FUZZING_INTERFACES"]:
+     DIRS += ["test/fuzzing"]

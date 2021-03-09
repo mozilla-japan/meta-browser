@@ -8,7 +8,7 @@ Closes: #907574
  1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/widget/gtk/nsAppShell.cpp b/widget/gtk/nsAppShell.cpp
-index a4246649abf..1126bf91171 100644
+index 24bdd50..976f54b 100644
 --- a/widget/gtk/nsAppShell.cpp
 +++ b/widget/gtk/nsAppShell.cpp
 @@ -24,6 +24,7 @@
@@ -19,7 +19,7 @@ index a4246649abf..1126bf91171 100644
  #include "ScreenHelperGTK.h"
  #include "HeadlessScreenHelper.h"
  #include "mozilla/widget/ScreenManager.h"
-@@ -178,10 +179,8 @@ nsresult nsAppShell::Init() {
+@@ -156,10 +157,8 @@ nsresult nsAppShell::Init() {
        // creating top-level windows. (At this point, a child process hasn't
        // received the list of registered chrome packages, so the
        // GetBrandShortName call would fail anyway.)
