@@ -1,8 +1,32 @@
-diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.configure
---- a/build/moz.configure/rust.configure
-+++ b/build/moz.configure/rust.configure
-@@ -218,6 +218,28 @@ def rust_supported_targets(rustc):
-     return data
+Index: firefox-84.0.2/build/moz.configure/rust.configure
+===================================================================
+--- firefox-84.0.2.orig/build/moz.configure/rust.configure
++++ firefox-84.0.2/build/moz.configure/rust.configure
+@@ -395,7 +395,7 @@ def detect_rustc_target(
+ @imports(_from="tempfile", _import="mkstemp")
+ @imports(_from="textwrap", _import="dedent")
+ @imports(_from="mozbuild.configure.util", _import="LineIO")
+-def assert_rust_compile(host_or_target, rustc_target, rustc):
++def assert_rust_compile(host_or_target, rustc_target, rustc, libdir=None):
+     # Check to see whether our rustc has a reasonably functional stdlib
+     # for our chosen target.
+     target_arg = "--target=" + rustc_target
+@@ -416,6 +416,13 @@ def assert_rust_compile(host_or_target,
+             "--crate-type",
+             "staticlib",
+             target_arg,
++        ]
++        if libdir:
++            cmd += [
++                "-L",
++                libdir,
++            ]
++        cmd += [
+             "-o",
+             out_path,
+             in_path,
+@@ -444,8 +451,54 @@ def assert_rust_compile(host_or_target,
+         os.remove(out_path)
  
  
 +option(env='RUST_HOST',
@@ -27,36 +51,68 @@ diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.confi
 +        return value[0]
 +
 +
- @template
- def rust_triple_alias(host_or_target, host_or_target_c_compiler):
-     """Template defining the alias used for rustc's --target flag.
-@@ -228,8 +250,9 @@ def rust_triple_alias(host_or_target, ho
++option(env='RUST_HOST_LIBDIR',
++       nargs=1,
++       help='Path to the std crate for host')
++
++@depends('RUST_HOST_LIBDIR')
++@checking('rust host libdir', lambda libdir: libdir)
++def rust_host_libdir(value):
++    if value:
++        return value[0]
++
++
++option(env='RUST_TARGET_LIBDIR',
++       nargs=1,
++       help='Path to the std crate for target')
++
++@depends('RUST_TARGET_LIBDIR')
++@checking('rust target libdir', lambda libdir: libdir)
++def rust_target_libdir(value):
++    if value:
++        return value[0]
++
++
+ @depends(
+     rustc,
++    rust_host_env,
++    rust_host_libdir,
+     host,
+     host_c_compiler,
+     rustc_info.host,
+@@ -456,8 +509,13 @@ def assert_rust_compile(host_or_target,
+ @checking("for rust host triplet")
+ @imports(_from="textwrap", _import="dedent")
+ def rust_host_triple(
+-    rustc, host, compiler_info, rustc_host, rust_supported_targets, arm_target
++    rustc, host_env, host_libdir, host, compiler_info, rustc_host,
++    rust_supported_targets, arm_target
+ ):
++    if host_env:
++        assert_rust_compile(host, host_env, rustc, host_libdir)
++        return host_env
++
+     rustc_target = detect_rustc_target(
+         host, compiler_info, arm_target, rust_supported_targets
+     )
+@@ -488,12 +546,18 @@ def rust_host_triple(
  
-     host_or_target_str = {host: 'host', target: 'target'}[host_or_target]
  
--    @depends(rustc, host_or_target, host_or_target_c_compiler,
--             rust_supported_targets, arm_target, when=rust_compiler)
-+    @depends(rustc, host_or_target, rust_host_env, rust_target_env,
-+             host_or_target_c_compiler, rust_supported_targets, arm_target,
-+             when=rust_compiler)
-     @checking('for rust %s triplet' % host_or_target_str)
-     @imports('os')
-     @imports(_from='mozbuild.configure.util', _import='LineIO')
-@@ -237,8 +260,15 @@ def rust_triple_alias(host_or_target, ho
-     @imports(_from='six', _import='ensure_binary')
-     @imports(_from='tempfile', _import='mkstemp')
-     @imports(_from='textwrap', _import='dedent')
--    def rust_target(rustc, host_or_target, compiler_info,
--                    rust_supported_targets, arm_target):
+ @depends(
+-    rustc, target, c_compiler, rust_supported_targets, arm_target, when=rust_compiler
++    rustc, rust_target_env, rust_target_libdir, target, c_compiler,
++    rust_supported_targets, arm_target, when=rust_compiler
+ )
+ @checking("for rust target triplet")
+ def rust_target_triple(
+-    rustc, target, compiler_info, rust_supported_targets, arm_target
++    rustc, target_env, target_libdir, target, compiler_info,
++    rust_supported_targets, arm_target
+ ):
++    if target_env:
++        assert_rust_compile(target, target_env, rustc, target_libdir)
++        return target_env
 +
-+    def rust_target(rustc, host_or_target, rust_host_env, rust_target_env,
-+                    compiler_info, rust_supported_targets, arm_target):
-+
-+        specified_targets = {"host": rust_host_env, "target": rust_target_env}
-+        specified_target = specified_targets[host_or_target_str]
-+        if (specified_target):
-+            return specified_target
-+
-         # Rust's --target options are similar to, but not exactly the same
-         # as, the autoconf-derived targets we use.  An example would be that
-         # Rust uses distinct target triples for targetting the GNU C++ ABI
+     rustc_target = detect_rustc_target(
+         target, compiler_info, arm_target, rust_supported_targets
+     )
