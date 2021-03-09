@@ -40,6 +40,8 @@ mozilla_run_mach() {
 	export INSTALL_SDK=0
 	export DESTDIR="${D}"
 
+	export MACH_USE_SYSTEM_PYTHON=1
+
 	./mach "$@"
 }
 
