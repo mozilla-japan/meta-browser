@@ -21,13 +21,10 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://mozilla-firefox.desktop \
            file://prefs/vendor.js \
            file://fixes/bug1545437-enable-to-specify-rust-target.patch \
-           file://fixes/avoid-running-autoconf2.13.patch \
-           file://fixes/pre-generated-old-configure.patch \
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
            file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
-           file://fixes/Bug-1632429-enum34-and-enum-virtualenv-packages-are-.patch \
            file://fixes/0001-rust-target-lexicon-0.9.0-Add-Poky-to-Vendor.patch \
            file://fixes/0002-Don-t-include-dependency-flags-in-HOST_CFLAGS-for-ru.patch \
            file://fixes/0003-rust-autocfg-0.1.6-Don-t-specify-target-for-rustc.patch \
