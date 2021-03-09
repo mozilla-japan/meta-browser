@@ -59,8 +59,8 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://wayland/firefox-wayland.sh \
            "
 
-SRC_URI[archive.md5sum] = "0a095e672a2e1e468a21a0d0c9a328ae"
-SRC_URI[archive.sha256sum] = "cc5d177899899b25c0d37d55592962e2dfa1666e784825d4de04bf53bb497309"
+SRC_URI[archive.md5sum] = "7512384ee343b1a1714228bab4a1e036"
+SRC_URI[archive.sha256sum] = "92bfd518d4f9760c897388a8e06130b171c1c43524d8af181add9daac2be7b37"
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
