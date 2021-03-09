@@ -1,0 +1,37 @@
+Index: firefox-84.0.2/dom/media/platforms/omx/OmxDecoderModule.cpp
+===================================================================
+--- firefox-84.0.2.orig/dom/media/platforms/omx/OmxDecoderModule.cpp
++++ firefox-84.0.2/dom/media/platforms/omx/OmxDecoderModule.cpp
+@@ -23,10 +23,11 @@ bool OmxDecoderModule::Init() {
+   return false;
+ }
+ 
+-OmxDecoderModule* OmxDecoderModule::Create() {
++/* static */
++already_AddRefed<PlatformDecoderModule> OmxDecoderModule::Create() {
+ #ifdef MOZ_OMX
+   if (Init()) {
+-    return new OmxDecoderModule();
++    return MakeAndAddRef<OmxDecoderModule>();
+   }
+ #endif
+   return nullptr;
+Index: firefox-84.0.2/dom/media/platforms/omx/OmxDecoderModule.h
+===================================================================
+--- firefox-84.0.2.orig/dom/media/platforms/omx/OmxDecoderModule.h
++++ firefox-84.0.2/dom/media/platforms/omx/OmxDecoderModule.h
+@@ -12,10 +12,13 @@
+ namespace mozilla {
+ 
+ class OmxDecoderModule : public PlatformDecoderModule {
++  template <typename T, typename... Args>
++  friend already_AddRefed<T> MakeAndAddRef(Args&&...);
++
+  public:
+   // Called on main thread.
+   static bool Init();
+-  static OmxDecoderModule* Create();
++  static already_AddRefed<PlatformDecoderModule> Create();
+ 
+   already_AddRefed<MediaDataDecoder> CreateVideoDecoder(
+       const CreateDecoderParams& aParams) override;

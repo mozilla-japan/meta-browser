@@ -29,6 +29,7 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/0002-Don-t-include-dependency-flags-in-HOST_CFLAGS-for-ru.patch \
            file://fixes/0003-rust-autocfg-0.1.6-Don-t-specify-target-for-rustc.patch \
            file://fixes/0001-Add-a-preference-to-force-enable-touch-events-withou.patch \
+           file://fixes/dom-media-platforms-omx.patch \
            file://porting/Add-xptcall-support-for-SH4-processors.patch \
            file://porting/NSS-Fix-FTBFS-on-Hurd-because-of-MAXPATHLEN.patch \
            file://porting/Work-around-Debian-bug-844357.patch \
