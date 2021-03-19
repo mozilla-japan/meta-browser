@@ -21,3 +21,4 @@ debian-hacks/Avoid-using-vmrs-vmsr-on-armel.patch
 debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch
 debian-hacks/Use-build-id-as-langpack-version-for-reproducibility.patch
 debian-hacks/Allow-to-build-with-older-versions-of-nodejs-10.patch
+debian-hacks/Allow-to-build-with-cargo-in-Debian-unstable.patch

@@ -7,15 +7,15 @@ Subject: Allow to build with older versions of nodejs 10
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/python/mozbuild/mozbuild/nodeutil.py b/python/mozbuild/mozbuild/nodeutil.py
-index 897f5e6..e848884 100644
+index 5856227..38ca679 100644
 --- a/python/mozbuild/mozbuild/nodeutil.py
 +++ b/python/mozbuild/mozbuild/nodeutil.py
 @@ -13,7 +13,7 @@ from mozboot.util import get_state_dir
  from mozfile import which
  from six import PY3
  
--NODE_MIN_VERSION = StrictVersion("10.22.1")
+-NODE_MIN_VERSION = StrictVersion("10.23.1")
 +NODE_MIN_VERSION = StrictVersion("10.0")
- NPM_MIN_VERSION = StrictVersion("6.14.6")
+ NPM_MIN_VERSION = StrictVersion("6.14.10")
  
  
