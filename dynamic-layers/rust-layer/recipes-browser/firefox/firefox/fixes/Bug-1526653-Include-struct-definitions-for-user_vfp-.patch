@@ -8,7 +8,7 @@ Subject: Bug 1526653 - Include struct definitions for user_vfp and
  1 file changed, 10 insertions(+), 1 deletion(-)
 
 diff --git a/js/src/wasm/WasmSignalHandlers.cpp b/js/src/wasm/WasmSignalHandlers.cpp
-index 78d15440843..9965e76814a 100644
+index 78d1544..9965e76 100644
 --- a/js/src/wasm/WasmSignalHandlers.cpp
 +++ b/js/src/wasm/WasmSignalHandlers.cpp
 @@ -249,7 +249,16 @@ using mozilla::DebugOnly;

@@ -26,8 +26,9 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://fixes/link-with-libpangoft.patch \
            file://fixes/fix-camera-permission-dialg-doesnot-close.patch \
            file://fixes/Allow-.js-preference-files-to-set-locked-prefs-with-.patch \
+           file://fixes/Bug-1650299-Unify-the-inclusion-of-the-ICU-data-file.patch \
+           file://fixes/Bug-1264836-Automatically-convert-the-little-endian-.patch \
            file://fixes/Bug-1526653-Include-struct-definitions-for-user_vfp-.patch \
-           file://fixes/Bug-1632429-enum34-and-enum-virtualenv-packages-are-.patch \
            file://fixes/0001-rust-target-lexicon-0.9.0-Add-Poky-to-Vendor.patch \
            file://fixes/0002-Don-t-include-dependency-flags-in-HOST_CFLAGS-for-ru.patch \
            file://fixes/0003-rust-autocfg-0.1.6-Don-t-specify-target-for-rustc.patch \
@@ -59,8 +60,9 @@ SRC_URI = "https://ftp.mozilla.org/pub/firefox/releases/${PV}/source/firefox-${P
            file://wayland/firefox-wayland.sh \
            "
 
-SRC_URI[archive.md5sum] = "0a095e672a2e1e468a21a0d0c9a328ae"
-SRC_URI[archive.sha256sum] = "cc5d177899899b25c0d37d55592962e2dfa1666e784825d4de04bf53bb497309"
+SRC_URI[archive.md5sum] = "0aa9c735305304373f9fddc35c56e81b"
+SRC_URI[archive.sha256sum] = "c41f45072b0eb84b9c5dcb381298f91d49249db97784c7e173b5f210cd15cf3f"
+
 S = "${WORKDIR}/firefox-${MOZ_APP_BASE_VERSION}"
 
 MOZ_APP_BASE_VERSION = "${@'${PV}'.replace('esr', '')}"
