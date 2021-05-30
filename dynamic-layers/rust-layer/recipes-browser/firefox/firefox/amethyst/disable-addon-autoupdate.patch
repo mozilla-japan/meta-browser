@@ -1,0 +1,246 @@
+diff --git a/toolkit/mozapps/extensions/AddonManager.jsm b/toolkit/mozapps/extensions/AddonManager.jsm
+--- a/toolkit/mozapps/extensions/AddonManager.jsm
++++ b/toolkit/mozapps/extensions/AddonManager.jsm
+@@ -36,7 +36,6 @@ const PREF_EM_LAST_PLATFORM_VERSION = "e
+ const PREF_EM_AUTOUPDATE_DEFAULT = "extensions.update.autoUpdateDefault";
+ const PREF_EM_STRICT_COMPATIBILITY = "extensions.strictCompatibility";
+ const PREF_EM_CHECK_UPDATE_SECURITY = "extensions.checkUpdateSecurity";
+-const PREF_SYS_ADDON_UPDATE_ENABLED = "extensions.systemAddon.update.enabled";
+ 
+ const PREF_MIN_WEBEXT_PLATFORM_VERSION =
+   "extensions.webExtensionsMinPlatformVersion";
+@@ -1284,13 +1283,7 @@ var AddonManagerInternal = {
+ 
+   // Returns true if System Addons should be updated
+   systemUpdateEnabled() {
+-    if (!Services.prefs.getBoolPref(PREF_SYS_ADDON_UPDATE_ENABLED)) {
+-      return false;
+-    }
+-    if (Services.policies && !Services.policies.isAllowed("SysAddonUpdate")) {
+-      return false;
+-    }
+-    return true;
++    return false;
+   },
+ 
+   /**
+@@ -3013,7 +3006,7 @@ var AddonManagerInternal = {
+   },
+ 
+   get autoUpdateDefault() {
+-    return gAutoUpdateDefault;
++    return false;
+   },
+ 
+   set autoUpdateDefault(aValue) {
+@@ -3073,7 +3066,7 @@ var AddonManagerInternal = {
+   },
+ 
+   get updateEnabled() {
+-    return gUpdateEnabled;
++    return false;
+   },
+ 
+   set updateEnabled(aValue) {
+@@ -4136,23 +4129,7 @@ var AddonManager = {
+    * @return true if the addon should auto-update, false otherwise.
+    */
+   shouldAutoUpdate(aAddon) {
+-    if (!aAddon || typeof aAddon != "object") {
+-      throw Components.Exception(
+-        "aAddon must be specified",
+-        Cr.NS_ERROR_INVALID_ARG
+-      );
+-    }
+-
+-    if (!("applyBackgroundUpdates" in aAddon)) {
+-      return false;
+-    }
+-    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_ENABLE) {
+-      return true;
+-    }
+-    if (aAddon.applyBackgroundUpdates == AddonManager.AUTOUPDATE_DISABLE) {
+-      return false;
+-    }
+-    return this.autoUpdateDefault;
++    return false;
+   },
+ 
+   get checkCompatibility() {
+diff --git a/toolkit/mozapps/extensions/Blocklist.jsm b/toolkit/mozapps/extensions/Blocklist.jsm
+--- a/toolkit/mozapps/extensions/Blocklist.jsm
++++ b/toolkit/mozapps/extensions/Blocklist.jsm
+@@ -1690,7 +1690,7 @@ const EXTENSION_BLOCK_FILTERS = [
+ ];
+ 
+ var gLoggingEnabled = null;
+-var gBlocklistEnabled = true;
++var gBlocklistEnabled = false;
+ var gBlocklistLevel = DEFAULT_LEVEL;
+ 
+ /**
+@@ -1814,13 +1814,6 @@ let Blocklist = {
+               false
+             );
+             break;
+-          case PREF_BLOCKLIST_ENABLED:
+-            gBlocklistEnabled = Services.prefs.getBoolPref(
+-              PREF_BLOCKLIST_ENABLED,
+-              true
+-            );
+-            this._blocklistUpdated();
+-            break;
+           case PREF_BLOCKLIST_LEVEL:
+             gBlocklistLevel = Math.min(
+               Services.prefs.getIntPref(PREF_BLOCKLIST_LEVEL, DEFAULT_LEVEL),
+diff --git a/toolkit/mozapps/extensions/content/aboutaddons.js b/toolkit/mozapps/extensions/content/aboutaddons.js
+--- a/toolkit/mozapps/extensions/content/aboutaddons.js
++++ b/toolkit/mozapps/extensions/content/aboutaddons.js
+@@ -615,22 +615,7 @@ var DiscoveryAPI = {
+   },
+ 
+   async _fetchRecommendedAddons(useClientId) {
+-    let discoveryApiUrl = new URL(
+-      Services.urlFormatter.formatURLPref(PREF_DISCOVERY_API_URL)
+-    );
+-
+-    if (useClientId) {
+-      let clientId = await ClientID.getClientIdHash();
+-      discoveryApiUrl.searchParams.set("telemetry-client-id", clientId);
+-    }
+-    let res = await fetch(discoveryApiUrl.href, {
+-      credentials: "omit",
+-    });
+-    if (!res.ok) {
+-      throw new Error(`Failed to fetch recommended add-ons, ${res.status}`);
+-    }
+-    let { results } = await res.json();
+-    return results.map(details => new DiscoAddonWrapper(details));
++    throw new Error(`Failed to fetch recommended add-ons, ${res.status}`);
+   },
+ };
+ 
+@@ -3990,10 +3975,6 @@ customElements.define("addon-list", Addo
+ 
+ class RecommendedAddonList extends HTMLElement {
+   connectedCallback() {
+-    if (this.isConnected) {
+-      this.loadCardsIfNeeded();
+-      this.updateCardsWithAddonManager();
+-    }
+     AddonManagerListenerHandler.addListener(this);
+   }
+ 
+diff --git a/toolkit/mozapps/extensions/internal/AddonRepository.jsm b/toolkit/mozapps/extensions/internal/AddonRepository.jsm
+--- a/toolkit/mozapps/extensions/internal/AddonRepository.jsm
++++ b/toolkit/mozapps/extensions/internal/AddonRepository.jsm
+@@ -335,7 +335,7 @@ var AddonRepository = {
+    * Whether caching is currently enabled
+    */
+   get cacheEnabled() {
+-    return Services.prefs.getBoolPref(PREF_GETADDONS_CACHE_ENABLED, false);
++    return false;
+   },
+ 
+   /**
+@@ -424,55 +424,7 @@ var AddonRepository = {
+    */
+   _fetchPaged(ids, pref, handler) {
+     let startURL = this._formatURLPref(pref, { IDS: ids.join(",") });
+-    let results = [];
+-    let idCheck = ids.map(id => {
+-      if (id.startsWith("rta:")) {
+-        return atob(id.split(":")[1]);
+-      }
+-      return id;
+-    });
+-
+-    const fetchNextPage = url => {
+-      return new Promise((resolve, reject) => {
+-        let request = new ServiceRequest({ mozAnon: true });
+-        request.mozBackgroundRequest = true;
+-        request.open("GET", url, true);
+-        request.responseType = "json";
+-
+-        request.addEventListener("error", aEvent => {
+-          reject(new Error(`GET ${url} failed`));
+-        });
+-        request.addEventListener("timeout", aEvent => {
+-          reject(new Error(`GET ${url} timed out`));
+-        });
+-        request.addEventListener("load", aEvent => {
+-          let response = request.response;
+-          if (!response || (request.status != 200 && request.status != 0)) {
+-            reject(new Error(`GET ${url} failed (status ${request.status})`));
+-            return;
+-          }
+-
+-          try {
+-            let newResults = handler(response.results).filter(e =>
+-              idCheck.includes(e.id)
+-            );
+-            results.push(...newResults);
+-          } catch (err) {
+-            reject(err);
+-          }
+-
+-          if (response.next) {
+-            resolve(fetchNextPage(response.next));
+-          }
+-
+-          resolve(results);
+-        });
+-
+-        request.send(null);
+-      });
+-    };
+-
+-    return fetchNextPage(startURL);
++    return Promise.reject(new Error(`GET ${startURL} failed`));
+   },
+ 
+   /**
+diff --git a/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm b/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
+--- a/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
++++ b/toolkit/mozapps/extensions/internal/AddonUpdateChecker.jsm
+@@ -273,30 +273,17 @@ function UpdateParser(aId, aUrl, aObserv
+   this.observer = aObserver;
+   this.url = aUrl;
+ 
+-  let requireBuiltIn = Services.prefs.getBoolPref(
+-    PREF_UPDATE_REQUIREBUILTINCERTS,
+-    !AppConstants.MOZ_REQUIRE_SIGNING &&
+-      !AppConstants.MOZ_APP_VERSION_DISPLAY.endsWith("esr")
+-  );
++  this.request = null;
++  this._doneAt = new Error("place holder");
+ 
+-  logger.debug("Requesting " + aUrl);
+-  try {
+-    this.request = new ServiceRequest({ mozAnon: true });
+-    this.request.open("GET", this.url, true);
+-    this.request.channel.notificationCallbacks = new CertUtils.BadCertHandler(
+-      !requireBuiltIn
+-    );
+-    this.request.channel.loadFlags |= Ci.nsIRequest.LOAD_BYPASS_CACHE;
+-    // Prevent the request from writing to cache.
+-    this.request.channel.loadFlags |= Ci.nsIRequest.INHIBIT_CACHING;
+-    this.request.overrideMimeType("text/plain");
+-    this.request.timeout = TIMEOUT;
+-    this.request.addEventListener("load", () => this.onLoad());
+-    this.request.addEventListener("error", () => this.onError());
+-    this.request.addEventListener("timeout", () => this.onTimeout());
+-    this.request.send(null);
+-  } catch (e) {
+-    logger.error("Failed to request update manifest", e);
++  if ("onUpdateCheckComplete" in this.observer) {
++    try {
++      this.observer.onUpdateCheckComplete([]);
++    } catch (e) {
++      logger.warn("onUpdateCheckComplete notification failed", e);
++    }
++  } else {
++    logger.warn("onUpdateCheckComplete may not properly cancel", new Error("stack marker"));
+   }
+ }
+ 

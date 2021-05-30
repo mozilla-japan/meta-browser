@@ -1,0 +1,72 @@
+diff --git a/browser/components/BrowserContentHandler.jsm b/browser/components/BrowserContentHandler.jsm
+--- a/browser/components/BrowserContentHandler.jsm
++++ b/browser/components/BrowserContentHandler.jsm
+@@ -111,49 +111,6 @@ const OVERRIDE_ALTERNATE_PROFILE = 4;
+  *  OVERRIDE_NONE otherwise.
+  */
+ function needHomepageOverride(prefb) {
+-  let pService = Cc["@mozilla.org/toolkit/profile-service;1"].getService(
+-    Ci.nsIToolkitProfileService
+-  );
+-  if (pService.createdAlternateProfile) {
+-    return OVERRIDE_ALTERNATE_PROFILE;
+-  }
+-  var savedmstone = prefb.getCharPref(
+-    "browser.startup.homepage_override.mstone",
+-    ""
+-  );
+-
+-  if (savedmstone == "ignore") {
+-    return OVERRIDE_NONE;
+-  }
+-
+-  var mstone = Services.appinfo.platformVersion;
+-
+-  var savedBuildID = prefb.getCharPref(
+-    "browser.startup.homepage_override.buildID",
+-    ""
+-  );
+-
+-  var buildID = Services.appinfo.platformBuildID;
+-
+-  if (mstone != savedmstone) {
+-    // Bug 462254. Previous releases had a default pref to suppress the EULA
+-    // agreement if the platform's installer had already shown one. Now with
+-    // about:rights we've removed the EULA stuff and default pref, but we need
+-    // a way to make existing profiles retain the default that we removed.
+-    if (savedmstone) {
+-      prefb.setBoolPref("browser.rights.3.shown", true);
+-    }
+-
+-    prefb.setCharPref("browser.startup.homepage_override.mstone", mstone);
+-    prefb.setCharPref("browser.startup.homepage_override.buildID", buildID);
+-    return savedmstone ? OVERRIDE_NEW_MSTONE : OVERRIDE_NEW_PROFILE;
+-  }
+-
+-  if (buildID != savedBuildID) {
+-    prefb.setCharPref("browser.startup.homepage_override.buildID", buildID);
+-    return OVERRIDE_NEW_BUILD_ID;
+-  }
+-
+   return OVERRIDE_NONE;
+ }
+ 
+@@ -773,17 +730,7 @@ nsBrowserContentHandler.prototype = {
+       startPage = "";
+     }
+ 
+-    let skipStartPage =
+-      (override == OVERRIDE_NEW_PROFILE ||
+-        override == OVERRIDE_ALTERNATE_PROFILE) &&
+-      prefb.getBoolPref("browser.startup.firstrunSkipsHomepage");
+-    // Only show the startPage if we're not restoring an update session and are
+-    // not set to skip the start page on this profile
+-    if (overridePage && startPage && !willRestoreSession && !skipStartPage) {
+-      return overridePage + "|" + startPage;
+-    }
+-
+-    return overridePage || startPage || "about:blank";
++    return startPage || "about:blank";
+   },
+ 
+   mFeatures: null,

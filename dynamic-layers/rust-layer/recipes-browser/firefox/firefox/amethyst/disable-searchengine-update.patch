@@ -1,0 +1,222 @@
+diff --git a/toolkit/components/search/SearchService.jsm b/toolkit/components/search/SearchService.jsm
+--- a/toolkit/components/search/SearchService.jsm
++++ b/toolkit/components/search/SearchService.jsm
+@@ -34,12 +34,7 @@ XPCOMUtils.defineLazyServiceGetters(this
+   gEnvironment: ["@mozilla.org/process/environment;1", "nsIEnvironment"],
+ });
+ 
+-XPCOMUtils.defineLazyPreferenceGetter(
+-  this,
+-  "gGeoSpecificDefaultsEnabled",
+-  SearchUtils.BROWSER_SEARCH_PREF + "geoSpecificDefaults",
+-  false
+-);
++const gGeoSpecificDefaultsEnabled = false;
+ 
+ XPCOMUtils.defineLazyPreferenceGetter(
+   this,
+@@ -200,97 +195,7 @@ function convertGoogleEngines(engineName
+ // @deprecated Unused in the modern config.
+ var fetchRegionDefault = ss =>
+   new Promise(resolve => {
+-    let urlTemplate = Services.prefs
+-      .getDefaultBranch(SearchUtils.BROWSER_SEARCH_PREF)
+-      .getCharPref("geoSpecificDefaults.url");
+-    let endpoint = Services.urlFormatter.formatURL(urlTemplate);
+-
+-    // As an escape hatch, no endpoint means no region specific defaults.
+-    if (!endpoint) {
+       resolve();
+-      return;
+-    }
+-
+-    // Append the optional cohort value.
+-    const cohortPref = "browser.search.cohort";
+-    let cohort = Services.prefs.getCharPref(cohortPref, "");
+-    if (cohort) {
+-      endpoint += "/" + cohort;
+-    }
+-
+-    SearchUtils.log("fetchRegionDefault starting with endpoint " + endpoint);
+-
+-    let startTime = Date.now();
+-    let request = new XMLHttpRequest();
+-    request.timeout = 100000; // 100 seconds as the last-chance fallback
+-    request.onload = function(event) {
+-      let took = Date.now() - startTime;
+-
+-      let status = event.target.status;
+-      if (status != 200) {
+-        SearchUtils.log("fetchRegionDefault failed with HTTP code " + status);
+-        let retryAfter = request.getResponseHeader("retry-after");
+-        if (retryAfter) {
+-          ss.setGlobalAttr(
+-            "searchDefaultExpir",
+-            Date.now() + retryAfter * 1000
+-          );
+-        }
+-        resolve();
+-        return;
+-      }
+-
+-      let response = event.target.response || {};
+-      SearchUtils.log("received " + response.toSource());
+-
+-      if (response.cohort) {
+-        Services.prefs.setCharPref(cohortPref, response.cohort);
+-      } else {
+-        Services.prefs.clearUserPref(cohortPref);
+-      }
+-
+-      if (response.settings && response.settings.searchDefault) {
+-        let defaultEngine = response.settings.searchDefault;
+-        ss.setVerifiedGlobalAttr("searchDefault", defaultEngine);
+-        SearchUtils.log(
+-          "fetchRegionDefault saved searchDefault: " + defaultEngine
+-        );
+-      }
+-
+-      if (response.settings && response.settings.visibleDefaultEngines) {
+-        let visibleDefaultEngines = response.settings.visibleDefaultEngines;
+-        let string = visibleDefaultEngines.join(",");
+-        ss.setVerifiedGlobalAttr("visibleDefaultEngines", string);
+-        SearchUtils.log(
+-          "fetchRegionDefault saved visibleDefaultEngines: " + string
+-        );
+-      }
+-
+-      let interval = response.interval || SEARCH_GEO_DEFAULT_UPDATE_INTERVAL;
+-      let milliseconds = interval * 1000; // |interval| is in seconds.
+-      ss.setGlobalAttr("searchDefaultExpir", Date.now() + milliseconds);
+-
+-      SearchUtils.log(
+-        "fetchRegionDefault got success response in " + took + "ms"
+-      );
+-      // If we're doing this somewhere during the app's lifetime, reload the list
+-      // of engines in order to pick up any geo-specific changes.
+-      ss._maybeReloadEngines().finally(resolve);
+-    };
+-    request.ontimeout = function(event) {
+-      SearchUtils.log("fetchRegionDefault: XHR finally timed-out");
+-      resolve();
+-    };
+-    request.onerror = function(event) {
+-      SearchUtils.log(
+-        "fetchRegionDefault: failed to retrieve territory default information"
+-      );
+-      resolve();
+-    };
+-    request.open("GET", endpoint, true);
+-    request.setRequestHeader("Content-Type", "application/json");
+-    request.responseType = "json";
+-    request.send();
+   });
+ 
+ /**
+@@ -3550,53 +3455,6 @@ SearchService.prototype = {
+ 
+   // nsITimerCallback
+   notify(timer) {
+-    SearchUtils.log("_notify: checking for updates");
+-
+-    if (
+-      !Services.prefs.getBoolPref(
+-        SearchUtils.BROWSER_SEARCH_PREF + "update",
+-        true
+-      )
+-    ) {
+-      return;
+-    }
+-
+-    // Our timer has expired, but unfortunately, we can't get any data from it.
+-    // Therefore, we need to walk our engine-list, looking for expired engines
+-    var currentTime = Date.now();
+-    SearchUtils.log("currentTime: " + currentTime);
+-    for (let e of this._engines.values()) {
+-      let engine = e.wrappedJSObject;
+-      if (!engine._hasUpdates) {
+-        continue;
+-      }
+-
+-      SearchUtils.log("checking " + engine.name);
+-
+-      var expirTime = engine.getAttr("updateexpir");
+-      SearchUtils.log(
+-        "expirTime: " +
+-          expirTime +
+-          "\nupdateURL: " +
+-          engine._updateURL +
+-          "\niconUpdateURL: " +
+-          engine._iconUpdateURL
+-      );
+-
+-      var engineExpired = expirTime <= currentTime;
+-
+-      if (!expirTime || !engineExpired) {
+-        SearchUtils.log("skipping engine");
+-        continue;
+-      }
+-
+-      SearchUtils.log(engine.name + " has expired");
+-
+-      engineUpdateService.update(engine);
+-
+-      // Schedule the next update
+-      engineUpdateService.scheduleNextUpdate(engine);
+-    } // end engine iteration
+   },
+ 
+   _addObservers() {
+@@ -3695,46 +3553,6 @@ var engineUpdateService = {
+   },
+ 
+   update(engine) {
+-    engine = engine.wrappedJSObject;
+-    this._log("update called for " + engine._name);
+-    if (
+-      !Services.prefs.getBoolPref(
+-        SearchUtils.BROWSER_SEARCH_PREF + "update",
+-        true
+-      ) ||
+-      !engine._hasUpdates
+-    ) {
+-      return;
+-    }
+-
+-    let testEngine = null;
+-    let updateURL = engine._getURLOfType(SearchUtils.URL_TYPE.OPENSEARCH);
+-    let updateURI =
+-      updateURL && updateURL._hasRelation("self")
+-        ? updateURL.getSubmission("", engine).uri
+-        : SearchUtils.makeURI(engine._updateURL);
+-    if (updateURI) {
+-      if (engine.isAppProvided && !updateURI.schemeIs("https")) {
+-        this._log("Invalid scheme for default engine update");
+-        return;
+-      }
+-
+-      this._log("updating " + engine.name + " from " + updateURI.spec);
+-      testEngine = new SearchEngine({
+-        uri: updateURI,
+-        isBuiltin: false,
+-      });
+-      testEngine._engineToUpdate = engine;
+-      testEngine._initFromURIAndLoad(updateURI);
+-    } else {
+-      this._log("invalid updateURI");
+-    }
+-
+-    if (engine._iconUpdateURL) {
+-      // If we're updating the engine too, use the new engine object,
+-      // otherwise use the existing engine object.
+-      (testEngine || engine)._setIcon(engine._iconUpdateURL, true);
+-    }
+   },
+ 
+   /**
+diff --git a/toolkit/components/search/toolkitsearch.manifest b/toolkit/components/search/toolkitsearch.manifest
+--- a/toolkit/components/search/toolkitsearch.manifest
++++ b/toolkit/components/search/toolkitsearch.manifest
+@@ -1,2 +1,1 @@
+ # 21600 == 6 hours
+-category update-timer nsSearchService @mozilla.org/browser/search-service;1,getService,search-engine-update-timer,browser.search.update.interval,21600
